@@ -1,24 +1,35 @@
 // lib/supabase.ts
-// The single connection to your Supabase backend.
-// Cursor will import this wherever it needs to read/write data.
+// Lazy client init so `next build` on Vercel doesn't crash before env vars exist.
 
 import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+let supabaseInstance: SupabaseClient | null = null;
 
-// Quick usage examples (Cursor will write the real versions for you):
-//
-//   // sign up
-//   await supabase.auth.signUp({ email, password });
-//
-//   // sign in
-//   await supabase.auth.signInWithPassword({ email, password });
-//
-//   // read your settings
-//   const { data } = await supabase.from("user_settings").select("*").single();
-//
-//   // save a toggle
-//   await supabase.from("user_settings").update({ show_outlook: false }).eq("profile_id", userId);
+export function getSupabase(): SupabaseClient {
+  if (supabaseInstance) return supabaseInstance;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
+        "Add both in Vercel → Project → Settings → Environment Variables."
+    );
+  }
+
+  supabaseInstance = createBrowserClient(url, key);
+  return supabaseInstance;
+}
+
+// Existing imports use `supabase` — proxy delays client creation until first use.
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabase();
+    const value = client[prop as keyof SupabaseClient];
+    return typeof value === "function"
+      ? (value as (...args: unknown[]) => unknown).bind(client)
+      : value;
+  },
+});
