@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, {
+  useState, useMemo, useEffect, useCallback,
+  type CSSProperties, type ReactNode, type FormEvent,
+} from "react";
 import { supabase } from "@/lib/supabase";
 import {
   ShieldCheck, Sparkles, LayoutDashboard, Users, Award, Settings as SettingsIcon,
@@ -15,8 +18,24 @@ import {
    Verified facts vs AI inferences kept as separate, labeled types.
    ════════════════════════════════════════════════════════════════ */
 
+type Theme = { accent: string; mode: "light" | "dark" };
+type Role = "employee" | "manager" | "executive" | "admin";
+type AuthMode = "signin" | "signup";
+type FeedbackField = "employee_responses" | "manager_responses";
+type FeedbackResponses = Record<string, string>;
+type Milestone = { id: string; y: string; t: string; v: boolean };
+type MilestoneInput = { y: string; t: string };
+type VerifiedFactRow = { id: string; label: string; attested_at: string | null };
+type VerificationRequest = { id: string; past_employer_email: string; status: string; created_at: string };
+type SettingsState = { outlook: boolean; kudos: boolean; externalPassport: boolean; aiSummaries: boolean };
+type SettingKey = keyof SettingsState;
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback;
+}
+
 // ── theme ──────────────────────────────────────────────────────
-function useThemeVars(theme) {
+function useThemeVars(theme: Theme) {
   return useMemo(() => {
     const dark = theme.mode === "dark";
     return {
@@ -66,7 +85,7 @@ const InferredTag = () => (
   </span>
 );
 
-function TransparencyNote({ children }) {
+function TransparencyNote({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-2">
@@ -85,14 +104,14 @@ function TransparencyNote({ children }) {
   );
 }
 
-const Card = ({ children, className = "", style = {} }) => (
+const Card = ({ children, className = "", style = {} }: { children: ReactNode; className?: string; style?: CSSProperties }) => (
   <div className={`rounded-2xl border ${className}`}
     style={{ borderColor: "var(--line)", background: "var(--surface)", boxShadow: "0 1px 2px rgba(0,0,0,.04)", ...style }}>
     {children}
   </div>
 );
 
-const Stat = ({ label, value, sub, accent }) => (
+const Stat = ({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) => (
   <Card className="p-5">
     <div className="text-[12px] uppercase tracking-widest opacity-60">{label}</div>
     <div className="mt-1 text-3xl font-semibold serif" style={{ color: accent || "var(--ink)" }}>{value}</div>
@@ -100,14 +119,14 @@ const Stat = ({ label, value, sub, accent }) => (
   </Card>
 );
 
-function Spark({ data, color }) {
+function Spark({ data, color }: { data: number[]; color: string }) {
   const w = 240, h = 56, max = Math.max(...data), min = Math.min(...data);
   const pts = data.map((d, i) => `${(i / (data.length - 1)) * w},${h - ((d - min) / (max - min || 1)) * (h - 8) - 4}`).join(" ");
   return <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-14"><polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 /* ═══════════════════ PUBLIC MARKETING SITE ═══════════════════ */
-function PublicSite({ onEnter, theme, setTheme }) {
+function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: Theme; setTheme: (theme: Theme) => void }) {
   const [menu, setMenu] = useState(false);
   const features = [
     { icon: BadgeCheck, t: "Verified talent passport", d: "Every profile resolves to an immutable-but-correctable public URL showing only attested facts — confirmed tenure, titles, and validated skills." },
@@ -312,7 +331,7 @@ async function getUserId() {
   return user.id;
 }
 
-async function ensureUserSettings(profileId) {
+async function ensureUserSettings(profileId: string) {
   const { data } = await supabase.from("user_settings").select("profile_id").eq("profile_id", profileId).maybeSingle();
   if (!data) {
     const { error } = await supabase.from("user_settings").insert({ profile_id: profileId, ...DEFAULT_SETTINGS });
@@ -320,39 +339,39 @@ async function ensureUserSettings(profileId) {
   }
 }
 
-async function saveProfileRole(userId, role) {
+async function saveProfileRole(userId: string, role: Role) {
   const { error } = await supabase.from("profiles").upsert({ id: userId, role });
   if (error) throw error;
   await ensureUserSettings(userId);
 }
 
-async function fetchProfileRole(userId) {
+async function fetchProfileRole(userId: string): Promise<Role> {
   const { data, error } = await supabase.from("profiles").select("role").eq("id", userId).single();
   if (error) throw error;
-  return data.role;
+  return data.role as Role;
 }
 
-function factToMilestone(f) {
+function factToMilestone(f: VerifiedFactRow): Milestone {
   const parts = (f.label || "").split(" — ");
   const y = parts.length > 1 ? parts[0] : "????";
   const t = parts.length > 1 ? parts.slice(1).join(" — ") : f.label;
   return { id: f.id, y, t, v: !!f.attested_at };
 }
 
-function milestoneLabel(m) {
+function milestoneLabel(m: MilestoneInput) {
   return `${m.y} — ${m.t}`;
 }
 
-function AuthScreen({ onLogin, onBack }) {
-  const [role, setRole] = useState("employee");
+function AuthScreen({ onLogin, onBack }: { onLogin: (role: Role) => void; onBack: () => void }) {
+  const [role, setRole] = useState<Role>("employee");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState("signin");
+  const [mode, setMode] = useState<AuthMode>("signin");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setMessage(null);
@@ -385,7 +404,7 @@ function AuthScreen({ onLogin, onBack }) {
         });
         if (signInError) throw signInError;
 
-        let storedRole;
+        let storedRole: Role;
         try {
           storedRole = await fetchProfileRole(data.user.id);
         } catch {
@@ -394,8 +413,8 @@ function AuthScreen({ onLogin, onBack }) {
         }
         onLogin(storedRole);
       }
-    } catch (err) {
-      setError(err?.message ?? "Something went wrong. Try again.");
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Something went wrong. Try again."));
     } finally {
       setLoading(false);
     }
@@ -423,7 +442,7 @@ function AuthScreen({ onLogin, onBack }) {
             {AUTH_ROLES.map((r) => {
               const Icon = r.icon; const active = role === r.id;
               return (
-                <button key={r.id} type="button" onClick={() => setRole(r.id)}
+                <button key={r.id} type="button" onClick={() => setRole(r.id as Role)}
                   className="p-3 rounded-xl border text-left transition"
                   style={{ borderColor: active ? "var(--accent)" : "var(--line)", background: active ? "var(--accent-soft)" : "var(--surface-2)" }}>
                   <Icon size={18} style={{ color: active ? "var(--accent)" : "var(--ink-2)" }} />
@@ -487,12 +506,12 @@ function AuthScreen({ onLogin, onBack }) {
 }
 
 /* ═══════════════════ APP VIEWS (role dashboards) ═══════════════════ */
-function ProfileEditor({ userId, onSaved }) {
+function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (profile: { fullName: string; title: string }) => void }) {
   const [fullName, setFullName] = useState("");
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -508,7 +527,7 @@ function ProfileEditor({ userId, onSaved }) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  async function handleSave(e) {
+  async function handleSave(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     setMessage(null);
@@ -542,9 +561,9 @@ function ProfileEditor({ userId, onSaved }) {
   );
 }
 
-function FeedbackCycleCard({ userId, field, title, subtitle }) {
-  const [responses, setResponses] = useState({});
-  const [cycleId, setCycleId] = useState(null);
+function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string; field: FeedbackField; title: string; subtitle: string }) {
+  const [responses, setResponses] = useState<FeedbackResponses>({});
+  const [cycleId, setCycleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -557,14 +576,14 @@ function FeedbackCycleCard({ userId, field, title, subtitle }) {
       if (cancelled) return;
       if (data) {
         setCycleId(data.id);
-        setResponses(data[field] ?? {});
+        setResponses((data[field] as FeedbackResponses) ?? {});
       }
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [userId, field]);
 
-  async function handleSave(e) {
+  async function handleSave(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
@@ -607,9 +626,9 @@ function FeedbackCycleCard({ userId, field, title, subtitle }) {
   );
 }
 
-function EmployeeView({ userId, showOutlook }) {
+function EmployeeView({ userId, showOutlook }: { userId: string; showOutlook: boolean }) {
   const [external, setExternal] = useState(false);
-  const [milestones, setMilestones] = useState([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loadingMilestones, setLoadingMilestones] = useState(true);
   const [newYear, setNewYear] = useState(String(new Date().getFullYear()));
   const [newText, setNewText] = useState("");
@@ -627,7 +646,7 @@ function EmployeeView({ userId, showOutlook }) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  async function addMilestone(e) {
+  async function addMilestone(e: FormEvent) {
     e.preventDefault();
     if (!newText.trim()) return;
     setAdding(true);
@@ -708,7 +727,7 @@ function EmployeeView({ userId, showOutlook }) {
   );
 }
 
-function ManagerView({ userId }) {
+function ManagerView({ userId }: { userId: string }) {
   const reports = [
     { n: "A. Rivera", role: "Equity Analyst II", morale: 0.82, dev: 0.12, flag: false },
     { n: "J. Okafor", role: "Equity Analyst I", morale: 0.61, dev: 0.74, flag: true },
@@ -778,7 +797,7 @@ function ExecutiveView() {
   );
 }
 
-function AdminView({ theme, setTheme }) {
+function AdminView({ theme, setTheme }: { theme: Theme; setTheme: (theme: Theme) => void }) {
   const [model, setModel] = useState("A");
   const swatches = ["#0f6e5c", "#1f4ed8", "#7c3aed", "#b45309", "#be123c"];
   return (
@@ -794,7 +813,7 @@ function AdminView({ theme, setTheme }) {
         <div className="text-[12px] uppercase tracking-widest opacity-60 mb-2">Appearance</div>
         <div className="flex gap-2">
           {["light", "dark"].map((m) => (
-            <button key={m} onClick={() => setTheme({ ...theme, mode: m })} className="px-4 py-2 rounded-xl text-sm font-medium border capitalize"
+            <button key={m} onClick={() => setTheme({ ...theme, mode: m as Theme["mode"] })} className="px-4 py-2 rounded-xl text-sm font-medium border capitalize"
               style={{ borderColor: "var(--line)", background: theme.mode === m ? "var(--accent)" : "var(--surface-2)", color: theme.mode === m ? "#fff" : "var(--ink)" }}>{m}</button>
           ))}
         </div>
@@ -817,12 +836,12 @@ function AdminView({ theme, setTheme }) {
   );
 }
 
-function VerificationView({ userId }) {
+function VerificationView({ userId }: { userId: string }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -898,12 +917,12 @@ function VerificationView({ userId }) {
   );
 }
 
-function SettingsView({ userId, onOutlookChange }) {
-  const [t, setT] = useState({ outlook: true, kudos: true, externalPassport: false, aiSummaries: true });
+function SettingsView({ userId, onOutlookChange }: { userId: string; onOutlookChange?: (show: boolean) => void }) {
+  const [t, setT] = useState<SettingsState>({ outlook: true, kudos: true, externalPassport: false, aiSummaries: true });
   const [loading, setLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState(null);
+  const [savingKey, setSavingKey] = useState<SettingKey | null>(null);
 
-  const rows = [
+  const rows: { k: SettingKey; db: string; t: string; d: string }[] = [
     { k: "outlook", db: "show_outlook", t: "Show my AI Professional Outlook", d: "Internal-only prediction on your dashboard." },
     { k: "aiSummaries", db: "ai_summaries", t: "AI-summarized milestones", d: "Let the model condense achievements into passport summaries." },
     { k: "externalPassport", db: "passport_published", t: "Publish public passport", d: "Make /p/verify/… reachable. Only attested facts ever appear." },
@@ -929,7 +948,7 @@ function SettingsView({ userId, onOutlookChange }) {
     return () => { cancelled = true; };
   }, [userId]);
 
-  async function toggleSetting(key, dbKey) {
+  async function toggleSetting(key: SettingKey, dbKey: string) {
     const next = !t[key];
     setT({ ...t, [key]: next });
     setSavingKey(key);
@@ -976,12 +995,12 @@ function SettingsView({ userId, onOutlookChange }) {
 }
 
 /* ═══════════════════ AUTHENTICATED APP SHELL ═══════════════════ */
-function AppShell({ role, theme, setTheme, onSignOut }) {
+function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: Theme; setTheme: (theme: Theme) => void; onSignOut: () => void }) {
   const [tab, setTab] = useState("dashboard");
   const [sidebar, setSidebar] = useState(false);
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [showOutlook, setShowOutlook] = useState(true);
-  const [publicSlug, setPublicSlug] = useState(null);
+  const [publicSlug, setPublicSlug] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1006,7 +1025,7 @@ function AppShell({ role, theme, setTheme, onSignOut }) {
     return () => { cancelled = true; };
   }, []);
 
-  const roleLabel = { employee: "Employee", manager: "Manager", executive: "Executive", admin: "System Admin" }[role];
+  const roleLabel: Record<Role, string> = { employee: "Employee", manager: "Manager", executive: "Executive", admin: "System Admin" };
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "verify", label: "Verification", icon: FileBadge },
@@ -1048,7 +1067,7 @@ function AppShell({ role, theme, setTheme, onSignOut }) {
             <span className="serif text-xl font-semibold">Credentia</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[13px] px-3 py-1 rounded-full hidden sm:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel}</span>
+            <span className="text-[13px] px-3 py-1 rounded-full hidden sm:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel[role]}</span>
             <button onClick={onSignOut} className="text-[13px] font-medium" style={{ color: "var(--accent)" }}>Sign out</button>
           </div>
         </div>
@@ -1089,13 +1108,13 @@ function AppShell({ role, theme, setTheme, onSignOut }) {
 
 /* ═══════════════════ ROOT ROUTER ═══════════════════ */
 export default function CredentiaSite() {
-  const [screen, setScreen] = useState("public"); // public | auth | app
-  const [role, setRole] = useState("employee");
+  const [screen, setScreen] = useState<"public" | "auth" | "app">("public");
+  const [role, setRole] = useState<Role>("employee");
   const [authReady, setAuthReady] = useState(false);
-  const [theme, setTheme] = useState({ accent: "#0f6e5c", mode: "light" });
+  const [theme, setTheme] = useState<Theme>({ accent: "#0f6e5c", mode: "light" });
   const vars = useThemeVars(theme);
 
-  const enterApp = useCallback((r) => {
+  const enterApp = useCallback((r: Role) => {
     setRole(r);
     setScreen("app");
   }, []);
