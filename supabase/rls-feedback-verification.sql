@@ -1,3 +1,4 @@
+-- DEPRECATED — superseded by rls-policies.sql (run that file instead).
 -- Run once in Supabase → SQL Editor (after schema.sql)
 -- Lets signed-in users manage their own feedback cycles and verification requests.
 
