@@ -19,6 +19,7 @@ begin
       and tablename in (
         'profiles', 'user_settings', 'verified_facts', 'achievements', 'kpis',
         'projects', 'process_improvements', 'feedback_cycles', 'verification_requests',
+        'shareable_links', 'removal_requests',
         'pulse_surveys', 'compensation_recommendations', 'promotion_readiness',
         'employee_value_scores', 'audit_log', 'organizations', 'departments',
         'invitations', 'org_membership_requests', 'tenant_integrations', 'data_import_batches'
@@ -254,6 +255,18 @@ create policy "fc: manager read" on feedback_cycles for select
 
 create policy "vr: owner all" on verification_requests for all
   using (profile_id = auth.uid()) with check (profile_id = auth.uid());
+
+create policy "share: owner all" on shareable_links for all
+  using (profile_id = auth.uid()) with check (profile_id = auth.uid());
+
+create policy "removal: requester insert" on removal_requests for insert
+  with check (requested_by = auth.uid() and org_id = current_org());
+create policy "removal: org read" on removal_requests for select
+  using (org_id = current_org());
+create policy "removal: admin update" on removal_requests for update
+  using (is_org_admin());
+create policy "removal: admin delete profile via request" on removal_requests for delete
+  using (is_org_admin());
 
 -- ══════════════════════════════════════════════════════════════
 -- PULSE SURVEYS  — SENSITIVE

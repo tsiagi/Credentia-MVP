@@ -386,7 +386,7 @@ export const MOCK_COMP_RECOMMENDATIONS: CompRecommendation[] = [
   },
 ];
 
-type ProfileLite = { id: string; full_name: string | null; title: string | null };
+export type ProfileLite = { id: string; full_name: string | null; title: string | null; avatar_url?: string | null };
 
 export function displayName(p: ProfileLite | null | undefined) {
   if (!p) return "Unknown";
@@ -493,7 +493,7 @@ export async function fetchEmployeeOutlook(profileId: string) {
 }
 
 export async function fetchDirectReports(managerId: string): Promise<ProfileLite[]> {
-  const { data, error } = await supabase.from("profiles").select("id, full_name, title").eq("manager_id", managerId);
+  const { data, error } = await supabase.from("profiles").select("id, full_name, title, avatar_url").eq("manager_id", managerId);
   if (error) throw error;
   return data ?? [];
 }

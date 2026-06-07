@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   ShieldCheck, Users, Mail, GitBranch, Clock, Check, X, Link2, UserPlus,
-  Building2, ChevronDown, Upload,
+  Building2, ChevronDown, Upload, Download, Briefcase, UserMinus, Trash2,
 } from "lucide-react";
 import {
   SAMPLE_PEOPLE_CSV, parsePeopleCsv, validatePeopleRows, buildBatchResult,
 } from "@/lib/csv-import-mock";
+import {
+  connectWorkdayIntegration,
+  fetchRemovalRequests,
+  resolveRemovalRequest,
+  buildAdminRecordCsv,
+  downloadCsv,
+  fetchOrgSettingsForUser,
+  type RemovalRequestRow,
+} from "@/lib/org-settings";
+import { supabase } from "@/lib/supabase";
 
 /** Administrative facts only — no AI inference on this screen. */
 
@@ -78,8 +88,12 @@ function StatusBadge({ status }: { status: AccountStatus }) {
   );
 }
 
-export function PeopleOrgConsole() {
+export function PeopleOrgConsole({ userId }: { userId: string }) {
   const [ssoConnected, setSsoConnected] = useState(true);
+  const [workdayConnected, setWorkdayConnected] = useState(false);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [removalQueue, setRemovalQueue] = useState<RemovalRequestRow[]>([]);
+  const [downloading, setDownloading] = useState(false);
   const [autoTrialEnabled, setAutoTrialEnabled] = useState(true);
   const [trialDays, setTrialDays] = useState(30);
   const [people, setPeople] = useState(MOCK_PEOPLE);
@@ -94,6 +108,85 @@ export function PeopleOrgConsole() {
   const [lastBatch, setLastBatch] = useState<{ success: number; errors: number } | null>(null);
 
   const activeCount = useMemo(() => people.filter((p) => p.accountStatus === "active_sso").length, [people]);
+
+  const reloadRemovals = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const rows = await fetchRemovalRequests(orgId);
+      setRemovalQueue(rows.filter((r) => r.status === "pending"));
+    } catch {
+      setRemovalQueue([]);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    fetchOrgSettingsForUser(userId).then((org) => {
+      if (org) {
+        setOrgId(org.orgId);
+        supabase.from("tenant_integrations").select("status").eq("org_id", org.orgId).eq("source", "workday").maybeSingle()
+          .then(({ data }) => setWorkdayConnected(data?.status === "connected"));
+      }
+    }).catch(() => { /* schema may lag */ });
+  }, [userId]);
+
+  useEffect(() => {
+    reloadRemovals();
+  }, [reloadRemovals]);
+
+  async function connectWorkday() {
+    if (!orgId) {
+      flash("Organization not linked.");
+      return;
+    }
+    try {
+      await connectWorkdayIntegration(orgId, userId);
+      setWorkdayConnected(true);
+      flash("Workday connected (mock) — tenant_integrations row created with source=workday.");
+    } catch {
+      flash("Workday connection saved locally (mock).");
+      setWorkdayConnected(true);
+    }
+  }
+
+  async function handleRemovalAction(id: string, action: "approved" | "rejected") {
+    try {
+      await resolveRemovalRequest(id, userId, action);
+      if (action === "approved") {
+        const req = removalQueue.find((r) => r.id === id);
+        if (req) setPeople((prev) => prev.filter((p) => p.name !== req.subject_name));
+        flash(`Profile removed — only company admin can delete profiles in the org.`);
+      } else {
+        flash("Removal request rejected.");
+      }
+      await reloadRemovals();
+    } catch {
+      flash(action === "approved" ? "Approved (mock) — run migrate-batch-cd.sql on Supabase." : "Rejected (mock).");
+      setRemovalQueue((prev) => prev.filter((r) => r.id !== id));
+    }
+  }
+
+  async function downloadAdminRecord() {
+    if (!orgId) {
+      flash("Organization not linked.");
+      return;
+    }
+    setDownloading(true);
+    try {
+      const csv = await buildAdminRecordCsv(orgId);
+      downloadCsv("people-admin-record.csv", csv);
+      flash("People / Admin Record downloaded (roster + verification stats).");
+    } catch {
+      flash("Download failed — ensure org profiles exist in Supabase.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  function adminDeletePerson(personId: string, name: string) {
+    if (!window.confirm(`Delete ${name}? Only company admin can remove profiles — this is permanent.`)) return;
+    setPeople((prev) => prev.filter((p) => p.id !== personId));
+    flash(`${name} removed from org (mock). In production this deletes the profile row.`);
+  }
 
   const knownManagerEmails = useMemo(() => {
     const emails = new Set<string>();
@@ -233,6 +326,74 @@ export function PeopleOrgConsole() {
             {ssoConnected ? "Manage connection" : "Connect SSO"}
           </button>
         </div>
+      </Card>
+
+      {/* Workday integration */}
+      <Card className="p-5 sm:p-6" style={workdayConnected ? { background: "var(--verified-bg)" } : undefined}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl shrink-0" style={{ background: workdayConnected ? "var(--verified-fg)" : "var(--accent-soft)" }}>
+              <Briefcase size={20} color={workdayConnected ? "#fff" : "var(--accent)"} />
+            </div>
+            <div>
+              <div className="font-semibold">{workdayConnected ? "Connected to Workday" : "Connect Workday"}</div>
+              <p className="text-[13px] opacity-70 mt-0.5">
+                {workdayConnected
+                  ? "HRIS sync via Workday — roster and org structure import (mock status + tenant_integrations row)."
+                  : "Connect Workday alongside Okta/SCIM for workforce data provisioning."}
+              </p>
+            </div>
+          </div>
+          <button type="button" onClick={connectWorkday} disabled={workdayConnected}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium shrink-0 disabled:opacity-60"
+            style={{ background: workdayConnected ? "var(--surface)" : "var(--accent)", color: workdayConnected ? "var(--ink)" : "#fff", border: workdayConnected ? "1px solid var(--line)" : "none" }}>
+            {workdayConnected ? "Connected" : "Connect Workday"}
+          </button>
+        </div>
+      </Card>
+
+      {/* Admin record download */}
+      <Card className="p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1"><Download size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">People / Admin Record</h3><AdminFactTag /></div>
+            <p className="text-[13px] opacity-70 max-w-2xl">Download roster plus verification stats as CSV. Administrative org data — not individual AI inferences.</p>
+          </div>
+          <button type="button" disabled={downloading} onClick={downloadAdminRecord}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 shrink-0 disabled:opacity-60"
+            style={{ background: "var(--accent)" }}>
+            <Download size={16} /> {downloading ? "Preparing…" : "Download CSV"}
+          </button>
+        </div>
+      </Card>
+
+      {/* Removal requests — only admin can delete */}
+      <Card className="p-5 sm:p-6">
+        <div className="flex items-center gap-2 mb-3"><UserMinus size={18} style={{ color: "var(--warn)" }} /><h3 className="font-semibold">Profile removal requests</h3><AdminFactTag /></div>
+        <p className="text-[13px] opacity-70 mb-4">Employees and managers can only request removal. You are the only role that can delete a profile in this org.</p>
+        {removalQueue.length === 0 ? (
+          <p className="text-sm opacity-60">No pending removal requests.</p>
+        ) : (
+          <div className="space-y-3">
+            {removalQueue.map((r) => (
+              <div key={r.id} className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                <div className="text-[13px] min-w-0">
+                  <strong>{r.subject_name ?? "Profile"}</strong>
+                  <div className="opacity-70 mt-0.5">Requested by {r.requester_name ?? "—"} · {new Date(r.created_at).toLocaleDateString()}</div>
+                  {r.reason && <div className="opacity-60 text-[12px] mt-1">Reason: {r.reason}</div>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button type="button" onClick={() => handleRemovalAction(r.id, "approved")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white inline-flex items-center gap-1" style={{ background: "var(--warn)" }}>
+                    <Trash2 size={14} /> Delete profile
+                  </button>
+                  <button type="button" onClick={() => handleRemovalAction(r.id, "rejected")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium border inline-flex items-center gap-1" style={{ borderColor: "var(--line)" }}>
+                    <X size={14} /> Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Org billing controls */}
@@ -404,11 +565,18 @@ export function PeopleOrgConsole() {
                   <td className="py-3 pr-4 opacity-80">{p.manager ?? "—"}</td>
                   <td className="py-3 pr-4"><StatusBadge status={p.accountStatus} /></td>
                   <td className="py-3">
-                    {(p.accountStatus === "former_trial" || p.accountStatus === "former_free") && (
-                      <button type="button" onClick={() => extendTrial(p.id)} className="text-[12px] font-medium px-2 py-1 rounded-lg border" style={{ borderColor: "var(--line)", color: "var(--accent)" }}>
-                        Extend trial
-                      </button>
-                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      {(p.accountStatus === "former_trial" || p.accountStatus === "former_free") && (
+                        <button type="button" onClick={() => extendTrial(p.id)} className="text-[12px] font-medium px-2 py-1 rounded-lg border" style={{ borderColor: "var(--line)", color: "var(--accent)" }}>
+                          Extend trial
+                        </button>
+                      )}
+                      {p.accountStatus !== "former_trial" && p.accountStatus !== "former_free" && (
+                        <button type="button" onClick={() => adminDeletePerson(p.id, p.name)} className="text-[12px] font-medium px-2 py-1 rounded-lg border inline-flex items-center gap-1" style={{ borderColor: "var(--line)", color: "var(--warn)" }}>
+                          <Trash2 size={12} /> Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -439,6 +607,11 @@ export function PeopleOrgConsole() {
                     {(p.accountStatus === "former_trial" || p.accountStatus === "former_free") && (
                       <button type="button" onClick={() => extendTrial(p.id)} className="text-[12px] font-medium px-3 py-1.5 rounded-lg border w-full sm:w-auto" style={{ borderColor: "var(--line)", color: "var(--accent)" }}>
                         Extend trial +30 days
+                      </button>
+                    )}
+                    {p.accountStatus !== "former_trial" && p.accountStatus !== "former_free" && (
+                      <button type="button" onClick={() => adminDeletePerson(p.id, p.name)} className="text-[12px] font-medium px-3 py-1.5 rounded-lg border w-full sm:w-auto inline-flex items-center justify-center gap-1" style={{ borderColor: "var(--line)", color: "var(--warn)" }}>
+                        <Trash2 size={12} /> Delete profile (admin only)
                       </button>
                     )}
                   </div>

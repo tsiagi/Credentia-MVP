@@ -12,10 +12,17 @@ import { generateManagerInsights, generateOrgInsights } from "@/lib/ai-client";
 import { VerificationHistory } from "@/components/VerificationHistory";
 import { PassportLinkCard } from "@/components/VerifiedResumePage";
 import { EmployeeDataRightsCard } from "@/components/OrgPeopleView";
+import { ShareableLinkCard } from "@/components/ShareableLinkCard";
 import { PeopleOrgConsole } from "@/components/PeopleOrgConsole";
 import { PlatformConsole } from "@/components/PlatformConsole";
 import { ManagerTeamChangePanel } from "@/components/ManagerTeamChangePanel";
+import { AdminOrgControls } from "@/components/AdminOrgControls";
+import { ManagerAchievementPanel } from "@/components/ManagerAchievementPanel";
+import { ExecutiveAchievementQueue } from "@/components/ExecutiveAchievementQueue";
+import { RemovalRequestPanel, FormerEmployeeDeletePanel } from "@/components/AccountRemovalPanels";
 import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeExperience";
+import type { OrgSettings } from "@/lib/org-settings";
+import { fetchOrgSettingsForUser, buildExecutiveMetricsCsv, downloadCsv } from "@/lib/org-settings";
 import type { AccountStatus } from "@/lib/lifecycle";
 import {
   buildEmployeeTimeline, fetchEmployeeOutlook,
@@ -41,7 +48,7 @@ import {
   SlidersHorizontal, Globe, Menu, X, ArrowRight, Check, GitBranch, Workflow, ScanSearch,
   Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
-  Handshake, Link2,
+  Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════════
@@ -57,12 +64,94 @@ type FeedbackResponses = Record<string, string>;
 type Milestone = { id: string; y: string; t: string; v: boolean };
 type MilestoneInput = { y: string; t: string };
 type VerifiedFactRow = { id: string; label: string; attested_at: string | null };
-type VerificationRequest = { id: string; past_employer_email: string; status: string; created_at: string };
+type VerificationRequest = { id: string; past_employer_email: string; status: string; created_at: string; item_type?: string; item_label?: string };
+type AttestItem = { id: string; type: "role" | "achievement"; label: string; refId?: string };
 type SettingsState = { outlook: boolean; kudos: boolean; externalPassport: boolean; aiSummaries: boolean };
 type SettingKey = keyof SettingsState;
 
 function errorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
+}
+
+const MOTIVATIONAL_MESSAGES = [
+  "Your verified record grows with every achievement you add — keep building proof of impact.",
+  "Recognition starts with clarity. Document wins while they're fresh.",
+  "Strong careers are built on evidence. You're investing in yours.",
+  "Growth is a habit. Small verified steps compound into a trusted passport.",
+  "Your contributions matter — make sure they're captured and attested.",
+  "Professional momentum comes from visible, verified progress.",
+];
+
+function firstName(fullName: string | null | undefined) {
+  const n = fullName?.trim().split(/\s+/)[0];
+  return n || "there";
+}
+
+function pickMotivationalMessage(userId: string) {
+  const day = new Date().getDate();
+  let h = day;
+  for (let i = 0; i < userId.length; i++) h = (h + userId.charCodeAt(i)) % MOTIVATIONAL_MESSAGES.length;
+  return MOTIVATIONAL_MESSAGES[h];
+}
+
+const ROLE_LABELS: Record<Role, string> = {
+  employee: "Employee", manager: "Manager", executive: "Executive",
+  admin: "System Admin", hr: "HR / People Ops", superadmin: "Platform Operator",
+};
+
+const THEME_SWATCHES = ["#0f6e5c", "#1f4ed8", "#7c3aed", "#b45309", "#be123c"];
+
+function ProfileAvatar({ name, url, size = 40 }: { name?: string | null; url?: string | null; size?: number }) {
+  const initials = (name?.trim() || "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  if (url) {
+    return <img src={url} alt="" className="rounded-full object-cover shrink-0 border" style={{ width: size, height: size, borderColor: "var(--line)" }} />;
+  }
+  return (
+    <div className="rounded-full flex items-center justify-center font-semibold shrink-0 border"
+      style={{ width: size, height: size, background: "var(--accent-soft)", color: "var(--accent)", borderColor: "var(--line)", fontSize: size * 0.32 }}>
+      {initials}
+    </div>
+  );
+}
+
+function ReportIdentity({ name, avatarUrl, size = 32 }: { name: string; avatarUrl?: string | null; size?: number }) {
+  return (
+    <span className="inline-flex items-center gap-2 min-w-0">
+      <ProfileAvatar name={name} url={avatarUrl} size={size} />
+      <span className="truncate font-medium">{name}</span>
+    </span>
+  );
+}
+
+function DashboardWelcome({ userId, role }: { userId: string; role: Role }) {
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const message = useMemo(() => pickMotivationalMessage(userId), [userId]);
+  const showPhoto = role !== "admin" && role !== "superadmin";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).single();
+      if (!cancelled && data) {
+        setFullName(data.full_name);
+        setAvatarUrl(data.avatar_url);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  return (
+    <Card className="p-5 sm:p-6 mb-6">
+      <div className="flex items-start gap-4">
+        {showPhoto && <ProfileAvatar name={fullName} url={avatarUrl} size={52} />}
+        <div className="min-w-0">
+          <h2 className="serif text-xl sm:text-2xl font-semibold">Welcome, {firstName(fullName)}</h2>
+          <p className="text-[14px] sm:text-[15px] opacity-70 mt-1 leading-relaxed max-w-2xl">{message}</p>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 // ── theme ──────────────────────────────────────────────────────
@@ -273,7 +362,7 @@ function EmployeeValueScoreCard({ detail, compact }: { detail: ValueScoreDetail 
 
 const PROMO_CATEGORIES: PromotionReadinessRow["category"][] = ["ready_now", "6mo", "12mo", "dev_needed"];
 
-function PromotionReadinessPanel({ rows, title, sub }: { rows: PromotionReadinessRow[]; title?: string; sub?: string }) {
+function PromotionReadinessPanel({ rows, title, sub, avatarMap }: { rows: PromotionReadinessRow[]; title?: string; sub?: string; avatarMap?: Record<string, string | null> }) {
   const grouped = Object.fromEntries(PROMO_CATEGORIES.map((c) => [c, rows.filter((r) => r.category === c)]));
 
   return (
@@ -302,7 +391,11 @@ function PromotionReadinessPanel({ rows, title, sub }: { rows: PromotionReadines
                 <ul className="space-y-2">
                   {grouped[cat].map((r) => (
                     <li key={r.employeeId} className="text-[13px]">
-                      <span className="font-medium">{r.who}</span>
+                      {avatarMap ? (
+                        <ReportIdentity name={r.who} avatarUrl={avatarMap[r.employeeId]} size={28} />
+                      ) : (
+                        <span className="font-medium">{r.who}</span>
+                      )}
                       <p className="opacity-70 mt-0.5 text-[12px] leading-relaxed">{r.evidence}</p>
                     </li>
                   ))}
@@ -918,68 +1011,6 @@ function milestoneLabel(m: MilestoneInput) {
 }
 
 /* ═══════════════════ APP VIEWS (role dashboards) ═══════════════════ */
-function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (profile: { fullName: string; title: string }) => void }) {
-  const [fullName, setFullName] = useState("");
-  const [title, setTitle] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase.from("profiles").select("full_name, title").eq("id", userId).single();
-      if (cancelled) return;
-      if (!error && data) {
-        setFullName(data.full_name ?? "");
-        setTitle(data.title ?? "");
-      }
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
-
-  async function handleSave(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setMessage(null);
-    const patch = { full_name: fullName.trim() || null, title: title.trim() || null };
-    const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
-    setSaving(false);
-    if (error) setMessage(error.message);
-    else {
-      await writeAuditLog({
-        actorId: userId,
-        action: "profile_edit",
-        targetTable: "profiles",
-        targetId: userId,
-        changes: patch,
-      });
-      setMessage("Profile saved.");
-      onSaved?.({ fullName: fullName.trim(), title: title.trim() });
-    }
-  }
-
-  if (loading) return <Card className="p-6 opacity-60 text-sm">Loading profile…</Card>;
-
-  return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-4"><UserCircle2 size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Your profile</h3></div>
-      <form onSubmit={handleSave} className="space-y-3">
-        <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name"
-          className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-          style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Job title"
-          className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-          style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
-        {message && <p className="text-[13px]" style={{ color: message.includes("saved") ? "var(--verified-fg)" : "var(--warn)" }}>{message}</p>}
-        <button type="submit" disabled={saving} className="px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-60" style={{ background: "var(--accent)" }}>
-          {saving ? "Saving…" : "Save profile"}
-        </button>
-      </form>
-    </Card>
-  );
-}
 
 function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string; field: FeedbackField; title: string; subtitle: string }) {
   const [responses, setResponses] = useState<FeedbackResponses>({});
@@ -1059,7 +1090,9 @@ function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string;
   );
 }
 
-function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { userId: string; showOutlook: boolean; accountStatus?: AccountStatus; trialEndsAt?: string | null }) {
+function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt, requireProof = true }: {
+  userId: string; showOutlook: boolean; accountStatus?: AccountStatus; trialEndsAt?: string | null; requireProof?: boolean;
+}) {
   const [external, setExternal] = useState(false);
   const [vault, setVault] = useState<AchievementRow[]>([]);
   const [vaultSaved, setVaultSaved] = useState(false);
@@ -1102,6 +1135,10 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { use
   async function addAchievement(e: FormEvent) {
     e.preventDefault();
     if (!draft.title.trim()) return;
+    if (requireProof && !draft.evidence.trim()) {
+      setError("Your organization requires proof or evidence before submission.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setVaultSaved(false);
@@ -1126,7 +1163,6 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { use
       {accountStatus === "former_trial" && (
         <FormerTrialBanner accountStatus={accountStatus} trialEndsAt={trialEndsAt ?? null} />
       )}
-      <ProfileEditor userId={userId} />
       <PassportLinkCard userId={userId} />
       <EmployeeDataRightsCard userId={userId} />
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
@@ -1219,8 +1255,10 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { use
             </div>
             <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="Description" rows={2}
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none resize-y" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
-            <input value={draft.evidence} onChange={(e) => setDraft({ ...draft, evidence: e.target.value })} placeholder="Evidence URL or note"
-              className="w-full px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
+            <input value={draft.evidence} onChange={(e) => setDraft({ ...draft, evidence: e.target.value })}
+              placeholder={requireProof ? "Evidence URL or note (required)" : "Evidence URL or note"}
+              className="w-full px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}
+              required={requireProof} />
             <button type="submit" disabled={submitting} className="px-4 py-2 rounded-lg text-sm font-medium text-white inline-flex items-center gap-1 disabled:opacity-60" style={{ background: "var(--accent)" }}>
               <Plus size={14} /> {submitting ? "Saving to Supabase…" : "Save to vault (L1 Self-Reported)"}
             </button>
@@ -1243,6 +1281,15 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { use
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{achievementTitle(a.description)}</span>
                         <LevelBadge level={a.verification_level} />
+                        {a.contribution_type && (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{ background: a.contribution_type === "team" ? "var(--accent-soft)" : "var(--surface)", color: a.contribution_type === "team" ? "var(--accent)" : "var(--ink-2)" }}>
+                            {a.contribution_type === "team" ? "Team contribution" : "Individual contribution"}
+                          </span>
+                        )}
+                        {a.pending_executive && (
+                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>Pending executive approval</span>
+                        )}
                       </div>
                       <div className="text-[12px] opacity-50 mt-0.5">{a.achievement_date ?? a.created_at.slice(0, 10)}</div>
                       <p className="text-[13px] opacity-70 mt-1">{a.description}</p>
@@ -1279,12 +1326,15 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { use
   );
 }
 
-function ManagerView({ userId }: { userId: string }) {
+function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: OrgSettings | null }) {
+  const aiCoaching = orgSettings?.ai_coaching_enabled ?? true;
+  const promoEngine = orgSettings?.promotion_engine_enabled ?? true;
   const [verifyItems, setVerifyItems] = useState<VerifyQueueItem[]>([]);
   const [coaching, setCoaching] = useState<{ who: string; label: string; evidence: string }[]>([]);
   const [reviews, setReviews] = useState<Awaited<ReturnType<typeof fetchReviewRows>>>([]);
   const [teamScores, setTeamScores] = useState<TeamValueScoreRow[]>([]);
   const [promoRows, setPromoRows] = useState<PromotionReadinessRow[]>([]);
+  const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
   const [health, setHealth] = useState({ morale: null as number | null, workload: null as number | null, productivity: null as number | null, reportCount: 0 });
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
@@ -1296,6 +1346,7 @@ function ManagerView({ userId }: { userId: string }) {
     setError(null);
     try {
       const reports = await fetchDirectReports(userId);
+      setAvatarMap(Object.fromEntries(reports.map((r) => [r.id, r.avatar_url ?? null])));
       const ids = reports.map((r) => r.id);
       const [queue, insights, reviewRows, teamHealth, scores, promo] = await Promise.all([
         fetchVerifyQueue(userId),
@@ -1360,11 +1411,12 @@ function ManagerView({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6">
-      <ProfileEditor userId={userId} />
-      <ManagerTeamChangePanel userId={userId} />
+      <ShareableLinkCard userId={userId} />
+      <ManagerAchievementPanel userId={userId} />
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
 
+      {aiCoaching && (
       <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="Generate AI insights" tag={<InferredTag />}
           sub="Calls Anthropic server-side using verified team data, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores. You decide every outcome." />
@@ -1383,6 +1435,7 @@ function ManagerView({ userId }: { userId: string }) {
           {generatingAi ? "Generating… (may take a minute)" : "Generate insights for my team"}
         </button>
       </Card>
+      )}
 
       <Card className="p-6">
         <SectionHeader icon={Activity} title="Team Health Overview" sub={`${health.reportCount} direct reports — from pulse_surveys and employee_value_scores.`} />
@@ -1421,7 +1474,9 @@ function ManagerView({ userId }: { userId: string }) {
                         <span className="text-[11px] opacity-50">{it.sourceTable}</span>
                         {!pending && <span className="text-[11px] capitalize opacity-60">{it.status}</span>}
                       </div>
-                      <div className="text-[13px] opacity-70 mt-0.5">{it.who}</div>
+                      <div className="text-[13px] opacity-70 mt-0.5">
+                        <ReportIdentity name={it.who} avatarUrl={avatarMap[it.profileId]} size={28} />
+                      </div>
                       <p className="text-[13px] opacity-60 mt-1">{it.desc}</p>
                       <VerificationHistory targetTable={it.sourceTable} targetId={it.id} compact />
                       {pending && (
@@ -1466,7 +1521,7 @@ function ManagerView({ userId }: { userId: string }) {
               <tbody>
                 {reviews.map((r) => (
                   <tr key={r.profileId} className="border-b" style={{ borderColor: "var(--line)" }}>
-                    <td className="py-3 pr-4 font-medium">{r.who}</td>
+                    <td className="py-3 pr-4"><ReportIdentity name={r.who} avatarUrl={avatarMap[r.profileId]} /></td>
                     <td className="py-3 pr-4 opacity-70">{r.cycle}</td>
                     <td className="py-3 pr-4 opacity-70">{r.due}</td>
                     <td className="py-3 pr-4"><span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--surface-2)" }}>{r.status}</span></td>
@@ -1513,7 +1568,7 @@ function ManagerView({ userId }: { userId: string }) {
                     const delta = t.score != null && teamAvg != null ? t.score - teamAvg : null;
                     return (
                       <tr key={t.profileId} className="border-b" style={{ borderColor: "var(--line)" }}>
-                        <td className="py-3 pr-4 font-medium">{t.who}</td>
+                        <td className="py-3 pr-4"><ReportIdentity name={t.who} avatarUrl={avatarMap[t.profileId]} /></td>
                         <td className="py-3 pr-4 font-semibold serif">{t.score ?? "—"}</td>
                         <td className="py-3 pr-4 opacity-70 text-[13px]">{topInputs}</td>
                         <td className="py-3">
@@ -1537,8 +1592,11 @@ function ManagerView({ userId }: { userId: string }) {
         </TransparencyNote>
       </Card>
 
-      <PromotionReadinessPanel rows={promoRows} title="Promotion Readiness — your team" />
+      {promoEngine && (
+      <PromotionReadinessPanel rows={promoRows} title="Promotion Readiness — your team" avatarMap={avatarMap} />
+      )}
 
+      {aiCoaching && (
       <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="AI Coaching Insights" tag={<InferredTag />}
           sub="From promotion_readiness — evidence-based guidance only." />
@@ -1566,15 +1624,19 @@ function ManagerView({ userId }: { userId: string }) {
           </div>
         )}
       </Card>
+      )}
     </div>
   );
 }
 
-function ExecutiveView({ userId }: { userId: string }) {
+function ExecutiveView({ userId, orgSettings }: { userId: string; orgSettings?: OrgSettings | null }) {
+  const aiCoaching = orgSettings?.ai_coaching_enabled ?? true;
+  const promoEngine = orgSettings?.promotion_engine_enabled ?? true;
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Awaited<ReturnType<typeof fetchExecutiveDashboard>>["metrics"]>(null);
   const [departments, setDepartments] = useState<Awaited<ReturnType<typeof fetchExecutiveDashboard>>["departments"]>([]);
   const [promoRows, setPromoRows] = useState<PromotionReadinessRow[]>([]);
+  const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
@@ -1589,6 +1651,10 @@ function ExecutiveView({ userId }: { userId: string }) {
     setMetrics(data.metrics);
     setDepartments(data.departments);
     setPromoRows(promo);
+    if (promo.length) {
+      const { data: profiles } = await supabase.from("profiles").select("id, avatar_url").in("id", promo.map((p) => p.employeeId));
+      setAvatarMap(Object.fromEntries((profiles ?? []).map((p) => [p.id, p.avatar_url ?? null])));
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -1649,6 +1715,9 @@ function ExecutiveView({ userId }: { userId: string }) {
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
 
+      <ExecutiveAchievementQueue userId={userId} />
+
+      {aiCoaching && (
       <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="Generate org-wide AI insights" tag={<InferredTag />}
           sub="Calls Anthropic for every employee and manager in your org, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores." />
@@ -1667,10 +1736,25 @@ function ExecutiveView({ userId }: { userId: string }) {
           {generatingAi ? "Generating… (may take several minutes)" : "Generate insights for entire organization"}
         </button>
       </Card>
+      )}
 
-      <div>
-        <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
-        <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence ({m.orgHeadcount} profiles). Predictive metrics are labeled AI inference — never treated as decisions.</p>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div>
+          <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
+          <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence ({m.orgHeadcount} profiles). Predictive metrics are labeled AI inference — never treated as decisions.</p>
+        </div>
+        <div className="flex gap-2 shrink-0 print:hidden">
+          <button type="button" onClick={() => downloadCsv("executive-metrics.csv", buildExecutiveMetricsCsv(m))}
+            className="px-4 py-2 rounded-xl text-sm font-medium border inline-flex items-center gap-2"
+            style={{ borderColor: "var(--line)" }}>
+            <Download size={16} /> Download CSV
+          </button>
+          <button type="button" onClick={() => window.print()}
+            className="px-4 py-2 rounded-xl text-sm font-medium border inline-flex items-center gap-2"
+            style={{ borderColor: "var(--line)" }}>
+            <Printer size={16} /> Print
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -1739,11 +1823,14 @@ function ExecutiveView({ userId }: { userId: string }) {
         )}
       </div>
 
+      {promoEngine && (
       <PromotionReadinessPanel
         rows={promoRows}
         title="Promotion Readiness — organization"
         sub="Org-wide AI timing guidance by category. Exec and managers decide; never auto-promotes."
+        avatarMap={avatarMap}
       />
+      )}
 
       <Card className="p-6">
         <SectionHeader icon={LineChart} title="Morale trend (verified aggregate)" sub="De-identified pulse composite — not individual responses." />
@@ -1753,47 +1840,17 @@ function ExecutiveView({ userId }: { userId: string }) {
   );
 }
 
-function AdminView({ theme, setTheme }: { theme: Theme; setTheme: (theme: Theme) => void }) {
-  const [model, setModel] = useState("A");
-  const swatches = ["#0f6e5c", "#1f4ed8", "#7c3aed", "#b45309", "#be123c"];
-  return (
-    <div className="space-y-6">
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4"><Palette size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Brand engine</h3></div>
-        <div className="text-[12px] uppercase tracking-widest opacity-60 mb-2">Accent color</div>
-        <div className="flex gap-2 mb-5">
-          {swatches.map((c) => (
-            <button key={c} onClick={() => setTheme({ ...theme, accent: c })} className="w-9 h-9 rounded-full border-2 transition" style={{ background: c, borderColor: theme.accent === c ? "var(--ink)" : "transparent" }} />
-          ))}
-        </div>
-        <div className="text-[12px] uppercase tracking-widest opacity-60 mb-2">Appearance</div>
-        <div className="flex gap-2">
-          {["light", "dark"].map((m) => (
-            <button key={m} onClick={() => setTheme({ ...theme, mode: m as Theme["mode"] })} className="px-4 py-2 rounded-xl text-sm font-medium border capitalize"
-              style={{ borderColor: "var(--line)", background: theme.mode === m ? "var(--accent)" : "var(--surface-2)", color: theme.mode === m ? "#fff" : "var(--ink)" }}>{m}</button>
-          ))}
-        </div>
-      </Card>
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-1"><SlidersHorizontal size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Evaluation model</h3></div>
-        <p className="text-[13px] opacity-60 mb-4">Swap the operational review architecture org-wide.</p>
-        {[
-          { id: "A", t: "Employee-driven peer selection", d: "Employees nominate evaluators; AI checks shared project history for relevance." },
-          { id: "B", t: "Constant kudos ecosystem", d: "Continuous micro-validations accumulate into quarterly aggregates." },
-        ].map((m) => (
-          <button key={m.id} onClick={() => setModel(m.id)} className="w-full text-left p-4 rounded-xl border mb-2 flex items-start gap-3 transition"
-            style={{ borderColor: model === m.id ? "var(--accent)" : "var(--line)", background: model === m.id ? "var(--inferred-bg)" : "var(--surface-2)" }}>
-            {model === m.id ? <ToggleRight size={22} style={{ color: "var(--accent)" }} /> : <ToggleLeft size={22} className="opacity-40" />}
-            <div><div className="font-medium">{m.t}</div><div className="text-[13px] opacity-60">{m.d}</div></div>
-          </button>
-        ))}
-      </Card>
-    </div>
-  );
+function AdminView({ userId }: { userId: string }) {
+  return <AdminOrgControls userId={userId} />;
 }
 
-function VerificationView({ userId }: { userId: string }) {
+function VerificationView({ userId, requireProof = true }: { userId: string; requireProof?: boolean }) {
+  const [step, setStep] = useState<"type" | "item" | "contact">("type");
+  const [itemType, setItemType] = useState<"role" | "achievement" | null>(null);
+  const [attestItems, setAttestItems] = useState<AttestItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<AttestItem | null>(null);
   const [email, setEmail] = useState("");
+  const [evidence, setEvidence] = useState("");
   const [sending, setSending] = useState(false);
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1802,25 +1859,58 @@ function VerificationView({ userId }: { userId: string }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data } = await supabase.from("verification_requests").select("id, past_employer_email, status, created_at")
-        .eq("profile_id", userId).order("created_at", { ascending: false });
-      if (!cancelled) {
-        setRequests(data ?? []);
-        setLoading(false);
+      const [{ data: reqs }, { data: profile }, { data: facts }, { data: achievements }] = await Promise.all([
+        supabase.from("verification_requests").select("id, past_employer_email, status, created_at, item_type, item_label")
+          .eq("profile_id", userId).order("created_at", { ascending: false }),
+        supabase.from("profiles").select("title").eq("id", userId).single(),
+        supabase.from("verified_facts").select("id, label, kind, verification_level").eq("profile_id", userId),
+        supabase.from("achievements").select("id, description, kind, verification_level").eq("profile_id", userId),
+      ]);
+      if (cancelled) return;
+      setRequests(reqs ?? []);
+      const items: AttestItem[] = [];
+      if (profile?.title) items.push({ id: "current-title", type: "role", label: profile.title });
+      for (const f of facts ?? []) {
+        if (f.kind === "employment" || f.kind === "title") {
+          items.push({ id: f.id, type: "role", label: f.label, refId: f.id });
+        }
       }
+      for (const a of achievements ?? []) {
+        items.push({ id: a.id, type: "achievement", label: a.description, refId: a.id });
+      }
+      setAttestItems(items);
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [userId]);
 
+  function resetFlow() {
+    setStep("type");
+    setItemType(null);
+    setSelectedItem(null);
+    setEmail("");
+    setEvidence("");
+    setError(null);
+  }
+
   async function sendAttestation() {
-    if (!email.trim()) return;
+    if (!email.trim() || !selectedItem) return;
+    if (requireProof && !evidence.trim()) {
+      setError("Your organization requires proof or evidence before sending an attestation request.");
+      return;
+    }
     setSending(true);
     setError(null);
-    const { data, error: insertError } = await supabase.from("verification_requests").insert({
+    const payload = {
       profile_id: userId,
       past_employer_email: email.trim(),
+      item_type: selectedItem.type,
+      item_label: selectedItem.label,
+      item_ref_id: selectedItem.refId ?? null,
       status: "pending",
-    }).select("id, past_employer_email, status, created_at").single();
+    };
+    const { data, error: insertError } = await supabase.from("verification_requests").insert(payload)
+      .select("id, past_employer_email, status, created_at, item_type, item_label").single();
     setSending(false);
     if (insertError) setError(insertError.message);
     else if (data) {
@@ -1829,50 +1919,129 @@ function VerificationView({ userId }: { userId: string }) {
         action: "verification_request",
         targetTable: "verification_requests",
         targetId: data.id,
-        changes: { past_employer_email: email.trim() },
+        changes: { past_employer_email: email.trim(), item_type: selectedItem.type, item_label: selectedItem.label, evidence: evidence.trim() || null },
       });
       setRequests((prev) => [data, ...prev]);
-      setEmail("");
+      resetFlow();
     }
   }
 
+  const filteredItems = itemType ? attestItems.filter((i) => i.type === itemType) : [];
+
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="serif text-2xl font-semibold">Verification History</h2>
+        <p className="text-[14px] opacity-60 mt-1 max-w-2xl">
+          Request human attestation from past employers for specific roles or achievements. Send new requests anytime as your record grows.
+        </p>
+      </div>
+
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-1"><Send size={18} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold">Route A — Active outreach</h3><VerifiedFactTag /></div>
-        <p className="text-[13px] opacity-70 mb-4 max-w-2xl">A secure attestation link goes to a named contact at a past employer. Only a confirmed human response creates a verified record — and it stays correctable with an audit trail.</p>
-        <div className="flex gap-2 flex-wrap">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="past-manager@company.com" className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
-          <button type="button" onClick={sendAttestation} disabled={sending || !email.trim()} className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60" style={{ background: "var(--verified-fg)" }}><Send size={15} /> {sending ? "Sending…" : "Send attestation"}</button>
-        </div>
+        <p className="text-[13px] opacity-70 mb-4 max-w-2xl">
+          Choose what to verify, then send a secure attestation link to a past employer contact. Only a confirmed human response creates a verified record.
+        </p>
+
+        {step === "type" && (
+          <div className="space-y-3">
+            <div className="text-[12px] uppercase tracking-widest opacity-60">Step 1 — What do you want verified?</div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {(["role", "achievement"] as const).map((t) => (
+                <button key={t} type="button" onClick={() => { setItemType(t); setStep("item"); }}
+                  className="text-left p-4 rounded-xl border transition hover:shadow-sm"
+                  style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                  <div className="font-semibold capitalize">{t === "role" ? "A role / title" : "An achievement"}</div>
+                  <p className="text-[13px] opacity-60 mt-1">{t === "role" ? "Past job title or employment record" : "A specific accomplishment from your vault"}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === "item" && itemType && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-[12px] uppercase tracking-widest opacity-60">Step 2 — Select the specific item</div>
+              <button type="button" onClick={() => setStep("type")} className="text-[13px] opacity-60 hover:opacity-100">← Back</button>
+            </div>
+            {filteredItems.length === 0 ? (
+              <p className="text-sm opacity-60">No {itemType === "role" ? "roles" : "achievements"} on your record yet. Add items to your career vault first.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {filteredItems.map((item) => (
+                  <button key={item.id} type="button" onClick={() => { setSelectedItem(item); setStep("contact"); }}
+                    className="w-full text-left p-3 rounded-xl border text-[13px] hover:border-[var(--accent)] transition"
+                    style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === "contact" && selectedItem && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="text-[12px] uppercase tracking-widest opacity-60">Step 3 — Past employer contact</div>
+              <button type="button" onClick={() => setStep("item")} className="text-[13px] opacity-60 hover:opacity-100">← Back</button>
+            </div>
+            <div className="p-3 rounded-xl text-[13px]" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
+              Verifying: <strong>{selectedItem.label}</strong> ({selectedItem.type})
+            </div>
+            <div className="flex gap-2 flex-wrap flex-col sm:flex-row">
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="past-manager@company.com"
+                className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl border text-sm outline-none"
+                style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
+              <input value={evidence} onChange={(e) => setEvidence(e.target.value)}
+                placeholder={requireProof ? "Proof / evidence (required)" : "Proof / evidence (optional)"}
+                className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl border text-sm outline-none"
+                style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
+                required={requireProof} />
+              <button type="button" onClick={sendAttestation} disabled={sending || !email.trim() || (requireProof && !evidence.trim())}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
+                style={{ background: "var(--verified-fg)" }}>
+                <Send size={15} /> {sending ? "Sending…" : "Send attestation"}
+              </button>
+            </div>
+          </div>
+        )}
         {error && <p className="mt-3 text-[13px]" style={{ color: "var(--warn)" }}>{error}</p>}
       </Card>
+
       <Card className="p-6">
-        <h3 className="font-semibold mb-3">Your attestation requests</h3>
+        <h3 className="font-semibold mb-3">Past attestation requests</h3>
         {loading ? (
           <p className="text-sm opacity-60">Loading…</p>
         ) : requests.length === 0 ? (
-          <p className="text-sm opacity-60">No requests yet.</p>
+          <p className="text-sm opacity-60">No requests yet — start a new attestation above.</p>
         ) : (
           <div className="space-y-2">
             {requests.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border text-[13px]" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
-                <span>{r.past_employer_email}</span>
-                <span className="capitalize px-2 py-0.5 rounded-full text-[11px] font-medium"
-                  style={{ background: r.status === "confirmed" ? "var(--verified-bg)" : "var(--warn-bg)", color: r.status === "confirmed" ? "var(--verified-fg)" : "var(--warn)" }}>
-                  {r.status}
-                </span>
+              <div key={r.id} className="p-3 rounded-xl border text-[13px]" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{r.item_label ?? "—"}</div>
+                    <div className="opacity-60 text-[12px] mt-0.5 capitalize">{r.item_type ?? "role"} · {r.past_employer_email}</div>
+                  </div>
+                  <span className="capitalize px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0"
+                    style={{ background: r.status === "confirmed" ? "var(--verified-bg)" : "var(--warn-bg)", color: r.status === "confirmed" ? "var(--verified-fg)" : "var(--warn)" }}>
+                    {r.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
         )}
       </Card>
+
       <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
         <div className="flex items-center gap-2 mb-1"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Route B — Competency mapping</h3><InferredTag /></div>
-        <p className="text-[13px] mb-3 max-w-2xl">When an employer can't be reached, the model produces an <strong>internal-only</strong> Likelihood Vector to help HR prioritize outreach. A hint, not a credential.</p>
+        <p className="text-[13px] mb-3 max-w-2xl">When an employer can&apos;t be reached, the model produces an <strong>internal-only</strong> Likelihood Vector to help HR prioritize outreach. A hint, not a credential.</p>
         <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: "var(--surface)" }}>
           <div className="text-2xl font-semibold serif" style={{ color: "var(--inferred-fg)" }}>Lᵥ 0.74</div>
-          <div className="text-[13px] opacity-70">"Plausible — recommend outreach to confirm"</div>
+          <div className="text-[13px] opacity-70">&quot;Plausible — recommend outreach to confirm&quot;</div>
         </div>
         <TransparencyNote>A statistical estimate, never shown on the public passport or to outside parties as verification. Career-changers and fast upskillers may score lower despite truthful histories — which is exactly why it only routes attention rather than deciding anything.</TransparencyNote>
       </Card>
@@ -1880,10 +2049,26 @@ function VerificationView({ userId }: { userId: string }) {
   );
 }
 
-function SettingsView({ userId, onOutlookChange }: { userId: string; onOutlookChange?: (show: boolean) => void }) {
+function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountStatus, onSignOut }: {
+  userId: string;
+  role: Role;
+  onOutlookChange?: (show: boolean) => void;
+  onThemeChange?: (accent: string) => void;
+  accountStatus?: AccountStatus;
+  onSignOut?: () => void;
+}) {
   const [t, setT] = useState<SettingsState>({ outlook: true, kudos: true, externalPassport: false, aiSummaries: true });
+  const [profileRole, setProfileRole] = useState<Role>("employee");
+  const [hireDate, setHireDate] = useState<string | null>(null);
+  const [themeColor, setThemeColor] = useState("#0f6e5c");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<SettingKey | null>(null);
+  const showPhoto = role !== "admin" && role !== "superadmin";
+  const isFormer = accountStatus?.startsWith("former_") ?? false;
+  const isActiveEmployee = !isFormer && role !== "admin" && role !== "superadmin";
+  const isManager = role === "manager";
 
   const rows: { k: SettingKey; db: string; t: string; d: string }[] = [
     { k: "outlook", db: "show_outlook", t: "Show my AI Professional Outlook", d: "Internal-only prediction on your dashboard." },
@@ -1896,20 +2081,30 @@ function SettingsView({ userId, onOutlookChange }: { userId: string; onOutlookCh
     let cancelled = false;
     (async () => {
       await ensureUserSettings(userId);
-      const { data } = await supabase.from("user_settings").select("*").eq("profile_id", userId).single();
+      const [{ data: settings }, { data: profile }] = await Promise.all([
+        supabase.from("user_settings").select("*").eq("profile_id", userId).single(),
+        supabase.from("profiles").select("role, hire_date, theme_color, avatar_url").eq("id", userId).single(),
+      ]);
       if (cancelled) return;
-      if (data) {
+      if (settings) {
         setT({
-          outlook: data.show_outlook ?? true,
-          kudos: data.kudos_notifications ?? true,
-          externalPassport: data.passport_published ?? false,
-          aiSummaries: data.ai_summaries ?? true,
+          outlook: settings.show_outlook ?? true,
+          kudos: settings.kudos_notifications ?? true,
+          externalPassport: settings.passport_published ?? false,
+          aiSummaries: settings.ai_summaries ?? true,
         });
+      }
+      if (profile) {
+        setProfileRole(profile.role as Role);
+        setHireDate(profile.hire_date ?? null);
+        setThemeColor(profile.theme_color ?? "#0f6e5c");
+        setAvatarUrl(profile.avatar_url ?? null);
+        if (profile.theme_color) onThemeChange?.(profile.theme_color);
       }
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, onThemeChange]);
 
   async function toggleSetting(key: SettingKey, dbKey: string) {
     const next = !t[key];
@@ -1917,20 +2112,89 @@ function SettingsView({ userId, onOutlookChange }: { userId: string; onOutlookCh
     setSavingKey(key);
     const { error } = await supabase.from("user_settings").update({ [dbKey]: next }).eq("profile_id", userId);
     if (!error && dbKey === "passport_published") {
-      try {
-        await setPassportPublished(userId, next);
-      } catch {
-        setT({ ...t, [key]: !next });
-      }
+      try { await setPassportPublished(userId, next); } catch { setT({ ...t, [key]: !next }); }
     }
     if (!error && dbKey === "show_outlook") onOutlookChange?.(next);
     setSavingKey(null);
     if (error) setT({ ...t, [key]: !next });
   }
 
+  async function saveThemeColor(color: string) {
+    setThemeColor(color);
+    onThemeChange?.(color);
+    await supabase.from("profiles").update({ theme_color: color }).eq("id", userId);
+  }
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setAvatarUrl(dataUrl);
+      const { error } = await supabase.from("profiles").update({ avatar_url: dataUrl }).eq("id", userId);
+      setPhotoNotice(error ? error.message : "Photo updated (mock — Supabase Storage coming later).");
+      setTimeout(() => setPhotoNotice(null), 4000);
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <div className="space-y-6">
-      <ProfileEditor userId={userId} />
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4"><UserCircle2 size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Account</h3></div>
+        {loading ? (
+          <p className="text-sm opacity-60">Loading…</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <div className="text-[12px] uppercase tracking-widest opacity-60 mb-1">Role</div>
+              <div className="text-[15px] font-medium px-3 py-2 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                {ROLE_LABELS[profileRole] ?? profileRole}
+              </div>
+              <p className="text-[12px] opacity-50 mt-1">Set by your organization — not editable here.</p>
+            </div>
+            <div>
+              <div className="text-[12px] uppercase tracking-widest opacity-60 mb-1">Hire date</div>
+              <div className="text-[15px] font-medium px-3 py-2 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                {hireDate ? new Date(hireDate + "T12:00:00").toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "—"}
+              </div>
+              <p className="text-[12px] opacity-50 mt-1">From HR / IdP — read-only.</p>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {showPhoto && (
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4"><Camera size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Profile photo</h3></div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <ProfileAvatar name="You" url={avatarUrl} size={72} />
+            <div>
+              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white cursor-pointer"
+                style={{ background: "var(--accent)" }}>
+                <Camera size={16} /> Change photo
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              </label>
+              <p className="text-[12px] opacity-60 mt-2 max-w-sm">Mock upload — stored as a preview URL until Supabase Storage is wired.</p>
+              {photoNotice && <p className="text-[12px] mt-1" style={{ color: "var(--verified-fg)" }}>{photoNotice}</p>}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4"><Palette size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Your theme</h3></div>
+        <p className="text-[13px] opacity-60 mb-3">Personal accent color — applies to your app experience only.</p>
+        <div className="flex gap-2 flex-wrap">
+          {THEME_SWATCHES.map((c) => (
+            <button key={c} type="button" onClick={() => saveThemeColor(c)}
+              className="w-9 h-9 rounded-full border-2 transition"
+              style={{ background: c, borderColor: themeColor === c ? "var(--ink)" : "transparent" }} aria-label={`Theme ${c}`} />
+          ))}
+        </div>
+      </Card>
+
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4"><SettingsIcon size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Privacy & AI controls</h3></div>
         {loading ? (
@@ -1948,14 +2212,16 @@ function SettingsView({ userId, onOutlookChange }: { userId: string; onOutlookCh
           </div>
         )}
       </Card>
+
+      {isManager && <ManagerTeamChangePanel userId={userId} />}
+
+      {isActiveEmployee && <RemovalRequestPanel userId={userId} />}
+
+      {isFormer && <FormerEmployeeDeletePanel userId={userId} onDeleted={onSignOut} />}
+
       <Card className="p-6" style={{ background: "var(--surface-2)" }}>
         <div className="flex items-center gap-2 mb-2"><Lock size={16} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold text-[15px]">Your data rights</h3></div>
-        <p className="text-[13px] opacity-70 mb-3">Records are correctable and revocable. Request a fix, dispute an inference, or export everything.</p>
-        <div className="flex gap-2 flex-wrap">
-          {["Dispute an AI inference", "Correct a verified record", "Export my data", "Delete my account"].map((b) => (
-            <button key={b} className="px-3 py-2 rounded-lg text-[13px] font-medium border" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}>{b}</button>
-          ))}
-        </div>
+        <p className="text-[13px] opacity-70 mb-3">Records are correctable and revocable. Dispute an AI inference or request a correction from your dashboard or admin.</p>
       </Card>
     </div>
   );
@@ -1970,6 +2236,8 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("active_sso");
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [orgSettings, setOrgSettings] = useState<OrgSettings | null>(null);
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1979,15 +2247,21 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         if (cancelled) return;
         setUserId(id);
         await ensureUserSettings(id);
-        const [{ data: profile }, { data: settings }] = await Promise.all([
-          supabase.from("profiles").select("public_slug, account_status, trial_ends_at").eq("id", id).single(),
+        const [{ data: profile }, { data: settings }, org] = await Promise.all([
+          supabase.from("profiles").select("public_slug, account_status, trial_ends_at, theme_color").eq("id", id).single(),
           supabase.from("user_settings").select("show_outlook").eq("profile_id", id).single(),
+          fetchOrgSettingsForUser(id).catch(() => null),
         ]);
         if (!cancelled) {
           setPublicSlug(profile?.public_slug ?? null);
           setShowOutlook(settings?.show_outlook ?? true);
           if (profile?.account_status) setAccountStatus(profile.account_status as AccountStatus);
           setTrialEndsAt(profile?.trial_ends_at ?? null);
+          if (profile?.theme_color) setTheme({ mode: theme.mode, accent: profile.theme_color });
+          if (org) {
+            setOrgSettings(org);
+            setOrgLogoUrl(org.logo_url);
+          }
         }
       } catch {
         /* session may have expired */
@@ -1997,26 +2271,25 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   }, []);
 
   const isFormer = accountStatus.startsWith("former_");
-  const roleLabel: Record<Role, string> = {
-    employee: "Employee", manager: "Manager", executive: "Executive",
-    admin: "System Admin", hr: "HR / People Ops", superadmin: "Platform Operator",
-  };
+  const roleLabel = ROLE_LABELS[role];
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "verify", label: "Verification", icon: FileBadge },
+    { id: "verify", label: "Verification History", icon: FileBadge },
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
     ...(role === "superadmin" ? [{ id: "platform", label: "Platform Console", icon: Building2 }] : []),
-    ...(role === "admin" ? [{ id: "admin", label: "Brand & Models", icon: SlidersHorizontal }] : []),
+    ...(role === "admin" ? [{ id: "admin", label: "Org Controls", icon: SlidersHorizontal }] : []),
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
+  const requireProof = orgSettings?.require_proof ?? true;
+
   const dashboard = userId ? {
-    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} />,
-    manager: <ManagerView userId={userId} />,
-    executive: <ExecutiveView userId={userId} />,
-    admin: <AdminView theme={theme} setTheme={setTheme} />,
-    hr: <ExecutiveView userId={userId} />,
+    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} requireProof={requireProof} />,
+    manager: <ManagerView userId={userId} orgSettings={orgSettings} />,
+    executive: <ExecutiveView userId={userId} orgSettings={orgSettings} />,
+    admin: <AdminView userId={userId} />,
+    hr: <ExecutiveView userId={userId} orgSettings={orgSettings} />,
     superadmin: (
       <Card className="p-6">
         <h3 className="font-semibold text-lg mb-1">Platform operator</h3>
@@ -2050,20 +2323,33 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     <div style={{ background: "var(--bg)", color: "var(--ink)" }} className="min-h-screen">
       <header className="sticky top-0 z-30 border-b backdrop-blur" style={{ borderColor: "var(--line)", background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}>
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button className="md:hidden" onClick={() => setSidebar(!sidebar)}>{sidebar ? <X size={20} /> : <Menu size={20} />}</button>
-            <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
-            <span className="serif text-xl font-semibold">Credentia</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <button className="md:hidden shrink-0" onClick={() => setSidebar(!sidebar)}>{sidebar ? <X size={20} /> : <Menu size={20} />}</button>
+            {orgLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={orgLogoUrl} alt="Company logo" className="h-8 w-auto max-w-[120px] object-contain shrink-0 hidden sm:block" />
+            ) : (
+              <div className="p-1.5 rounded-lg shrink-0" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
+            )}
+            <span className="serif text-xl font-semibold truncate">Credentia</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[13px] px-3 py-1 rounded-full hidden sm:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel[role]}</span>
+            <span className="text-[13px] px-3 py-1 rounded-full hidden sm:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel}</span>
             <button onClick={onSignOut} className="text-[13px] font-medium" style={{ color: "var(--accent)" }}>Sign out</button>
           </div>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-5 py-6 grid md:grid-cols-[200px_1fr] gap-6">
-        <nav className="hidden md:block space-y-1 md:sticky md:top-20 h-max"><NavList /></nav>
+        <nav className="hidden md:block space-y-1 md:sticky md:top-20 h-max">
+          {orgLogoUrl && (
+            <div className="mb-3 px-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={orgLogoUrl} alt="Company logo" className="h-10 w-auto max-w-full object-contain" />
+            </div>
+          )}
+          <NavList />
+        </nav>
         {sidebar && (
           <div className="md:hidden fixed inset-0 z-20" onClick={() => setSidebar(false)}>
             <div className="absolute top-16 left-0 bottom-0 w-64 p-4 space-y-1 border-r" style={{ background: "var(--surface)", borderColor: "var(--line)" }} onClick={(e) => e.stopPropagation()}><NavList /></div>
@@ -2081,12 +2367,13 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
                   </div>
                 </div>
               </Card>
+              {userId && <DashboardWelcome userId={userId} role={role} />}
               {dashboard}
             </>
           )}
-          {tab === "verify" && userId && <VerificationView userId={userId} />}
+          {tab === "verify" && userId && <VerificationView userId={userId} requireProof={requireProof} />}
           {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
-          {tab === "people-org" && role === "admin" && <PeopleOrgConsole />}
+          {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}
           {tab === "platform" && role === "superadmin" && <PlatformConsole />}
           {tab === "plan" && userId && isFormer && (
             <BillingPlanView
@@ -2096,9 +2383,16 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
               onStatusChange={setAccountStatus}
             />
           )}
-          {tab === "admin" && <AdminView theme={theme} setTheme={setTheme} />}
+          {tab === "admin" && userId && <AdminView userId={userId} />}
           {tab === "settings" && userId && (
-            <SettingsView userId={userId} onOutlookChange={setShowOutlook} />
+            <SettingsView
+              userId={userId}
+              role={role}
+              accountStatus={accountStatus}
+              onOutlookChange={setShowOutlook}
+              onThemeChange={(accent) => setTheme({ ...theme, accent })}
+              onSignOut={onSignOut}
+            />
           )}
         </main>
       </div>

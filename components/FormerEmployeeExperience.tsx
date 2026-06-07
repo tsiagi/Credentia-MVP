@@ -8,6 +8,7 @@ import {
   type AccountStatus,
 } from "@/lib/lifecycle";
 import { exportVerifiedRecord } from "@/lib/org-chart";
+import { FormerEmployeeDeletePanel } from "@/components/AccountRemovalPanels";
 import { ShieldCheck, Clock, Download, Globe, CreditCard, Check } from "lucide-react";
 
 const Card = ({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => (
@@ -174,6 +175,8 @@ export function BillingPlanView({ userId, accountStatus, trialEndsAt, onStatusCh
           )}
         </Card>
       </div>
+
+      <FormerEmployeeDeletePanel userId={userId} />
     </div>
   );
 }

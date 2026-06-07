@@ -83,7 +83,7 @@ export function ManagerTeamChangePanel({ userId }: { userId: string }) {
         subjectProfileId: subjectId,
         proposedManagerId: managerId,
       });
-      setNotice("Request submitted. An org admin must approve before manager_id changes — you cannot assign reports directly.");
+      setNotice("Your request to update your team was sent to your admin for approval. They'll review it and let you know when it's done.");
       await reload();
     } catch (err) {
       setError(errorMessage(err, "Could not submit request. If tables are not migrated yet, this will work after running schema.sql."));
@@ -102,7 +102,7 @@ export function ManagerTeamChangePanel({ userId }: { userId: string }) {
             <GitBranch size={18} style={{ color: "var(--accent)" }} />
             <div>
               <h3 className="font-semibold">Request team change</h3>
-              <p className="text-[13px] opacity-60 mt-0.5">Propose adding or moving a report — admin confirms</p>
+              <p className="text-[13px] opacity-60 mt-0.5">Ask your admin to add someone to your team or update reporting lines</p>
             </div>
           </div>
           <span className="text-[12px] opacity-50 shrink-0">{expanded ? "Hide" : "Show"}</span>
@@ -114,8 +114,8 @@ export function ManagerTeamChangePanel({ userId }: { userId: string }) {
           <div className="flex items-start gap-2 p-3 rounded-xl text-[13px]" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
             <ShieldCheck size={16} className="shrink-0 mt-0.5" />
             <p>
-              <strong>You cannot edit manager_id directly.</strong> Submit an <code className="text-[12px]">org_membership_request</code>;
-              an admin approves it in People &amp; Org. This protects who can see direct reports (RLS).
+              You can&apos;t change your team directly — that keeps everyone&apos;s access safe.
+              Submit a request here and your company admin will approve it in People &amp; Org.
             </p>
           </div>
 

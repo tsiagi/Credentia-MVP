@@ -29,6 +29,13 @@ create table if not exists organizations (
   auto_trial_enabled   boolean not null default true,
   trial_days           integer not null default 30
                        check (trial_days between 1 and 365),
+  -- Org-wide AI + verification policy (company admin)
+  ai_coaching_enabled      boolean not null default true,
+  promotion_engine_enabled boolean not null default true,
+  require_proof            boolean not null default true,
+  evaluation_model         text not null default 'A'
+                       check (evaluation_model in ('A', 'B', 'both')),
+  logo_url                 text,
   created_at           timestamptz not null default now()
 );
 
@@ -49,6 +56,16 @@ comment on column organizations.auto_trial_enabled is
   'When true, departing employees enter former_trial for trial_days. Admin can disable org-wide.';
 comment on column organizations.trial_days is
   'Length of personal passport trial after employment ends (default 30). Admin can extend per person in app.';
+comment on column organizations.ai_coaching_enabled is
+  'When false, AI Coaching panels are hidden org-wide.';
+comment on column organizations.promotion_engine_enabled is
+  'When false, Promotion Readiness panels are hidden org-wide.';
+comment on column organizations.require_proof is
+  'When true, achievements/attestations require evidence before submission.';
+comment on column organizations.evaluation_model is
+  'A = peer selection, B = kudos ecosystem, both = run both models concurrently.';
+comment on column organizations.logo_url is
+  'Company logo shown in app shell for this org (mock URL until Storage).';
 
 -- How each tenant's data was integrated (manual, CSV, SCIM, Okta, etc.)
 create table if not exists tenant_integrations (
@@ -105,6 +122,9 @@ create table if not exists profiles (
                      check (role in ('superadmin', 'employee', 'manager', 'executive', 'admin', 'hr')),
   full_name          text,
   title              text,
+  avatar_url         text,
+  theme_color        text default '#0f6e5c',
+  hire_date          date,
   public_slug        text unique,
   passport_published boolean not null default false,
   -- Account lifecycle (employed → departed → personal tier)
@@ -132,6 +152,12 @@ comment on column profiles.manager_id is
   'Reporting line — set only by admin/HR (or approved org_membership_request). Managers cannot self-assign reports.';
 comment on column profiles.role is
   'superadmin = platform operator (above company admin). Company roles: admin, executive, manager, employee, hr.';
+comment on column profiles.avatar_url is
+  'Profile photo URL (mock: data URL or external link until Supabase Storage is wired).';
+comment on column profiles.theme_color is
+  'Personal accent color hex — applied in app shell for this user only.';
+comment on column profiles.hire_date is
+  'Employment start date — set by HR/IdP; read-only for the employee in Settings.';
 
 -- If profiles already exists without org columns, run after organizations:
 -- alter table profiles add column if not exists org_id uuid references organizations on delete set null;
@@ -232,9 +258,50 @@ create table if not exists verification_requests (
   id                   uuid primary key default gen_random_uuid(),
   profile_id           uuid not null references profiles on delete cascade,
   past_employer_email  text not null,
+  item_type            text not null default 'role'
+                       check (item_type in ('role', 'achievement')),
+  item_label           text not null,
+  item_ref_id          uuid,
   status               text not null default 'pending',
   created_at           timestamptz not null default now()
 );
+
+comment on column verification_requests.item_type is
+  'Whether this attestation targets a past role/title or a specific achievement.';
+comment on column verification_requests.item_label is
+  'Human-readable label sent to the past employer (e.g. job title or achievement text).';
+comment on column verification_requests.item_ref_id is
+  'Optional FK to verified_facts or achievements row being attested.';
+
+-- Token-based mini public profile (verified achievements only — not the full passport).
+create table if not exists shareable_links (
+  id          uuid primary key default gen_random_uuid(),
+  profile_id  uuid not null references profiles on delete cascade,
+  token       text not null unique default encode(gen_random_bytes(16), 'hex'),
+  created_at  timestamptz not null default now(),
+  revoked     boolean not null default false
+);
+
+comment on table shareable_links is
+  'Shareable view-only links for employees/managers — name, role, verified achievements only. Revocable.';
+create index if not exists idx_shareable_links_profile on shareable_links (profile_id);
+create index if not exists idx_shareable_links_token on shareable_links (token) where revoked = false;
+
+-- Profile removal: non-admins request; company admin approves (deletes) or rejects.
+create table if not exists removal_requests (
+  id                  uuid primary key default gen_random_uuid(),
+  org_id              uuid not null references organizations on delete cascade,
+  subject_profile_id  uuid not null references profiles on delete cascade,
+  requested_by        uuid not null references profiles on delete cascade,
+  reason              text,
+  status              text not null default 'pending'
+                      check (status in ('pending', 'approved', 'rejected')),
+  created_at          timestamptz not null default now()
+);
+
+comment on table removal_requests is
+  'Current employees request removal; only company admin can delete profiles. Former self-delete is separate.';
+create index if not exists idx_removal_requests_org on removal_requests (org_id, status);
 
 -- If verified_facts already exists without verification_level, run:
 -- alter table verified_facts add column if not exists verification_level smallint not null default 1
@@ -266,6 +333,10 @@ create table if not exists achievements (
   achievement_date   date,
   verification_level smallint not null default 1
                      check (verification_level between 1 and 5),
+  contribution_type  text not null default 'individual'
+                     check (contribution_type in ('individual', 'team')),
+  submitted_by       uuid references profiles on delete set null,
+  pending_executive  boolean not null default false,
   frozen_at          timestamptz,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
@@ -273,6 +344,10 @@ create table if not exists achievements (
 
 comment on column achievements.frozen_at is
   'Set on employment end — immutable attestation from employment period.';
+comment on column achievements.contribution_type is
+  'Individual vs team contribution — labeled in UI for exec/manager views.';
+comment on column achievements.pending_executive is
+  'Manager-submitted achievements await executive approval before reaching verified level.';
 
 -- Employee KPIs tracked over a cycle; managers approve or send back for clarification.
 create table if not exists kpis (
@@ -476,6 +551,8 @@ alter table user_settings enable row level security;
 alter table feedback_cycles enable row level security;
 alter table verified_facts enable row level security;
 alter table verification_requests enable row level security;
+alter table shareable_links enable row level security;
+alter table removal_requests enable row level security;
 alter table organizations enable row level security;
 alter table departments enable row level security;
 alter table achievements enable row level security;

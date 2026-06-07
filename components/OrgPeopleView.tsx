@@ -17,6 +17,7 @@ import {
   extendEmployeeTrial,
   type ManagerAssignmentRequest,
 } from "@/lib/org-chart";
+import { ShareableLinkCard } from "@/components/ShareableLinkCard";
 import { Users, Mail, GitBranch, UserMinus, Clock, ShieldCheck, Check, X } from "lucide-react";
 
 function errorMessage(e: unknown, fallback: string) {
@@ -321,9 +322,7 @@ export function OrgPeopleView({ userId }: { userId: string }) {
 }
 
 export function EmployeeDataRightsCard({ userId }: { userId: string }) {
-  const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("profiles").select("account_status").eq("id", userId).single().then(({ data }) => {
@@ -331,40 +330,17 @@ export function EmployeeDataRightsCard({ userId }: { userId: string }) {
     });
   }, [userId]);
 
-  async function downloadExport() {
-    setExporting(true);
-    setError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Sign in again");
-      const blob = await (await import("@/lib/org-chart")).exportVerifiedRecord(session.access_token);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `credentia-verified-record.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(errorMessage(e, "Export failed"));
-    } finally {
-      setExporting(false);
-    }
-  }
-
   if (!status) return null;
 
   return (
-    <Card className="p-5">
-      <h3 className="font-semibold mb-1">Your verified record</h3>
-      <p className="text-[13px] opacity-70 mb-3">
-        Status: <span className="capitalize">{status.replace(/_/g, " ")}</span>.
-        View and export your attested employment data is always free — paid tier is only for the shareable recruiter passport.
-      </p>
-      <button type="button" disabled={exporting} onClick={downloadExport}
-        className="px-4 py-2 rounded-xl text-sm font-medium border disabled:opacity-60" style={{ borderColor: "var(--line)" }}>
-        {exporting ? "Exporting…" : "Export verified record (JSON)"}
-      </button>
-      {error && <p className="text-[12px] mt-2" style={{ color: "var(--warn)" }}>{error}</p>}
-    </Card>
+    <div className="space-y-4">
+      <Card className="p-5">
+        <p className="text-[13px] opacity-70">
+          Status: <span className="capitalize">{status.replace(/_/g, " ")}</span>.
+          Share a view-only link to verified achievements — no AI inferences, not downloadable.
+        </p>
+      </Card>
+      <ShareableLinkCard userId={userId} />
+    </div>
   );
 }

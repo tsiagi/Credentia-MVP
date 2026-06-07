@@ -87,6 +87,19 @@ export function formatAuditAction(action: string): string {
     manager_assignment_approved: "Manager assignment approved",
     manager_assignment_rejected: "Manager assignment rejected",
     billing_settings_updated: "Billing settings updated",
+    org_ai_coaching_toggled: "AI Coaching toggled",
+    org_promotion_engine_toggled: "Promotion Readiness toggled",
+    org_require_proof_toggled: "Proof requirement toggled",
+    org_evaluation_model_changed: "Evaluation model changed",
+    org_logo_updated: "Company logo updated",
+    workday_connected: "Workday connected",
+    removal_requested: "Profile removal requested",
+    removal_approved: "Profile removal approved",
+    removal_rejected: "Profile removal rejected",
+    account_self_deleted: "Account self-deleted",
+    achievement_manager_submitted: "Manager submitted achievement",
+    achievement_executive_approved: "Executive approved achievement",
+    achievement_executive_rejected: "Executive rejected achievement",
   };
   return labels[action] ?? action.replace(/_/g, " ");
 }
