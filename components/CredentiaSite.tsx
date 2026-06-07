@@ -18,21 +18,21 @@ import { PlatformConsole } from "@/components/PlatformConsole";
 import { ManagerTeamChangePanel } from "@/components/ManagerTeamChangePanel";
 import { AdminOrgControls } from "@/components/AdminOrgControls";
 import { ManagerAchievementPanel } from "@/components/ManagerAchievementPanel";
-import { ExecutiveAchievementQueue } from "@/components/ExecutiveAchievementQueue";
 import { RemovalRequestPanel, FormerEmployeeDeletePanel } from "@/components/AccountRemovalPanels";
 import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeExperience";
 import { AchievementVaultView } from "@/components/AchievementVaultView";
+import { ExecutiveDashboard } from "@/components/executive/ExecutiveDashboard";
 import { ProofDocumentView, ProofDocumentUpload } from "@/components/ProofDocumentView";
 import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
-import { fetchOrgSettingsForUser, buildExecutiveMetricsCsv, downloadCsv } from "@/lib/org-settings";
+import { fetchOrgSettingsForUser, downloadCsv } from "@/lib/org-settings";
 import type { AccountStatus } from "@/lib/lifecycle";
 import {
   buildEmployeeTimeline, fetchEmployeeOutlook,
   fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
-  fetchCoachingInsights, fetchDirectReports, fetchReviewRows, fetchExecutiveDashboard,
+  fetchCoachingInsights, fetchDirectReports, fetchReviewRows,
   fetchEmployeeValueScore, fetchTeamValueScores, fetchPromotionReadinessRows,
-  fetchOrgPromotionReadiness, fetchCompensationIntelligence,
+  fetchCompensationIntelligence,
   VALUE_INPUT_LABELS, PROMO_CATEGORY_LABELS,
   type TimelineEvent, type VerifyQueueItem,
   type ValueScoreDetail, type TeamValueScoreRow, type PromotionReadinessRow, type CompRecommendation,
@@ -242,6 +242,21 @@ function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: 
       style={{ color: "var(--ink-2)" }}
     >
       <ArrowLeft size={16} aria-hidden /> {label}
+    </button>
+  );
+}
+
+/** Standard horizontal hamburger — opens/closes the mobile nav drawer */
+function MobileNavToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="md:hidden shrink-0 p-1.5 rounded-lg hover:opacity-80 transition"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+    >
+      {open ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
     </button>
   );
 }
@@ -647,7 +662,7 @@ function PublicSite({ onEnter }: { onEnter: () => void }) {
               Sign in
             </button>
           </nav>
-          <button className="md:hidden" onClick={() => setMenu(!menu)}>{menu ? <X /> : <Menu />}</button>
+          <MobileNavToggle open={menu} onToggle={() => setMenu(!menu)} />
         </div>
         {menu && (
           <div className="md:hidden border-t px-5 py-4 space-y-3" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
@@ -1542,216 +1557,6 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
   );
 }
 
-function ExecutiveView({ userId, orgSettings }: { userId: string; orgSettings?: OrgSettings | null }) {
-  const aiCoaching = orgSettings?.ai_coaching_enabled ?? true;
-  const promoEngine = orgSettings?.promotion_engine_enabled ?? true;
-  const [selectedDept, setSelectedDept] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<Awaited<ReturnType<typeof fetchExecutiveDashboard>>["metrics"]>(null);
-  const [departments, setDepartments] = useState<Awaited<ReturnType<typeof fetchExecutiveDashboard>>["departments"]>([]);
-  const [promoRows, setPromoRows] = useState<PromotionReadinessRow[]>([]);
-  const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
-  const [loading, setLoading] = useState(true);
-  const [generatingAi, setGeneratingAi] = useState(false);
-  const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const reload = useCallback(async () => {
-    setError(null);
-    const [data, promo] = await Promise.all([
-      fetchExecutiveDashboard(userId),
-      fetchOrgPromotionReadiness(userId),
-    ]);
-    setMetrics(data.metrics);
-    setDepartments(data.departments);
-    setPromoRows(promo);
-    if (promo.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id, avatar_url").in("id", promo.map((p) => p.employeeId));
-      setAvatarMap(Object.fromEntries((profiles ?? []).map((p) => [p.id, p.avatar_url ?? null])));
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        await reload();
-      } catch (e) {
-        if (!cancelled) setError(errorMessage(e, "Could not load executive dashboard."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [reload]);
-
-  async function runOrgAiGeneration() {
-    setGeneratingAi(true);
-    setError(null);
-    setAiNotice(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Sign in again to generate insights.");
-      const result = await generateOrgInsights(session.access_token);
-      setAiNotice(
-        result.processed
-          ? `Generated AI insights for ${result.processed} of ${result.total} people org-wide. Dashboard and promotion panels refreshed — all labeled AI INFERENCE.`
-          : `No insights saved.${result.failed.length ? ` ${result.failed[0].error}` : ""}`,
-      );
-      await reload();
-    } catch (e) {
-      setError(errorMessage(e, "AI generation failed."));
-    } finally {
-      setGeneratingAi(false);
-    }
-  }
-
-  if (loading) return <div className="opacity-60 text-sm">Loading executive dashboard…</div>;
-
-  if (!metrics) {
-    return (
-      <div className="space-y-4">
-        <div>
-          <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
-          <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence from your workforce data.</p>
-        </div>
-        {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
-        <p className="text-sm opacity-60">Set profiles.org_id on your profile to see org metrics. Add departments, pulse_surveys, and compensation_recommendations for richer data.</p>
-      </div>
-    );
-  }
-
-  const m = metrics;
-
-  return (
-    <div className="space-y-6">
-      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
-      {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
-
-      <ExecutiveAchievementQueue userId={userId} />
-
-      {aiCoaching && (
-      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
-        <SectionHeader icon={Sparkles} title="Generate org-wide AI insights" tag={<InferredTag />}
-          sub="Calls Anthropic for every employee and manager in your org, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores." />
-        <p className="text-[13px] opacity-80 mb-4">
-          Requires service role and Anthropic API keys configured on the server.
-          Covers {m.orgHeadcount > 1 ? `${m.orgHeadcount - 1} employees/managers` : "your org"} — you decide every comp and promotion outcome.
-        </p>
-        <button
-          type="button"
-          disabled={generatingAi}
-          onClick={runOrgAiGeneration}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
-          style={{ background: "var(--accent)" }}
-        >
-          <Sparkles size={16} />
-          {generatingAi ? "Generating… (may take several minutes)" : "Generate insights for entire organization"}
-        </button>
-      </Card>
-      )}
-
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div>
-          <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
-          <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence ({m.orgHeadcount} profiles). Predictive metrics are labeled AI inference — never treated as decisions.</p>
-        </div>
-        <div className="flex gap-2 shrink-0 print:hidden">
-          <button type="button" onClick={() => downloadCsv("executive-metrics.csv", buildExecutiveMetricsCsv(m))}
-            className="px-4 py-2 rounded-xl text-sm font-medium border inline-flex items-center gap-2"
-            style={{ borderColor: "var(--line)" }}>
-            <Download size={16} /> Download CSV
-          </button>
-          <button type="button" onClick={() => window.print()}
-            className="px-4 py-2 rounded-xl text-sm font-medium border inline-flex items-center gap-2"
-            style={{ borderColor: "var(--line)" }}>
-            <Printer size={16} /> Print
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Stat label="Workforce Health Score" value={String(m.workforceHealth)} sub="org composite /100" accent="var(--verified-fg)" />
-        <Stat label="Productivity Index" value={m.productivity.toFixed(2)} sub="employee_value_scores" accent="var(--accent)" />
-        <Stat label="Employee Morale Index" value={m.morale.toFixed(2)} sub="pulse_surveys avg" accent="var(--accent)" />
-        <Card className="p-5" style={{ background: "var(--inferred-bg)" }}>
-          <div className="mb-2"><InferredTag /></div>
-          <div className="text-[12px] uppercase tracking-widest opacity-60">Retention Risk Index</div>
-          <div className="mt-1 flex items-center gap-2"><RiskPill risk={m.retentionRisk} /><span className="text-[12px] opacity-60">from morale signals</span></div>
-          <TransparencyNote>Aggregated flight-risk model from morale, tenure, and comp equity signals. Routes attention — not individual decisions.</TransparencyNote>
-        </Card>
-        <Stat label="Skills Growth Index" value={m.skillsGrowth.toFixed(2)} sub="pulse growth" />
-        <Stat label="Innovation Index" value={m.innovation.toFixed(2)} sub="process improvements + achievements" />
-        <Card className="p-5 sm:col-span-2" style={{ background: "var(--inferred-bg)" }}>
-          <div className="flex items-center gap-2 mb-2"><DollarSign size={16} style={{ color: "var(--inferred-fg)" }} /><span className="text-[12px] uppercase tracking-widest opacity-60">Compensation Intelligence</span><InferredTag /></div>
-          <div className="grid grid-cols-3 gap-3 mt-2">
-            <div><div className="text-2xl font-semibold serif">{m.pendingRaises}</div><div className="text-[12px] opacity-60">Pending raises</div></div>
-            <div><div className="text-2xl font-semibold serif">{m.pendingBonuses}</div><div className="text-[12px] opacity-60">Bonus recs</div></div>
-            <div><div className="text-2xl font-semibold serif" style={{ color: m.underpaidAlerts ? "var(--warn)" : undefined }}>{m.underpaidAlerts}</div><div className="text-[12px] opacity-60">Underpaid alerts</div></div>
-          </div>
-          <div className="text-[13px] mt-3 opacity-70">Equity score: <strong>{m.equityScore.toFixed(2)}</strong> — open <strong>Comp Intelligence</strong> in the sidebar for full recommendations.</div>
-        </Card>
-        <Card className="p-5 sm:col-span-2" style={{ background: "var(--inferred-bg)" }}>
-          <div className="flex items-center gap-2 mb-2"><TrendingUp size={16} style={{ color: "var(--inferred-fg)" }} /><span className="text-[12px] uppercase tracking-widest opacity-60">Promotion Pipeline</span><InferredTag /></div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-center">
-            {[{ l: "Ready now", v: m.promoReadyNow }, { l: "6 mo", v: m.promo6mo }, { l: "12 mo", v: m.promo12mo }, { l: "Succession gaps", v: m.successionGaps }].map((x) => (
-              <div key={x.l} className="p-2 rounded-xl" style={{ background: "var(--surface)" }}>
-                <div className="text-xl font-semibold serif">{x.v}</div>
-                <div className="text-[11px] opacity-60">{x.l}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div>
-        <SectionHeader icon={Building2} title="Departments" sub={departments.length ? "From departments table — per-dept metrics are estimated until profiles.department_id exists." : "Add rows to departments for your org."} />
-        {departments.length === 0 ? (
-          <p className="text-sm opacity-60">No departments configured for this org.</p>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-4">
-            {departments.map((d) => (
-              <button key={d.id} type="button" onClick={() => setSelectedDept(d.id === selectedDept ? null : d.id)}
-                className="text-left rounded-2xl border p-5 transition hover:shadow-md"
-                style={{ borderColor: selectedDept === d.id ? "var(--accent)" : "var(--line)", background: selectedDept === d.id ? "var(--accent-soft)" : "var(--surface)" }}>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <h4 className="font-semibold">{d.name}</h4>
-                  <span className="text-[13px] opacity-60">{d.headcount} people</span>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
-                  <div className="flex justify-between"><span className="opacity-60">Productivity</span><span className="font-medium inline-flex items-center gap-1">{d.productivity.toFixed(2)} <TrendArrow dir={d.trends.prod} /></span></div>
-                  <div className="flex justify-between"><span className="opacity-60">Morale</span><span className="font-medium inline-flex items-center gap-1">{d.morale.toFixed(2)} <TrendArrow dir={d.trends.morale} /></span></div>
-                  <div className="flex justify-between items-center"><span className="opacity-60">Retention</span><span className="inline-flex items-center gap-1"><RiskPill risk={d.retention} /> <TrendArrow dir={d.trends.retention} /></span></div>
-                  <div className="flex justify-between"><span className="opacity-60">Innovation</span><span className="font-medium">{d.innovation.toFixed(2)}</span></div>
-                  <div className="flex justify-between col-span-2"><span className="opacity-60">Comp health</span><span className="font-medium">{d.compHealth.toFixed(2)}</span></div>
-                </div>
-                {selectedDept === d.id && (
-                  <p className="text-[12px] mt-3 pt-3 border-t opacity-70" style={{ borderColor: "var(--line)" }}>
-                    Drill-down view coming soon — headcount trends, verification backlog, and pulse aggregates.
-                  </p>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {promoEngine && (
-      <PromotionReadinessPanel
-        rows={promoRows}
-        title="Promotion Readiness — organization"
-        sub="Org-wide AI timing guidance by category. Exec and managers decide; never auto-promotes."
-        avatarMap={avatarMap}
-      />
-      )}
-
-      <Card className="p-6">
-        <SectionHeader icon={LineChart} title="Morale trend (verified aggregate)" sub="De-identified pulse composite — not individual responses." />
-        <Spark data={m.moraleTrend.length ? m.moraleTrend : [m.morale]} color="var(--accent)" />
-      </Card>
-    </div>
-  );
-}
 
 function AdminView({ userId }: { userId: string }) {
   return <AdminOrgControls userId={userId} />;
@@ -2213,9 +2018,9 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const dashboard = userId ? {
     employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} />,
     manager: <ManagerView userId={userId} orgSettings={orgSettings} />,
-    executive: <ExecutiveView userId={userId} orgSettings={orgSettings} />,
+    executive: <ExecutiveDashboard />,
     admin: <AdminView userId={userId} />,
-    hr: <ExecutiveView userId={userId} orgSettings={orgSettings} />,
+    hr: <ExecutiveDashboard />,
     superadmin: (
       <Card className="p-6">
         <h3 className="font-semibold text-lg mb-1">Platform operator</h3>
@@ -2229,74 +2034,97 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
 
   const passportLabel = publicSlug ? `/p/verify/${publicSlug.slice(0, 4)}…` : "/p/verify/… (not published yet)";
 
-  const NavList = () => (
+  const isCommandCenter = (role === "executive" || role === "hr") && tab === "dashboard";
+
+  const goToTab = (id: string) => { setTab(id); setSidebar(false); };
+
+  const NavButton = ({ n, horizontal = false }: { n: (typeof nav)[0]; horizontal?: boolean }) => {
+    const Icon = n.icon;
+    const active = tab === n.id;
+    return (
+      <button
+        type="button"
+        onClick={() => goToTab(n.id)}
+        className={horizontal
+          ? "px-3 py-2 rounded-lg text-[13px] font-medium inline-flex items-center gap-1.5 whitespace-nowrap transition shrink-0"
+          : "w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 transition"}
+        style={{
+          background: active ? "var(--accent)" : horizontal ? "transparent" : "transparent",
+          color: active ? "#fff" : "var(--ink-2)",
+        }}
+      >
+        <Icon size={horizontal ? 15 : 16} /> {n.label}
+      </button>
+    );
+  };
+
+  const NavList = ({ horizontal = false }: { horizontal?: boolean }) => (
     <>
-      {nav.map((n) => {
-        const Icon = n.icon; const active = tab === n.id;
-        return (
-          <button key={n.id} onClick={() => { setTab(n.id); setSidebar(false); }} className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 transition"
-            style={{ background: active ? "var(--accent)" : "transparent", color: active ? "#fff" : "var(--ink-2)" }}><Icon size={16} /> {n.label}</button>
-        );
-      })}
-      <div className="mt-4 p-3 rounded-xl text-[12px] leading-relaxed" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>
-        <div className="flex items-center gap-1.5 font-semibold mb-1" style={{ color: "var(--ink)" }}><Globe size={13} /> Public passport</div>
-        {passportLabel} — attested facts only.
-      </div>
+      {nav.map((n) => <NavButton key={n.id} n={n} horizontal={horizontal} />)}
+      {!horizontal && (
+        <div className="mt-4 p-3 rounded-xl text-[12px] leading-relaxed" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>
+          <div className="flex items-center gap-1.5 font-semibold mb-1" style={{ color: "var(--ink)" }}><Globe size={13} /> Public passport</div>
+          {passportLabel} — attested facts only.
+        </div>
+      )}
     </>
   );
 
   return (
-    <div style={{ background: "var(--bg)", color: "var(--ink)" }} className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b backdrop-blur" style={{ borderColor: "var(--line)", background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}>
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <button className="md:hidden shrink-0" onClick={() => setSidebar(!sidebar)}>{sidebar ? <X size={20} /> : <Menu size={20} />}</button>
-            {orgLogoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={orgLogoUrl} alt="Company logo" className="h-8 w-auto max-w-[120px] object-contain shrink-0 hidden sm:block" />
-            ) : (
-              <div className="p-1.5 rounded-lg shrink-0" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
-            )}
-            <span className="serif text-xl font-semibold truncate">Credentia</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[13px] px-3 py-1 rounded-full hidden sm:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel}</span>
-            <button onClick={onSignOut} className="text-[13px] font-medium" style={{ color: "var(--accent)" }}>Sign out</button>
+    <div style={{ background: "var(--bg)", color: "var(--ink)" }} className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-30 border-b backdrop-blur" style={{ borderColor: "var(--line)", background: "color-mix(in srgb, var(--bg) 92%, transparent)" }}>
+        <div className={`${isCommandCenter ? "w-full" : "max-w-6xl"} mx-auto px-4 sm:px-5`}>
+          <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 shrink-0">
+              <MobileNavToggle open={sidebar} onToggle={() => setSidebar(!sidebar)} />
+              {orgLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={orgLogoUrl} alt="Company logo" className="h-7 sm:h-8 w-auto max-w-[100px] object-contain shrink-0" />
+              ) : (
+                <div className="p-1.5 rounded-lg shrink-0" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
+              )}
+              <span className="serif text-lg sm:text-xl font-semibold truncate hidden sm:inline">Credentia</span>
+            </div>
+            <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center overflow-x-auto px-2 min-w-0">
+              <NavList horizontal />
+            </nav>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <span className="text-[12px] px-2.5 py-1 rounded-full hidden md:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel}</span>
+              <button onClick={onSignOut} className="text-[13px] font-medium px-2 py-1" style={{ color: "var(--accent)" }}>Sign out</button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-5 py-6 grid md:grid-cols-[200px_1fr] gap-6">
-        <nav className="hidden md:block space-y-1 md:sticky md:top-20 h-max">
-          {orgLogoUrl && (
-            <div className="mb-3 px-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={orgLogoUrl} alt="Company logo" className="h-10 w-auto max-w-full object-contain" />
-            </div>
-          )}
-          <NavList />
-        </nav>
-        {sidebar && (
-          <div className="md:hidden fixed inset-0 z-20" onClick={() => setSidebar(false)}>
-            <div className="absolute top-16 left-0 bottom-0 w-64 p-4 space-y-1 border-r" style={{ background: "var(--surface)", borderColor: "var(--line)" }} onClick={(e) => e.stopPropagation()}><NavList /></div>
+      {sidebar && (
+        <div className="lg:hidden fixed inset-0 z-20" onClick={() => setSidebar(false)}>
+          <div className="absolute top-14 sm:top-16 left-0 bottom-0 w-72 p-4 space-y-1 border-r shadow-xl" style={{ background: "var(--surface)", borderColor: "var(--line)" }} onClick={(e) => e.stopPropagation()}>
+            <NavList />
           </div>
-        )}
-        <main className="min-w-0">
-          {tab !== "dashboard" && (
+        </div>
+      )}
+
+      <div className={`flex-1 flex flex-col min-h-0 ${isCommandCenter ? "w-full" : "max-w-6xl mx-auto px-5 py-6 w-full"}`}>
+        <main className={`min-w-0 flex-1 flex flex-col ${isCommandCenter ? "min-h-0" : ""}`}>
+          {tab !== "dashboard" && !isCommandCenter && (
             <BackButton onClick={() => setTab("dashboard")} label="Back to Dashboard" />
           )}
           {tab === "dashboard" && (
             <>
-              <Card className="p-6 mb-6" style={{ background: "linear-gradient(135deg, var(--surface), var(--inferred-bg))" }}>
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-xl" style={{ background: "var(--accent)" }}><ShieldCheck size={20} color="#fff" /></div>
-                  <div>
-                    <h2 className="font-semibold text-lg">How decisions are made here</h2>
-                    <p className="text-[14px] opacity-75 leading-relaxed mt-1 max-w-3xl">Verified facts are confirmed by a real person and can appear on your public passport. AI inferences — outlooks, likelihood scores — are labeled estimates, kept internal, never proof. Every AI output has a "How was this decided?" explainer you can open.</p>
-                  </div>
-                </div>
-              </Card>
-              {userId && <DashboardWelcome userId={userId} role={role} />}
+              {!isCommandCenter && (
+                <>
+                  <Card className="p-6 mb-6" style={{ background: "linear-gradient(135deg, var(--surface), var(--inferred-bg))" }}>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-xl" style={{ background: "var(--accent)" }}><ShieldCheck size={20} color="#fff" /></div>
+                      <div>
+                        <h2 className="font-semibold text-lg">How decisions are made here</h2>
+                        <p className="text-[14px] opacity-75 leading-relaxed mt-1 max-w-3xl">Verified facts are confirmed by a real person and can appear on your public passport. AI inferences — outlooks, likelihood scores — are labeled estimates, kept internal, never proof. Every AI output has a &quot;How was this decided?&quot; explainer you can open.</p>
+                      </div>
+                    </div>
+                  </Card>
+                  {userId && <DashboardWelcome userId={userId} role={role} />}
+                </>
+              )}
               {dashboard}
             </>
           )}
