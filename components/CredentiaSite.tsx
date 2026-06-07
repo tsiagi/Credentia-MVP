@@ -13,6 +13,7 @@ import { VerificationHistory } from "@/components/VerificationHistory";
 import { PassportLinkCard } from "@/components/VerifiedResumePage";
 import { EmployeeDataRightsCard } from "@/components/OrgPeopleView";
 import { PeopleOrgConsole } from "@/components/PeopleOrgConsole";
+import { PlatformConsole } from "@/components/PlatformConsole";
 import { ManagerTeamChangePanel } from "@/components/ManagerTeamChangePanel";
 import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeExperience";
 import type { AccountStatus } from "@/lib/lifecycle";
@@ -40,6 +41,7 @@ import {
   SlidersHorizontal, Globe, Menu, X, ArrowRight, Check, GitBranch, Workflow, ScanSearch,
   Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
+  Handshake, Link2,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════════
@@ -493,6 +495,8 @@ const KIND_ICON: Record<string, typeof Target> = {
 /* ═══════════════════ PUBLIC MARKETING SITE ═══════════════════ */
 function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: Theme; setTheme: (theme: Theme) => void }) {
   const [menu, setMenu] = useState(false);
+  const [accessForm, setAccessForm] = useState({ company: "", size: "", email: "" });
+  const [accessSubmitted, setAccessSubmitted] = useState(false);
   const features = [
     { icon: BadgeCheck, t: "Verified talent passport", d: "Every profile resolves to an immutable-but-correctable public URL showing only attested facts — confirmed tenure, titles, and validated skills." },
     { icon: Workflow, t: "Multi-layer feedback engine", d: "Employee and manager answer tailored prompts; AI processes sentiment, verifies impact, and surfaces a deviation score for coaching." },
@@ -505,6 +509,18 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
     { n: "03", t: "Verify", d: "Facts get attested by real people and locked with an audit trail." },
     { n: "04", t: "Carry", d: "Employees take a verified passport to their next opportunity." },
   ];
+  const onboardingSteps = [
+    { n: "1", icon: Handshake, t: "Request access", d: "Tell us about your company — we'll schedule a demo and scope your rollout." },
+    { n: "2", icon: Building2, t: "We provision your workspace", d: "Our team creates your tenant, assigns a company admin, and configures your plan." },
+    { n: "3", icon: Link2, t: "Connect SSO or import people", d: "Connect Okta/Azure AD via SCIM, or bulk-import your roster via CSV." },
+    { n: "4", icon: Zap, t: "Go live", d: "Employees sign in through your IdP. Verified records start accumulating from day one." },
+  ];
+
+  function handleAccessRequest(e: FormEvent) {
+    e.preventDefault();
+    if (!accessForm.company.trim() || !accessForm.email.trim()) return;
+    setAccessSubmitted(true);
+  }
   return (
     <div>
       {/* nav */}
@@ -518,6 +534,7 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
           <nav className="hidden md:flex items-center gap-7 text-[14px]" style={{ color: "var(--ink-2)" }}>
             <a href="#how" className="hover:opacity-70">How it works</a>
             <a href="#features" className="hover:opacity-70">Platform</a>
+            <a href="#companies" className="hover:opacity-70">For companies</a>
             <a href="#trust" className="hover:opacity-70">Transparency</a>
             <button onClick={() => setTheme({ ...theme, mode: theme.mode === "dark" ? "light" : "dark" })}
               className="opacity-70 hover:opacity-100">{theme.mode === "dark" ? "Light" : "Dark"}</button>
@@ -529,8 +546,8 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
         </div>
         {menu && (
           <div className="md:hidden border-t px-5 py-4 space-y-3" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
-            {["how", "features", "trust"].map((h) => (
-              <a key={h} href={`#${h}`} onClick={() => setMenu(false)} className="block text-[15px] capitalize">{h === "how" ? "How it works" : h === "features" ? "Platform" : "Transparency"}</a>
+            {["how", "features", "companies", "trust"].map((h) => (
+              <a key={h} href={`#${h}`} onClick={() => setMenu(false)} className="block text-[15px] capitalize">{h === "how" ? "How it works" : h === "features" ? "Platform" : h === "companies" ? "For companies" : "Transparency"}</a>
             ))}
             <button onClick={onEnter} className="w-full px-4 py-2.5 rounded-xl font-medium text-white" style={{ background: "var(--accent)" }}>Sign in</button>
           </div>
@@ -559,6 +576,10 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
             <a href="#trust" className="px-6 py-3.5 rounded-xl font-medium border inline-flex items-center gap-2"
               style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
               How decisions are made
+            </a>
+            <a href="#companies" className="px-6 py-3.5 rounded-xl font-medium border inline-flex items-center gap-2"
+              style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
+              For companies <Building2 size={18} />
             </a>
           </div>
         </div>
@@ -616,6 +637,92 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
               </Card>
             );
           })}
+        </div>
+      </section>
+
+      {/* For companies / onboarding */}
+      <section id="companies" className="py-20" style={{ background: "var(--surface)" }}>
+        <div className="max-w-6xl mx-auto px-5">
+          <span className="inline-flex items-center gap-2 text-[13px] font-medium px-3 py-1 rounded-full mb-4"
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+            <Building2 size={14} /> For companies
+          </span>
+          <h2 className="serif text-3xl md:text-4xl font-semibold">Get started with Credentia</h2>
+          <p className="text-lg mt-3 opacity-70 max-w-2xl">
+            Access is provisioned — there is no public self-signup. Here is how your organization comes aboard.
+          </p>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-10">
+            {onboardingSteps.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div key={s.n} className="relative">
+                  <Card className="p-5 h-full">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="serif text-2xl font-semibold opacity-30">{s.n}</span>
+                      <div className="p-2 rounded-xl" style={{ background: "var(--accent-soft)" }}>
+                        <Icon size={18} style={{ color: "var(--accent)" }} />
+                      </div>
+                    </div>
+                    <div className="font-semibold text-lg">{s.t}</div>
+                    <p className="text-[14px] opacity-70 mt-2 leading-relaxed">{s.d}</p>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-12 grid lg:grid-cols-2 gap-8 items-start">
+            <div>
+              <h3 className="font-semibold text-xl mb-2">Request access</h3>
+              <p className="text-[15px] opacity-70 leading-relaxed">
+                Tell us about your company and we will reach out to schedule a demo and begin provisioning your workspace.
+                No backend send yet — confirmation only.
+              </p>
+            </div>
+            <Card className="p-6">
+              {accessSubmitted ? (
+                <div className="text-center py-4">
+                  <div className="inline-flex p-3 rounded-full mb-4" style={{ background: "var(--verified-bg)" }}>
+                    <Check size={28} style={{ color: "var(--verified-fg)" }} />
+                  </div>
+                  <h4 className="font-semibold text-lg">Request received</h4>
+                  <p className="text-[14px] opacity-70 mt-2 leading-relaxed">
+                    Thanks, {accessForm.company}! We will contact {accessForm.email} within one business day to schedule your demo and provisioning kickoff.
+                  </p>
+                  <button type="button" onClick={() => { setAccessSubmitted(false); setAccessForm({ company: "", size: "", email: "" }); }}
+                    className="mt-4 text-[13px] font-medium" style={{ color: "var(--accent)" }}>
+                    Submit another request
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleAccessRequest} className="space-y-4">
+                  <label className="block text-[13px]">
+                    <span className="opacity-70">Company name</span>
+                    <input required value={accessForm.company} onChange={(e) => setAccessForm({ ...accessForm, company: e.target.value })}
+                      placeholder="Acme Industries" className="mt-1 w-full px-3 py-2.5 rounded-xl border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
+                  </label>
+                  <label className="block text-[13px]">
+                    <span className="opacity-70">Company size</span>
+                    <select required value={accessForm.size} onChange={(e) => setAccessForm({ ...accessForm, size: e.target.value })}
+                      className="mt-1 w-full px-3 py-2.5 rounded-xl border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                      <option value="">Select…</option>
+                      {["1–50", "51–200", "201–1,000", "1,000+"].map((s) => <option key={s} value={s}>{s} employees</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-[13px]">
+                    <span className="opacity-70">Contact email</span>
+                    <input required type="email" value={accessForm.email} onChange={(e) => setAccessForm({ ...accessForm, email: e.target.value })}
+                      placeholder="you@company.com" className="mt-1 w-full px-3 py-2.5 rounded-xl border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
+                  </label>
+                  <button type="submit" className="w-full px-4 py-3 rounded-xl font-medium text-white inline-flex items-center justify-center gap-2"
+                    style={{ background: "var(--accent)" }}>
+                    Request access <Send size={16} />
+                  </button>
+                </form>
+              )}
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -1900,7 +2007,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
-    ...(role === "superadmin" ? [{ id: "people-org", label: "Tenants", icon: Building2 }] : []),
+    ...(role === "superadmin" ? [{ id: "platform", label: "Platform Console", icon: Building2 }] : []),
     ...(role === "admin" ? [{ id: "admin", label: "Brand & Models", icon: SlidersHorizontal }] : []),
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -1910,7 +2017,15 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     executive: <ExecutiveView userId={userId} />,
     admin: <AdminView theme={theme} setTheme={setTheme} />,
     hr: <ExecutiveView userId={userId} />,
-    superadmin: <PeopleOrgConsole />,
+    superadmin: (
+      <Card className="p-6">
+        <h3 className="font-semibold text-lg mb-1">Platform operator</h3>
+        <p className="text-[14px] opacity-70 leading-relaxed">
+          Use <strong>Platform Console</strong> in the sidebar to provision tenants, integrate workforce data, and review import batches.
+          All actions are administrative — not AI inference.
+        </p>
+      </Card>
+    ),
   }[role] : <div className="opacity-60 text-sm">Loading…</div>;
 
   const passportLabel = publicSlug ? `/p/verify/${publicSlug.slice(0, 4)}…` : "/p/verify/… (not published yet)";
@@ -1971,7 +2086,8 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           )}
           {tab === "verify" && userId && <VerificationView userId={userId} />}
           {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
-          {tab === "people-org" && (role === "admin" || role === "superadmin") && <PeopleOrgConsole />}
+          {tab === "people-org" && role === "admin" && <PeopleOrgConsole />}
+          {tab === "platform" && role === "superadmin" && <PlatformConsole />}
           {tab === "plan" && userId && isFormer && (
             <BillingPlanView
               userId={userId}

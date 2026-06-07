@@ -3,8 +3,11 @@
 import React, { useMemo, useState } from "react";
 import {
   ShieldCheck, Users, Mail, GitBranch, Clock, Check, X, Link2, UserPlus,
-  Building2, ChevronDown,
+  Building2, ChevronDown, Upload,
 } from "lucide-react";
+import {
+  SAMPLE_PEOPLE_CSV, parsePeopleCsv, validatePeopleRows, buildBatchResult,
+} from "@/lib/csv-import-mock";
 
 /** Administrative facts only — no AI inference on this screen. */
 
@@ -85,8 +88,25 @@ export function PeopleOrgConsole() {
   const [inviteRole, setInviteRole] = useState("Employee");
   const [notice, setNotice] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [importMode, setImportMode] = useState<"single" | "bulk">("single");
+  const [csvText, setCsvText] = useState("");
+  const [csvPreview, setCsvPreview] = useState<ReturnType<typeof validatePeopleRows> | null>(null);
+  const [lastBatch, setLastBatch] = useState<{ success: number; errors: number } | null>(null);
 
   const activeCount = useMemo(() => people.filter((p) => p.accountStatus === "active_sso").length, [people]);
+
+  const knownManagerEmails = useMemo(() => {
+    const emails = new Set<string>();
+    for (const p of people) {
+      if (p.accountStatus === "active_sso" || p.role === "Manager" || p.role === "Executive") {
+        const slug = p.name.toLowerCase().replace(/\s+/g, ".");
+        emails.add(`${slug}@demo.corp.com`);
+      }
+    }
+    emails.add("jordan.lee@demo.corp.com");
+    emails.add("alex.rivera@demo.corp.com");
+    return emails;
+  }, [people]);
 
   function flash(msg: string) {
     setNotice(msg);
@@ -107,8 +127,44 @@ export function PeopleOrgConsole() {
         accountStatus: "invited",
       },
     ]);
-    flash(`Invite sent to ${inviteEmail} (mock — manual fallback path).`);
+    flash(`Invite sent to ${inviteEmail} (mock — provisioned_via=invite, audit logged).`);
     setInviteEmail("");
+  }
+
+  function loadSampleCsv() {
+    setCsvText(SAMPLE_PEOPLE_CSV);
+    const rows = parsePeopleCsv(SAMPLE_PEOPLE_CSV);
+    setCsvPreview(validatePeopleRows(rows, knownManagerEmails));
+  }
+
+  function handleCsvChange(text: string) {
+    setCsvText(text);
+    if (text.trim()) {
+      setCsvPreview(validatePeopleRows(parsePeopleCsv(text), knownManagerEmails));
+    } else {
+      setCsvPreview(null);
+    }
+  }
+
+  function commitBulkImport() {
+    if (!csvPreview?.length) return;
+    const batch = buildBatchResult(csvPreview);
+    const validRows = csvPreview.filter((r) => r.valid);
+    setPeople((prev) => [
+      ...prev,
+      ...validRows.map((r) => ({
+        id: `csv-${r.rowNum}-${Date.now()}`,
+        name: r.name,
+        role: r.role,
+        department: r.department || "—",
+        manager: r.managerEmail ? r.managerEmail.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : null,
+        accountStatus: "invited" as const,
+      })),
+    ]);
+    setLastBatch({ success: batch.successCount, errors: batch.errorCount });
+    flash(`Bulk import: ${batch.successCount} invitations created (provisioned_via=csv), ${batch.errorCount} rows skipped. data_import_batch recorded (mock).`);
+    setCsvText("");
+    setCsvPreview(null);
   }
 
   function approveRequest(id: string) {
@@ -197,20 +253,96 @@ export function PeopleOrgConsole() {
         </div>
       </Card>
 
-      {/* Invite fallback */}
+      {/* Add people: single invite or bulk CSV */}
       <Card className="p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-3"><Mail size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Email invite</h3><AdminFactTag /></div>
-        <p className="text-[13px] opacity-70 mb-4">Manual fallback when IdP is unavailable or for contractors. Not the default provisioning path.</p>
-        <form onSubmit={sendInvite} className="flex flex-col sm:flex-row gap-2">
-          <input type="email" required placeholder="colleague@demo.corp.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-xl border text-sm min-w-0" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
-          <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="px-3 py-2 rounded-xl border text-sm" style={{ borderColor: "var(--line)" }}>
-            {["Employee", "Manager", "HR", "Executive"].map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white inline-flex items-center justify-center gap-2" style={{ background: "var(--accent)" }}>
-            <UserPlus size={16} /> Send invite
-          </button>
-        </form>
+        <div className="flex items-center gap-2 mb-3"><Mail size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Add people</h3><AdminFactTag /></div>
+        <p className="text-[13px] opacity-70 mb-4">Single email invite or bulk CSV import. SSO/SCIM remains the default path; these are fallback provisioning methods.</p>
+
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {(["single", "bulk"] as const).map((m) => (
+            <button key={m} type="button" onClick={() => setImportMode(m)}
+              className="px-3 py-1.5 rounded-lg text-[13px] font-medium"
+              style={{ background: importMode === m ? "var(--accent)" : "var(--surface-2)", color: importMode === m ? "#fff" : "var(--ink-2)" }}>
+              {m === "single" ? "Single invite" : "Bulk CSV"}
+            </button>
+          ))}
+        </div>
+
+        {importMode === "single" && (
+          <form onSubmit={sendInvite} className="flex flex-col sm:flex-row gap-2">
+            <input type="email" required placeholder="colleague@demo.corp.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-xl border text-sm min-w-0" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
+            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="px-3 py-2 rounded-xl border text-sm" style={{ borderColor: "var(--line)" }}>
+              {["Employee", "Manager", "HR", "Executive"].map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <button type="submit" className="px-4 py-2 rounded-xl text-sm font-medium text-white inline-flex items-center justify-center gap-2" style={{ background: "var(--accent)" }}>
+              <UserPlus size={16} /> Send invite
+            </button>
+          </form>
+        )}
+
+        {importMode === "bulk" && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              <button type="button" onClick={loadSampleCsv} className="text-[13px] font-medium px-3 py-1.5 rounded-lg border inline-flex items-center gap-1.5" style={{ borderColor: "var(--line)", color: "var(--accent)" }}>
+                <Upload size={14} /> Load sample CSV
+              </button>
+              <span className="text-[12px] opacity-60">Columns: name, email, role, department, manager_email</span>
+            </div>
+            <textarea value={csvText} onChange={(e) => handleCsvChange(e.target.value)} rows={5} placeholder="Paste CSV here…"
+              className="w-full px-3 py-2 rounded-xl border text-[13px] font-mono resize-y min-h-[100px]" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
+
+            {csvPreview && csvPreview.length > 0 && (
+              <>
+                <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--line)" }}>
+                  <table className="w-full text-[13px] text-left min-w-[560px]">
+                    <thead>
+                      <tr className="border-b opacity-60 text-[11px] uppercase tracking-widest" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                        <th className="py-2 px-3 font-medium">Row</th>
+                        <th className="py-2 px-3 font-medium">Name</th>
+                        <th className="py-2 px-3 font-medium">Email</th>
+                        <th className="py-2 px-3 font-medium">Role</th>
+                        <th className="py-2 px-3 font-medium">Dept</th>
+                        <th className="py-2 px-3 font-medium">Manager</th>
+                        <th className="py-2 px-3 font-medium">Validation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreview.map((r) => (
+                        <tr key={r.rowNum} className="border-b" style={{ borderColor: "var(--line)", background: r.valid ? undefined : "var(--warn-bg)" }}>
+                          <td className="py-2 px-3 opacity-60">{r.rowNum}</td>
+                          <td className="py-2 px-3">{r.name || "—"}</td>
+                          <td className="py-2 px-3">{r.email || "—"}</td>
+                          <td className="py-2 px-3">{r.role || "—"}</td>
+                          <td className="py-2 px-3">{r.department || "—"}</td>
+                          <td className="py-2 px-3 text-[12px]">{r.managerEmail || "—"}</td>
+                          <td className="py-2 px-3">
+                            {r.valid ? (
+                              <span className="inline-flex items-center gap-1 text-[12px] font-medium" style={{ color: "var(--verified-fg)" }}><Check size={14} /> Ready</span>
+                            ) : (
+                              <span className="text-[12px]" style={{ color: "var(--warn)" }}>{r.errors.join("; ")}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" onClick={commitBulkImport} disabled={!csvPreview.some((r) => r.valid)}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-40"
+                  style={{ background: "var(--accent)" }}>
+                  <Upload size={16} /> Import {csvPreview.filter((r) => r.valid).length} valid row(s)
+                </button>
+              </>
+            )}
+
+            {lastBatch && (
+              <p className="text-[13px] opacity-70">
+                Last batch: {lastBatch.success} imported, {lastBatch.errors} errors — recorded in <code className="text-[12px]">data_import_batches</code> (mock).
+              </p>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Pending org chart requests */}

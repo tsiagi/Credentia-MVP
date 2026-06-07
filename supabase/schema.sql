@@ -113,7 +113,7 @@ create table if not exists profiles (
                        'active_sso', 'former_trial', 'former_free', 'former_paid', 'invited'
                      )),
   provisioned_via    text not null default 'invite'
-                     check (provisioned_via in ('sso', 'scim', 'invite', 'self')),
+                     check (provisioned_via in ('sso', 'scim', 'invite', 'csv', 'self')),
   employment_ended_at timestamptz,
   trial_ends_at      timestamptz,
   created_at         timestamptz not null default now(),

@@ -13,7 +13,7 @@ export type AccountStatus =
   | "former_free"
   | "former_paid";
 
-export type ProvisioningSource = "sso" | "scim" | "invite" | "self";
+export type ProvisioningSource = "sso" | "scim" | "invite" | "csv" | "self";
 
 export type ProfileLifecycle = {
   account_status: AccountStatus;
