@@ -49,8 +49,7 @@ import {
    ════════════════════════════════════════════════════════════════ */
 
 type Theme = { accent: string; mode: "light" | "dark" };
-type Role = "employee" | "manager" | "executive" | "admin" | "hr";
-type AuthMode = "signin" | "signup";
+type Role = "employee" | "manager" | "executive" | "admin" | "hr" | "superadmin";
 type FeedbackField = "employee_responses" | "manager_responses";
 type FeedbackResponses = Record<string, string>;
 type Milestone = { id: string; y: string; t: string; v: boolean };
@@ -670,13 +669,102 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
   );
 }
 
-/* ═══════════════════ AUTH SCREEN ═══════════════════ */
-const AUTH_ROLES = [
-  { id: "employee", label: "Employee", icon: UserCircle2 },
-  { id: "manager", label: "Manager", icon: Users },
-  { id: "executive", label: "Executive", icon: Building2 },
-  { id: "admin", label: "System Admin", icon: SettingsIcon },
-];
+/* ═══════════════════ AUTH SCREEN — sign-in only (no public signup) ═══════════════════ */
+
+function AuthScreen({ onLogin, onBack }: { onLogin: (role: Role) => void; onBack: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) {
+        if (signInError.message.toLowerCase().includes("invalid login")) {
+          throw new Error("Invalid email or password.");
+        }
+        throw signInError;
+      }
+      if (!data.user) throw new Error("Sign in did not return a user.");
+
+      try {
+        const storedRole = await fetchProfileRole(data.user.id);
+        onLogin(storedRole);
+      } catch {
+        await supabase.auth.signOut();
+        setError("Access is provided by your company — contact your administrator.");
+      }
+    } catch (err: unknown) {
+      setError(errorMessage(err, "Something went wrong. Try again."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5" style={{ background: "var(--bg)" }}>
+      <Card className="w-full max-w-md p-7">
+        <button type="button" onClick={onBack} className="text-[13px] opacity-60 mb-5 inline-flex items-center gap-1">‹ Back to site</button>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
+          <span className="serif text-xl font-semibold">Credentia</span>
+        </div>
+        <h1 className="serif text-2xl font-semibold mt-4">Sign in</h1>
+        <p className="text-[13px] opacity-60 mb-5">
+          Use the email and password your company administrator provided. Accounts are not created on this public site.
+        </p>
+
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="work email"
+            className="w-full px-3 py-2.5 rounded-xl border text-sm mb-2 outline-none"
+            style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
+          />
+          <input
+            type="password"
+            autoComplete="current-password"
+            required
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="password"
+            className="w-full px-3 py-2.5 rounded-xl border text-sm mb-3 outline-none"
+            style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
+          />
+
+          {error && (
+            <p className="text-[13px] mb-3 px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>
+          )}
+
+          <button type="submit" disabled={loading} className="w-full py-3 rounded-xl font-medium text-white disabled:opacity-60"
+            style={{ background: "var(--accent)" }}>
+            {loading ? "Please wait…" : "Sign in"}
+          </button>
+        </form>
+
+        <p className="text-[13px] text-center mt-5 opacity-70 leading-relaxed">
+          No account? Access is provided by your company — contact your administrator.
+        </p>
+      </Card>
+    </div>
+  );
+}
 
 const DEFAULT_SETTINGS = {
   show_outlook: true,
@@ -705,12 +793,6 @@ async function ensureUserSettings(profileId: string) {
   }
 }
 
-async function saveProfileRole(userId: string, role: Role) {
-  const { error } = await supabase.from("profiles").upsert({ id: userId, role });
-  if (error) throw error;
-  await ensureUserSettings(userId);
-}
-
 async function fetchProfileRole(userId: string): Promise<Role> {
   const { data, error } = await supabase.from("profiles").select("role").eq("id", userId).single();
   if (error) throw error;
@@ -726,149 +808,6 @@ function factToMilestone(f: VerifiedFactRow): Milestone {
 
 function milestoneLabel(m: MilestoneInput) {
   return `${m.y} — ${m.t}`;
-}
-
-function AuthScreen({ onLogin, onBack }: { onLogin: (role: Role) => void; onBack: () => void }) {
-  const [role, setRole] = useState<Role>("employee");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<AuthMode>("signin");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setMessage(null);
-    if (!email.trim() || !password) {
-      setError("Enter your email and password.");
-      return;
-    }
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-        });
-        if (signUpError) throw signUpError;
-        if (!data.user) throw new Error("Sign up did not return a user.");
-
-        if (!data.session) {
-          setMessage("Check your email to confirm your account, then sign in.");
-          setMode("signin");
-          return;
-        }
-
-        await saveProfileRole(data.user.id, role);
-        onLogin(role);
-      } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (signInError) throw signInError;
-
-        let storedRole: Role;
-        try {
-          storedRole = await fetchProfileRole(data.user.id);
-        } catch {
-          await saveProfileRole(data.user.id, role);
-          storedRole = role;
-        }
-        onLogin(storedRole);
-      }
-    } catch (err: unknown) {
-      setError(errorMessage(err, "Something went wrong. Try again."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const roleLabel = AUTH_ROLES.find((r) => r.id === role)?.label ?? "User";
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-5" style={{ background: "var(--bg)" }}>
-      <Card className="w-full max-w-md p-7">
-        <button type="button" onClick={onBack} className="text-[13px] opacity-60 mb-5 inline-flex items-center gap-1">‹ Back to site</button>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
-          <span className="serif text-xl font-semibold">Credentia</span>
-        </div>
-        <h1 className="serif text-2xl font-semibold mt-4">{mode === "signup" ? "Create account" : "Sign in"}</h1>
-        <p className="text-[13px] opacity-60 mb-5">
-          {mode === "signup"
-            ? "Pick your role — we save it on your profile in Supabase."
-            : "Sign in with the email and password you used at sign-up."}
-        </p>
-
-        {mode === "signup" && (
-          <div className="grid grid-cols-2 gap-2 mb-5">
-            {AUTH_ROLES.map((r) => {
-              const Icon = r.icon; const active = role === r.id;
-              return (
-                <button key={r.id} type="button" onClick={() => setRole(r.id as Role)}
-                  className="p-3 rounded-xl border text-left transition"
-                  style={{ borderColor: active ? "var(--accent)" : "var(--line)", background: active ? "var(--accent-soft)" : "var(--surface-2)" }}>
-                  <Icon size={18} style={{ color: active ? "var(--accent)" : "var(--ink-2)" }} />
-                  <div className="text-[13px] font-medium mt-1.5">{r.label}</div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="work email"
-            className="w-full px-3 py-2.5 rounded-xl border text-sm mb-2 outline-none"
-            style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
-          />
-          <input
-            type="password"
-            autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="password (6+ characters)"
-            className="w-full px-3 py-2.5 rounded-xl border text-sm mb-3 outline-none"
-            style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
-          />
-
-          {error && (
-            <p className="text-[13px] mb-3 px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>
-          )}
-          {message && (
-            <p className="text-[13px] mb-3 px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{message}</p>
-          )}
-
-          <button type="submit" disabled={loading} className="w-full py-3 rounded-xl font-medium text-white disabled:opacity-60"
-            style={{ background: "var(--accent)" }}>
-            {loading ? "Please wait…" : mode === "signup" ? `Sign up as ${roleLabel}` : "Sign in"}
-          </button>
-        </form>
-
-        <p className="text-[13px] text-center mt-4 opacity-70">
-          {mode === "signup" ? "Already have an account?" : "New here?"}{" "}
-          <button
-            type="button"
-            className="font-medium underline"
-            style={{ color: "var(--accent)" }}
-            onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(null); setMessage(null); }}
-          >
-            {mode === "signup" ? "Sign in" : "Create account"}
-          </button>
-        </p>
-      </Card>
-    </div>
-  );
 }
 
 /* ═══════════════════ APP VIEWS (role dashboards) ═══════════════════ */
@@ -1951,13 +1890,17 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   }, []);
 
   const isFormer = accountStatus.startsWith("former_");
-  const roleLabel: Record<Role, string> = { employee: "Employee", manager: "Manager", executive: "Executive", admin: "System Admin", hr: "HR / People Ops" };
+  const roleLabel: Record<Role, string> = {
+    employee: "Employee", manager: "Manager", executive: "Executive",
+    admin: "System Admin", hr: "HR / People Ops", superadmin: "Platform Operator",
+  };
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "verify", label: "Verification", icon: FileBadge },
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
+    ...(role === "superadmin" ? [{ id: "people-org", label: "Tenants", icon: Building2 }] : []),
     ...(role === "admin" ? [{ id: "admin", label: "Brand & Models", icon: SlidersHorizontal }] : []),
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -1967,6 +1910,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     executive: <ExecutiveView userId={userId} />,
     admin: <AdminView theme={theme} setTheme={setTheme} />,
     hr: <ExecutiveView userId={userId} />,
+    superadmin: <PeopleOrgConsole />,
   }[role] : <div className="opacity-60 text-sm">Loading…</div>;
 
   const passportLabel = publicSlug ? `/p/verify/${publicSlug.slice(0, 4)}…` : "/p/verify/… (not published yet)";
@@ -2027,7 +1971,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           )}
           {tab === "verify" && userId && <VerificationView userId={userId} />}
           {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
-          {tab === "people-org" && role === "admin" && <PeopleOrgConsole />}
+          {tab === "people-org" && (role === "admin" || role === "superadmin") && <PeopleOrgConsole />}
           {tab === "plan" && userId && isFormer && (
             <BillingPlanView
               userId={userId}

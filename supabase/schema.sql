@@ -15,6 +15,13 @@ create extension if not exists "pgcrypto";
 create table if not exists organizations (
   id                   uuid primary key default gen_random_uuid(),
   name                 text not null,
+  -- Tenant lifecycle (multi-tenant: one DB, logical isolation via org_id + RLS)
+  status               text not null default 'provisioning'
+                       check (status in ('provisioning', 'active', 'suspended')),
+  plan                 text,
+  isolation_mode       text not null default 'shared'
+                       check (isolation_mode in ('shared', 'dedicated')),
+  onboarding_step      integer not null default 0,
   -- IdP + billing (company subscription controls departing-employee trial)
   sso_provider         text not null default 'none'
                        check (sso_provider in ('okta', 'azure', 'google', 'none')),
@@ -25,6 +32,15 @@ create table if not exists organizations (
   created_at           timestamptz not null default now()
 );
 
+comment on column organizations.status is
+  'provisioning = superadmin onboarding; active = live tenant; suspended = access blocked.';
+comment on column organizations.plan is
+  'Commercial plan label (e.g. enterprise, growth) — set by superadmin.';
+comment on column organizations.isolation_mode is
+  'shared = default single-DB multi-tenant. dedicated = forward flag for future physical DB split.';
+comment on column organizations.onboarding_step is
+  'Superadmin onboarding wizard progress (0 = not started).';
+
 comment on column organizations.sso_provider is
   'Connected identity provider: okta/azure/google, or none (manual invite fallback only).';
 comment on column organizations.sso_domain is
@@ -33,6 +49,48 @@ comment on column organizations.auto_trial_enabled is
   'When true, departing employees enter former_trial for trial_days. Admin can disable org-wide.';
 comment on column organizations.trial_days is
   'Length of personal passport trial after employment ends (default 30). Admin can extend per person in app.';
+
+-- How each tenant's data was integrated (manual, CSV, SCIM, Okta, etc.)
+create table if not exists tenant_integrations (
+  id                uuid primary key default gen_random_uuid(),
+  org_id            uuid not null references organizations on delete cascade,
+  source            text not null
+                    check (source in ('manual', 'csv', 'scim', 'okta', 'workday')),
+  status            text not null default 'pending'
+                    check (status in ('pending', 'active', 'error', 'disabled')),
+  last_synced_at    timestamptz,
+  records_imported  integer not null default 0,
+  created_at        timestamptz not null default now()
+);
+
+comment on table tenant_integrations is
+  'Tracks how a company tenant receives workforce data. One row per integration channel.';
+comment on column tenant_integrations.source is
+  'Provisioning channel: manual add, csv bulk, scim sync, okta SSO, etc.';
+comment on column tenant_integrations.records_imported is
+  'Running count of profiles/rows successfully imported via this integration.';
+
+-- Bulk import audit trail (CSV uploads, superadmin bulk loads)
+create table if not exists data_import_batches (
+  id            uuid primary key default gen_random_uuid(),
+  org_id        uuid not null references organizations on delete cascade,
+  imported_by   uuid not null references profiles on delete cascade,
+  source        text not null
+                check (source in ('manual', 'csv', 'scim', 'okta', 'superadmin')),
+  row_count     integer not null default 0,
+  success_count integer not null default 0,
+  error_count   integer not null default 0,
+  errors        jsonb not null default '[]',
+  created_at    timestamptz not null default now()
+);
+
+comment on table data_import_batches is
+  'One row per bulk import operation — success/error counts and per-row errors in jsonb.';
+comment on column data_import_batches.errors is
+  'Array of { row, message } objects for failed rows; kept for admin/superadmin review.';
+
+create index if not exists idx_tenant_integrations_org on tenant_integrations (org_id);
+create index if not exists idx_data_import_batches_org on data_import_batches (org_id, created_at desc);
 
 -- ══════════════════════════════════════════════════════════════
 -- EXISTING TABLES (verification_level added to verified_facts)
@@ -44,7 +102,7 @@ create table if not exists profiles (
   org_id             uuid references organizations on delete set null,
   manager_id         uuid references profiles on delete set null,
   role               text not null default 'employee'
-                     check (role in ('employee', 'manager', 'executive', 'admin', 'hr')),
+                     check (role in ('superadmin', 'employee', 'manager', 'executive', 'admin', 'hr')),
   full_name          text,
   title              text,
   public_slug        text unique,
@@ -72,6 +130,8 @@ comment on column profiles.trial_ends_at is
   'End of former_trial personal passport window. After this, account_status moves to former_free unless paid.';
 comment on column profiles.manager_id is
   'Reporting line — set only by admin/HR (or approved org_membership_request). Managers cannot self-assign reports.';
+comment on column profiles.role is
+  'superadmin = platform operator (above company admin). Company roles: admin, executive, manager, employee, hr.';
 
 -- If profiles already exists without org columns, run after organizations:
 -- alter table profiles add column if not exists org_id uuid references organizations on delete set null;
@@ -409,6 +469,8 @@ create index if not exists idx_profiles_trial_ends on profiles (trial_ends_at) w
 -- ── row level security (enable; policies in rls-policies.sql) ─
 alter table invitations enable row level security;
 alter table org_membership_requests enable row level security;
+alter table tenant_integrations enable row level security;
+alter table data_import_batches enable row level security;
 alter table profiles enable row level security;
 alter table user_settings enable row level security;
 alter table feedback_cycles enable row level security;

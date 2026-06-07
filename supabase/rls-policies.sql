@@ -21,7 +21,7 @@ begin
         'projects', 'process_improvements', 'feedback_cycles', 'verification_requests',
         'pulse_surveys', 'compensation_recommendations', 'promotion_readiness',
         'employee_value_scores', 'audit_log', 'organizations', 'departments',
-        'invitations', 'org_membership_requests'
+        'invitations', 'org_membership_requests', 'tenant_integrations', 'data_import_batches'
       )
   loop
     execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename);
@@ -75,6 +75,18 @@ returns boolean language sql stable security definer set search_path = public as
   select current_role_name() = 'admin'
 $$;
 
+create or replace function is_superadmin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select current_role_name() = 'superadmin'
+$$;
+
+-- Company-scoped session: superadmin has no tenant org_id; company users use current_org().
+create or replace function is_company_user()
+returns boolean language sql stable security definer set search_path = public as $$
+  select current_role_name() in ('employee', 'manager', 'executive', 'admin', 'hr')
+    and current_org() is not null
+$$;
+
 -- ══════════════════════════════════════════════════════════════
 -- PROFILES — column-sensitive updates use a TRIGGER (see below)
 -- Postgres RLS is row-level only: a policy grants UPDATE on a row
@@ -96,6 +108,11 @@ begin
 
   -- Org admin may change org structure and lifecycle for members in their org
   if actor_role = 'admin' and old.org_id is not distinct from current_org() then
+    return new;
+  end if;
+
+  -- Platform superadmin may provision any profile (cross-tenant)
+  if actor_role = 'superadmin' then
     return new;
   end if;
 
@@ -160,6 +177,16 @@ create policy "profiles: admin read org"
   on profiles for select using (
     is_org_admin() and org_id = current_org()
   );
+
+-- Superadmin: read profiles across tenants FOR PROVISIONING ONLY (no inference-table policies).
+create policy "profiles: superadmin read provision"
+  on profiles for select using (is_superadmin());
+
+create policy "profiles: superadmin insert"
+  on profiles for insert with check (is_superadmin());
+
+create policy "profiles: superadmin update provision"
+  on profiles for update using (is_superadmin());
 
 -- ══════════════════════════════════════════════════════════════
 -- USER SETTINGS  (strictly private to the owner)
@@ -277,21 +304,52 @@ create policy "evs: leader read" on employee_value_scores for select
 create policy "audit: anyone insert" on audit_log for insert
   with check (auth.uid() is not null);
 create policy "audit: admin read" on audit_log for select
-  using (current_role_name() = 'admin');
+  using (current_role_name() = 'admin' and is_company_user());
+create policy "audit: superadmin read" on audit_log for select
+  using (is_superadmin());
 
 -- ══════════════════════════════════════════════════════════════
--- ORG / DEPARTMENTS  — readable within org; managed by admins
+-- ORG / DEPARTMENTS  — tenant-scoped; superadmin cross-tenant
 -- ══════════════════════════════════════════════════════════════
 
 create policy "org: members read" on organizations for select
-  using (id = current_org());
+  using (id = current_org() and is_company_user());
+
 create policy "org: admin manage" on organizations for all
-  using (id = current_org() and current_role_name() = 'admin');
+  using (id = current_org() and is_org_admin())
+  with check (id = current_org() and is_org_admin());
+
+-- Superadmin: create and manage all tenants (platform operator).
+create policy "org: superadmin all" on organizations for all
+  using (is_superadmin()) with check (is_superadmin());
 
 create policy "dept: members read" on departments for select
-  using (org_id = current_org());
+  using (org_id = current_org() and is_company_user());
 create policy "dept: admin manage" on departments for all
-  using (org_id = current_org() and current_role_name() = 'admin');
+  using (org_id = current_org() and is_org_admin())
+  with check (org_id = current_org() and is_org_admin());
+
+create policy "dept: superadmin read" on departments for select
+  using (is_superadmin());
+
+-- ══════════════════════════════════════════════════════════════
+-- TENANT INTEGRATIONS + BULK IMPORTS — superadmin + company admin
+-- ══════════════════════════════════════════════════════════════
+
+create policy "integrations: admin read" on tenant_integrations for select
+  using (org_id = current_org() and is_org_admin());
+
+create policy "integrations: superadmin all" on tenant_integrations for all
+  using (is_superadmin()) with check (is_superadmin());
+
+create policy "imports: admin read" on data_import_batches for select
+  using (org_id = current_org() and is_org_admin());
+
+create policy "imports: admin insert" on data_import_batches for insert
+  with check (org_id = current_org() and is_org_admin() and imported_by = auth.uid());
+
+create policy "imports: superadmin all" on data_import_batches for all
+  using (is_superadmin()) with check (is_superadmin());
 
 -- ══════════════════════════════════════════════════════════════
 -- INVITATIONS — manual fallback provisioning; admin-only
@@ -357,3 +415,11 @@ create policy "org_req: admin update"
 --        changes to manager_id / org_id / role / account_status unless the
 --        actor is an org admin (or self-update of non-sensitive fields only).
 --    Managers must INSERT org_membership_requests; admins apply manager_id.
+-- 5. SUPERADMIN vs SENSITIVE TENANT DATA:
+--    Superadmin has NO policies on compensation_recommendations, pulse_surveys,
+--    or employee_value_scores — those remain org-leader / owner scoped only.
+--    If superadmin must access them (support/legal), use a server-side audited
+--    RPC (service role + mandatory audit_log row), never a blanket RLS bypass.
+--    Superadmin CAN: organizations, tenant_integrations, data_import_batches,
+--    profiles (provisioning fields), departments (read), audit_log (read).
+--    Superadmin CANNOT (via RLS): comp recs, raw pulse, value scores, promo AI.
