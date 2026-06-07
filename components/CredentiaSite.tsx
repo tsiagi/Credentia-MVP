@@ -5,11 +5,36 @@ import React, {
   type CSSProperties, type ReactNode, type FormEvent,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { writeAuditLog } from "@/lib/audit";
+import { LevelBadge, VerifiedTag, InferredTag, SelfReportedTag } from "@/lib/verification-ui";
+import { setPassportPublished } from "@/lib/passport";
+import { generateManagerInsights, generateOrgInsights } from "@/lib/ai-client";
+import { VerificationHistory } from "@/components/VerificationHistory";
+import { PassportLinkCard } from "@/components/VerifiedResumePage";
+import {
+  buildEmployeeTimeline, fetchEmployeeOutlook,
+  fetchProfileOrgId, fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
+  fetchCoachingInsights, fetchDirectReports, fetchReviewRows, fetchExecutiveDashboard,
+  fetchEmployeeValueScore, fetchTeamValueScores, fetchPromotionReadinessRows,
+  fetchOrgPromotionReadiness, fetchCompensationIntelligence,
+  VALUE_INPUT_LABELS, PROMO_CATEGORY_LABELS,
+  type TimelineEvent, type VerifyQueueItem,
+  type ValueScoreDetail, type TeamValueScoreRow, type PromotionReadinessRow, type CompRecommendation,
+} from "@/lib/workforce";
+/** Achievement Vault — load/save via lib/supabase.ts → achievements table */
+import {
+  fetchAchievements,
+  saveAchievement,
+  achievementTitle,
+  type AchievementRow,
+} from "@/lib/achievements";
 import {
   ShieldCheck, Sparkles, LayoutDashboard, Users, Award, Settings as SettingsIcon,
   AlertTriangle, BadgeCheck, Eye, EyeOff, ChevronRight, Info, Building2, UserCircle2,
   LineChart, Lock, Zap, Send, FileBadge, ToggleLeft, ToggleRight, Palette,
-  SlidersHorizontal, Globe, Menu, X, ArrowRight, Check, GitBranch, Workflow, ScanSearch
+  SlidersHorizontal, Globe, Menu, X, ArrowRight, Check, GitBranch, Workflow, ScanSearch,
+  Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
+  ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════════
@@ -72,16 +97,17 @@ const FONTS = (
 );
 
 // ── shared primitives ──────────────────────────────────────────
-const VerifiedTag = () => (
+const VerifiedFactTag = () => (
   <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full"
     style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
     <BadgeCheck size={12} /> VERIFIED FACT
   </span>
 );
-const InferredTag = () => (
+
+const SupportingMetricTag = () => (
   <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full"
-    style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>
-    <Sparkles size={12} /> AI INFERENCE
+    style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>
+    <Activity size={12} /> SUPPORTING METRIC
   </span>
 );
 
@@ -124,6 +150,341 @@ function Spark({ data, color }: { data: number[]; color: string }) {
   const pts = data.map((d, i) => `${(i / (data.length - 1)) * w},${h - ((d - min) / (max - min || 1)) * (h - 8) - 4}`).join(" ");
   return <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-14"><polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
+
+function TrendArrow({ dir }: { dir: "up" | "down" | "flat" }) {
+  if (dir === "up") return <ArrowUp size={14} style={{ color: "var(--verified-fg)" }} />;
+  if (dir === "down") return <ArrowDown size={14} style={{ color: "var(--warn)" }} />;
+  return <Minus size={14} className="opacity-50" />;
+}
+
+function RiskPill({ risk }: { risk: "Low" | "Moderate" | "High" }) {
+  const colors = {
+    Low: { fg: "var(--verified-fg)", bg: "var(--verified-bg)" },
+    Moderate: { fg: "var(--warn)", bg: "var(--warn-bg)" },
+    High: { fg: "#be123c", bg: "#be123c1a" },
+  };
+  const c = colors[risk];
+  return (
+    <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full" style={{ background: c.bg, color: c.fg }}>
+      {risk}
+    </span>
+  );
+}
+
+function SectionHeader({ icon: Icon, title, tag, sub }: { icon: typeof ShieldCheck; title: string; tag?: ReactNode; sub?: string }) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Icon size={18} style={{ color: "var(--accent)" }} />
+        <h3 className="font-semibold">{title}</h3>
+        {tag}
+      </div>
+      {sub && <p className="text-[13px] opacity-60 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--inferred-fg)" }} />
+      </div>
+      <span className="text-[12px] font-medium tabular-nums opacity-70">{pct}% confidence</span>
+    </div>
+  );
+}
+
+function ValueScoreBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  return (
+    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
+      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--accent)" }} />
+    </div>
+  );
+}
+
+function EmployeeValueScoreCard({ detail, compact }: { detail: ValueScoreDetail | null; compact?: boolean }) {
+  if (!detail) {
+    return (
+      <Card className="p-6" style={{ background: "var(--surface-2)" }}>
+        <SectionHeader icon={Activity} title="Employee Value Score" tag={<SupportingMetricTag />}
+          sub="Composite 0–1000 index from verified inputs. Internal only — never on your passport." />
+        <p className="text-sm opacity-60">No value score computed yet. When employee_value_scores rows exist for your profile, the breakdown appears here.</p>
+      </Card>
+    );
+  }
+
+  const benchRows = [
+    { label: "Your team", value: detail.benchmarks.team },
+    { label: "Department", value: detail.benchmarks.department },
+    { label: "Company", value: detail.benchmarks.company },
+  ];
+
+  return (
+    <Card className="p-6" style={{ background: "var(--surface-2)" }}>
+      <SectionHeader icon={Activity} title="Employee Value Score" tag={<SupportingMetricTag />}
+        sub="Composite supporting metric (0–1000). Never the sole basis for pay, promotion, or termination." />
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-5">
+        <div>
+          <div className="text-[12px] uppercase tracking-widest opacity-60">Current index</div>
+          <div className="text-4xl font-semibold serif mt-1" style={{ color: "var(--accent)" }}>{detail.score}</div>
+          {detail.computedAt && <div className="text-[11px] opacity-50 mt-1">Updated {new Date(detail.computedAt).toLocaleDateString()}</div>}
+        </div>
+        {!compact && (
+          <div className="flex gap-4 flex-wrap flex-1 sm:justify-end">
+            {benchRows.map((b) => (
+              <div key={b.label} className="text-center min-w-[72px]">
+                <div className="text-[11px] opacity-60">{b.label}</div>
+                <div className="text-lg font-semibold serif">{b.value ?? "—"}</div>
+                <div className="text-[10px] opacity-50">avg</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {!compact && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {VALUE_INPUT_LABELS.map(({ key, label }) => (
+            <div key={key}>
+              <div className="flex justify-between text-[12px] mb-1">
+                <span className="opacity-70">{label}</span>
+                <span className="font-medium tabular-nums">{Math.round(detail.inputs[key] * 100)}%</span>
+              </div>
+              <ValueScoreBar value={detail.inputs[key]} />
+            </div>
+          ))}
+        </div>
+      )}
+      <TransparencyNote>
+        Derived from verified KPIs, reviews, projects, certifications, and pulse signals stored in employee_value_scores.inputs.
+        You can dispute this metric with HR — it is advisory context, not a verified fact, and is never published externally.
+      </TransparencyNote>
+    </Card>
+  );
+}
+
+const PROMO_CATEGORIES: PromotionReadinessRow["category"][] = ["ready_now", "6mo", "12mo", "dev_needed"];
+
+function PromotionReadinessPanel({ rows, title, sub }: { rows: PromotionReadinessRow[]; title?: string; sub?: string }) {
+  const grouped = Object.fromEntries(PROMO_CATEGORIES.map((c) => [c, rows.filter((r) => r.category === c)]));
+
+  return (
+    <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+      <SectionHeader icon={TrendingUp} title={title ?? "Promotion Readiness"} tag={<InferredTag />}
+        sub={sub ?? "AI timing guidance from verified evidence — managers and execs decide; employees may dispute."} />
+      <p className="text-[13px] mb-4 opacity-80 flex items-start gap-2">
+        <Info size={14} className="mt-0.5 shrink-0" style={{ color: "var(--inferred-fg)" }} />
+        Categories are recommendations only. No automatic promotions, ratings, or comp changes are triggered.
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-sm opacity-70">No promotion readiness assessments yet. Rows in promotion_readiness appear here when the inference engine runs.</p>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-3">
+          {PROMO_CATEGORIES.map((cat) => (
+            <div key={cat} className="p-4 rounded-xl" style={{ background: "var(--surface)" }}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="font-semibold text-[14px]">{PROMO_CATEGORY_LABELS[cat]}</span>
+                <span className="text-[12px] px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>
+                  {grouped[cat].length}
+                </span>
+              </div>
+              {grouped[cat].length === 0 ? (
+                <p className="text-[12px] opacity-50">None in this bucket</p>
+              ) : (
+                <ul className="space-y-2">
+                  {grouped[cat].map((r) => (
+                    <li key={r.employeeId} className="text-[13px]">
+                      <span className="font-medium">{r.who}</span>
+                      <p className="opacity-70 mt-0.5 text-[12px] leading-relaxed">{r.evidence}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <TransparencyNote>
+        From promotion_readiness (AI INFERENCE). Combines verified KPIs, project outcomes, certifications, and review alignment.
+        Internal only — never shown on the verified resume or external passport.
+      </TransparencyNote>
+    </Card>
+  );
+}
+
+function CompensationIntelligenceView({ userId }: { userId: string }) {
+  const [recs, setRecs] = useState<CompRecommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setError(null);
+    const rows = await fetchCompensationIntelligence(userId);
+    setRecs(rows);
+    return rows;
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        await reload();
+      } catch (e) {
+        if (!cancelled) setError(errorMessage(e, "Could not load recommendations."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [reload]);
+
+  async function runOrgGeneration() {
+    setGenerating(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sign in again to generate recommendations.");
+      const result = await generateOrgInsights(session.access_token);
+      setNotice(
+        result.processed
+          ? `Generated AI insights for ${result.processed} of ${result.total} people. Recommendations below are live from compensation_recommendations.`
+          : `No recommendations saved.${result.failed.length ? ` ${result.failed[0].error}` : ""}`,
+      );
+      await reload();
+    } catch (e) {
+      setError(errorMessage(e, "AI generation failed."));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  if (loading) return <div className="opacity-60 text-sm">Loading compensation intelligence…</div>;
+
+  const raises = recs.filter((r) => r.type === "raise");
+  const bonuses = recs.filter((r) => r.type === "bonus");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="serif text-2xl font-semibold">Compensation Intelligence</h2>
+        <p className="text-[14px] opacity-60 mt-1 max-w-3xl">
+          Inference engine for comp review cycles. The system recommends ranges — humans decide every raise and bonus.
+        </p>
+      </div>
+
+      <Card className="p-5 border-2" style={{ borderColor: "var(--inferred-fg)", background: "var(--inferred-bg)" }}>
+        <div className="flex items-start gap-3">
+          <AlertTriangle size={20} className="shrink-0 mt-0.5" style={{ color: "var(--inferred-fg)" }} />
+          <div>
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-semibold">Decision support only</span>
+              <InferredTag />
+            </div>
+            <p className="text-[14px] leading-relaxed opacity-85">
+              Every item below is an <strong>AI INFERENCE</strong> from compensation_recommendations — internal to your org,
+              never on an employee&apos;s verified resume or external passport. Comp committee and managers approve or ignore
+              each recommendation; nothing is applied automatically.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
+      {notice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{notice}</p>}
+
+      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+        <SectionHeader icon={Sparkles} title="Generate org-wide AI recommendations" tag={<InferredTag />}
+          sub="Runs Anthropic for every employee and manager in your org, then writes to compensation_recommendations, promotion_readiness, and employee_value_scores." />
+        <p className="text-[13px] opacity-80 mb-4">
+          Requires <code className="text-[12px]">SUPABASE_SERVICE_ROLE_KEY</code> and <code className="text-[12px]">ANTHROPIC_API_KEY</code> in .env.local.
+          Executive-only; comp committee still decides every outcome.
+        </p>
+        <button
+          type="button"
+          disabled={generating}
+          onClick={runOrgGeneration}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
+          style={{ background: "var(--accent)" }}
+        >
+          <Sparkles size={16} />
+          {generating ? "Generating… (may take several minutes)" : "Generate for entire organization"}
+        </button>
+      </Card>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Stat label="Raise recommendations" value={String(raises.length)} sub="pending review" accent="var(--accent)" />
+        <Stat label="Bonus recommendations" value={String(bonuses.length)} sub="pending review" />
+        <Stat label="High-confidence alerts" value={String(recs.filter((r) => r.confidence >= 0.7 && r.status === "pending").length)} sub="confidence ≥ 70%" accent="var(--warn)" />
+      </div>
+
+      <Card className="p-6">
+        <SectionHeader icon={DollarSign} title="Recommended ranges" tag={<InferredTag />}
+          sub="Each card shows a suggested range, evidence bullets, signal factors, and model confidence." />
+        {recs.length === 0 ? (
+          <p className="text-sm opacity-60">
+            No recommendations yet. Click <strong>Generate for entire organization</strong> above to populate compensation_recommendations from verified team data.
+          </p>
+        ) : (
+        <div className="space-y-4">
+          {recs.map((rec) => (
+            <div key={rec.id} className="p-5 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-lg">{rec.who}</span>
+                    <span className="text-[11px] uppercase tracking-widest px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: rec.type === "raise" ? "var(--accent-soft)" : "var(--verified-bg)", color: rec.type === "raise" ? "var(--accent)" : "var(--verified-fg)" }}>
+                      {rec.type}
+                    </span>
+                    <InferredTag />
+                    {rec.status !== "pending" && <span className="text-[11px] opacity-60 capitalize">{rec.status}</span>}
+                  </div>
+                  <div className="text-xl font-semibold serif mt-2" style={{ color: "var(--inferred-fg)" }}>{rec.rangeLabel}</div>
+                </div>
+                <div className="sm:w-48 shrink-0">
+                  <ConfidenceBar value={rec.confidence} />
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="text-[11px] uppercase tracking-widest opacity-60 mb-1.5">Signal factors</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {rec.factors.map((f) => (
+                    <span key={f} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{f}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="text-[11px] uppercase tracking-widest opacity-60 mb-1.5">Supporting evidence</div>
+              <ul className="space-y-1.5">
+                {rec.reasoningBullets.map((b, i) => (
+                  <li key={i} className="text-[13px] opacity-80 flex items-start gap-2">
+                    <Check size={14} className="shrink-0 mt-0.5" style={{ color: "var(--verified-fg)" }} />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+              <TransparencyNote>
+                Model output from compensation_recommendations. Weighs KPI achievement, project impact, certifications,
+                market benchmarks, and internal equity signals. Your comp committee makes the final call — this is routing and rationale, not approval.
+              </TransparencyNote>
+            </div>
+          ))}
+        </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+const KIND_ICON: Record<string, typeof Target> = {
+  kpi: Target, project: FolderGit2, certification: GraduationCap,
+  promotion: TrendingUp, award: Award, process_improvement: Lightbulb, leadership: Crown,
+};
 
 /* ═══════════════════ PUBLIC MARKETING SITE ═══════════════════ */
 function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: Theme; setTheme: (theme: Theme) => void }) {
@@ -203,7 +564,7 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
           <Card className="p-5 md:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-[13px] opacity-60"><Globe size={14} /> /p/verify/8f3a…c2</div>
-              <VerifiedTag />
+              <VerifiedFactTag />
             </div>
             <div className="serif text-2xl font-semibold">Tyrell S. — Senior Equity Program Lead</div>
             <div className="grid grid-cols-3 gap-4 mt-5">
@@ -264,7 +625,7 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
           </p>
           <div className="grid md:grid-cols-2 gap-5 mt-8">
             <Card className="p-6">
-              <VerifiedTag />
+              <VerifiedFactTag />
               <h3 className="font-semibold text-xl mt-3">Verified facts</h3>
               <p className="opacity-70 mt-2 text-[15px] leading-relaxed">Confirmed by a real attesting person. These can appear on a public passport. They stay correctable, with an audit trail.</p>
             </Card>
@@ -531,10 +892,18 @@ function ProfileEditor({ userId, onSaved }: { userId: string; onSaved?: (profile
     e.preventDefault();
     setSaving(true);
     setMessage(null);
-    const { error } = await supabase.from("profiles").update({ full_name: fullName.trim() || null, title: title.trim() || null }).eq("id", userId);
+    const patch = { full_name: fullName.trim() || null, title: title.trim() || null };
+    const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
     setSaving(false);
     if (error) setMessage(error.message);
     else {
+      await writeAuditLog({
+        actorId: userId,
+        action: "profile_edit",
+        targetTable: "profiles",
+        targetId: userId,
+        changes: patch,
+      });
       setMessage("Profile saved.");
       onSaved?.({ fullName: fullName.trim(), title: title.trim() });
     }
@@ -587,17 +956,30 @@ function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string;
     e.preventDefault();
     setSaving(true);
     setSaved(false);
-    const payload = { [field]: responses, profile_id: userId, status: "open" };
+    const payload = { [field]: responses, profile_id: userId };
     let error;
+    let recordId = cycleId;
     if (cycleId) {
       ({ error } = await supabase.from("feedback_cycles").update(payload).eq("id", cycleId));
     } else {
       const { data, error: insertError } = await supabase.from("feedback_cycles").insert(payload).select("id").single();
       error = insertError;
-      if (data) setCycleId(data.id);
+      if (data) {
+        setCycleId(data.id);
+        recordId = data.id;
+      }
     }
     setSaving(false);
-    if (!error) setSaved(true);
+    if (!error) {
+      await writeAuditLog({
+        actorId: userId,
+        action: "feedback_edit",
+        targetTable: "feedback_cycles",
+        targetId: recordId,
+        changes: { field },
+      });
+      setSaved(true);
+    }
   }
 
   if (loading) return <Card className="p-6 opacity-60 text-sm">Loading feedback…</Card>;
@@ -628,99 +1010,214 @@ function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string;
 
 function EmployeeView({ userId, showOutlook }: { userId: string; showOutlook: boolean }) {
   const [external, setExternal] = useState(false);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [loadingMilestones, setLoadingMilestones] = useState(true);
-  const [newYear, setNewYear] = useState(String(new Date().getFullYear()));
-  const [newText, setNewText] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [vault, setVault] = useState<AchievementRow[]>([]);
+  const [vaultSaved, setVaultSaved] = useState(false);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [outlook, setOutlook] = useState<{ text: string; evidence: string } | null>(null);
+  const [valueScore, setValueScore] = useState<ValueScoreDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
+
+  const reload = useCallback(async () => {
+    setError(null);
+    try {
+      const [ach, events, ol, vs] = await Promise.all([
+        fetchAchievements(userId), // ← Supabase achievements table on mount
+        buildEmployeeTimeline(userId),
+        showOutlook ? fetchEmployeeOutlook(userId) : Promise.resolve(null),
+        fetchEmployeeValueScore(userId),
+      ]);
+      setVault(ach);
+      setTimeline(events);
+      setOutlook(ol);
+      setValueScore(vs);
+    } catch (e) {
+      setError(errorMessage(e, "Could not load career record."));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, showOutlook]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.from("verified_facts").select("id, label, attested_at")
-        .eq("profile_id", userId).eq("kind", "milestone").order("created_at", { ascending: false });
-      if (cancelled) return;
-      setMilestones((data ?? []).map(factToMilestone));
-      setLoadingMilestones(false);
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
+    reload();
+  }, [reload]);
 
-  async function addMilestone(e: FormEvent) {
+  const visibleTimeline = external ? timeline.filter((e) => e.level >= 2) : timeline;
+  const visibleVault = external ? vault.filter((a) => a.verification_level >= 2) : vault;
+  const maxLevel = vault.reduce((m, a) => Math.max(m, a.verification_level), timeline.reduce((m, e) => Math.max(m, e.level), 0));
+
+  async function addAchievement(e: FormEvent) {
     e.preventDefault();
-    if (!newText.trim()) return;
-    setAdding(true);
-    const { data, error } = await supabase.from("verified_facts").insert({
-      profile_id: userId,
-      kind: "milestone",
-      label: milestoneLabel({ y: newYear, t: newText.trim() }),
-    }).select("id, label, attested_at").single();
-    setAdding(false);
-    if (!error && data) {
-      setMilestones((prev) => [factToMilestone(data), ...prev]);
-      setNewText("");
+    if (!draft.title.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    setVaultSaved(false);
+    try {
+      const orgId = await fetchProfileOrgId(userId);
+      const row = await saveAchievement(userId, orgId, draft); // ← insert into achievements
+      setVault((prev) => [row, ...prev]);
+      setTimeline(await buildEmployeeTimeline(userId));
+      setDraft({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
+      setVaultSaved(true);
+    } catch (err) {
+      setError(errorMessage(err, "Could not save achievement."));
+    } finally {
+      setSubmitting(false);
     }
   }
+
+  if (loading) return <div className="opacity-60 text-sm">Loading career record…</div>;
 
   return (
     <div className="space-y-6">
       <ProfileEditor userId={userId} />
+      <PassportLinkCard userId={userId} />
+      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       <Card className="p-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <div className="text-[12px] uppercase tracking-widest opacity-60">Modality</div>
+          <div className="text-[12px] uppercase tracking-widest opacity-60">Living career record</div>
           <h2 className="text-xl font-semibold mt-1 serif">{external ? "External Passport Preview" : "Internal Career View"}</h2>
-          <p className="text-[13px] opacity-60 mt-1 max-w-md">
-            {external ? "Exactly what an outside company sees — attested facts and your own validated achievements only." : "Your full view, including private coaching feedback and AI guidance."}
+          <p className="text-[13px] opacity-60 mt-1 max-w-lg">
+            {external
+              ? "Shareable view only — verified records (L2+). Self-reported items are hidden. Not downloadable."
+              : "Full timeline, achievement vault, feedback, and private AI guidance."}
           </p>
         </div>
         <button onClick={() => setExternal(!external)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm text-white" style={{ background: "var(--accent)" }}>
-          {external ? <EyeOff size={16} /> : <Eye size={16} />}{external ? "Show internal view" : "Preview public passport"}
+          {external ? <EyeOff size={16} /> : <Eye size={16} />}
+          {external ? "Show internal view" : "Preview public passport"}
         </button>
       </Card>
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Stat label="Skill Velocity (90d)" value="+7" sub="validated skills" accent="var(--accent)" />
-        <Stat label="Kudos received" value="34" sub="this quarter" />
-        <Stat label="Verified tenure" value="6.2 yr" sub="3 employers attested" accent="var(--verified-fg)" />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Stat label="Vault items" value={String(vault.length)} sub={`${vault.filter((a) => a.verification_level >= 2).length} verified`} />
+        <Stat label="Timeline events" value={String(visibleTimeline.length)} sub={external ? "public-safe" : "full history"} />
+        <Stat label="Highest level" value={maxLevel ? `L${maxLevel}` : "—"} sub={maxLevel >= 4 ? "company verified" : "from Supabase"} accent="var(--accent)" />
+        <Stat label="Verified facts" value={String(timeline.filter((e) => e.level >= 2).length)} sub="L2+ entries" accent="var(--verified-fg)" />
       </div>
+
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4"><Award size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Journey Roadmap</h3></div>
-        {loadingMilestones ? (
-          <p className="text-sm opacity-60">Loading milestones…</p>
-        ) : milestones.length === 0 ? (
-          <p className="text-sm opacity-60 mb-4">No milestones yet — add your first one below.</p>
+        <SectionHeader icon={GitBranch} title="Career Timeline" sub="Chronological record from verified_facts, achievements, projects, and approved KPIs." />
+        {visibleTimeline.length === 0 ? (
+          <p className="text-sm opacity-60">No timeline events yet. Submit achievements or add verified facts.</p>
         ) : (
-          <div className="relative pl-6 mb-6">
+          <div className="relative pl-6">
             <div className="absolute left-[7px] top-1 bottom-1 w-px" style={{ background: "var(--line)" }} />
-            {milestones.map((m) => (
-              <div key={m.id} className="relative mb-5 last:mb-0">
-                <div className="absolute -left-[22px] top-1 w-3.5 h-3.5 rounded-full border-2" style={{ borderColor: m.v ? "var(--verified-fg)" : "var(--line)", background: m.v ? "var(--verified-fg)" : "var(--surface)" }} />
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-[12px] font-mono opacity-50">{m.y}</span>
-                  <span className="font-medium text-[15px]">{m.t}</span>
-                  {m.v ? <VerifiedTag /> : <span className="text-[11px] opacity-50">self-reported</span>}
+            {visibleTimeline.map((ev) => {
+              const Icon = KIND_ICON[ev.kind] ?? Award;
+              return (
+                <div key={ev.id} className="relative mb-5 last:mb-0">
+                  <div className="absolute -left-[22px] top-1 w-3.5 h-3.5 rounded-full border-2"
+                    style={{ borderColor: ev.level >= 2 ? "var(--verified-fg)" : "var(--line)", background: ev.level >= 2 ? "var(--verified-fg)" : "var(--surface)" }} />
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
+                    <span className="text-[12px] font-mono opacity-50 w-12 shrink-0">{ev.year}</span>
+                    <Icon size={16} className="opacity-50 hidden sm:block" />
+                    <span className="font-medium text-[15px] flex-1">{ev.label}</span>
+                    {ev.level >= 2 ? <LevelBadge level={ev.level} /> : <SelfReportedTag />}
+                  </div>
+                  {(() => {
+                    const m = ev.id.match(/^(fact|ach|proj|kpi)-(.+)$/);
+                    if (!m) return null;
+                    const tables: Record<string, string> = {
+                      fact: "verified_facts", ach: "achievements", proj: "projects", kpi: "kpis",
+                    };
+                    const table = tables[m[1]];
+                    if (!table) return null;
+                    return <VerificationHistory targetTable={table} targetId={m[2]} compact />;
+                  })()}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-        <form onSubmit={addMilestone} className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: "var(--line)" }}>
-          <input value={newYear} onChange={(e) => setNewYear(e.target.value)} placeholder="Year" className="w-20 px-3 py-2 rounded-xl border text-sm outline-none"
-            style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
-          <input value={newText} onChange={(e) => setNewText(e.target.value)} placeholder="Achievement or milestone" required
-            className="flex-1 min-w-[180px] px-3 py-2 rounded-xl border text-sm outline-none"
-            style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
-          <button type="submit" disabled={adding} className="px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-60" style={{ background: "var(--accent)" }}>
-            {adding ? "Adding…" : "Add milestone"}
-          </button>
-        </form>
+        {external && (
+          <p className="text-[12px] mt-4 pt-3 border-t opacity-60" style={{ borderColor: "var(--line)" }}>
+            External view: only manager-verified or higher (L2+). Self-reported entries are never shown outside the org.
+          </p>
+        )}
       </Card>
-      <FeedbackCycleCard userId={userId} field="employee_responses" title="This cycle — your responses"
-        subtitle="Saved to feedback_cycles in Supabase. Your manager adds their side separately." />
+
+      <Card className="p-6">
+        <SectionHeader
+          icon={Award}
+          title="Verified Achievement Vault"
+          sub="Connected to Supabase achievements — loads on mount, saves on submit. New items start at L1 (Self-Reported); your manager can verify to L2+."
+        />
+        {!external && (
+          <form onSubmit={addAchievement} className="p-4 rounded-xl border mb-5 space-y-2" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <select value={draft.kind ?? "achievement"} onChange={(e) => setDraft({ ...draft, kind: e.target.value })}
+                className="px-3 py-2 rounded-lg border text-sm outline-none sm:col-span-2"
+                style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
+                <option value="achievement">Kind: Achievement</option>
+                <option value="kpi">Kind: KPI</option>
+                <option value="certification">Kind: Certification</option>
+                <option value="promotion">Kind: Promotion</option>
+                <option value="award">Kind: Award</option>
+              </select>
+              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Achievement title" required
+                className="px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
+              <input value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} placeholder="Date (YYYY-MM)"
+                className="px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
+            </div>
+            <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="Description" rows={2}
+              className="w-full px-3 py-2 rounded-lg border text-sm outline-none resize-y" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
+            <input value={draft.evidence} onChange={(e) => setDraft({ ...draft, evidence: e.target.value })} placeholder="Evidence URL or note"
+              className="w-full px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
+            <button type="submit" disabled={submitting} className="px-4 py-2 rounded-lg text-sm font-medium text-white inline-flex items-center gap-1 disabled:opacity-60" style={{ background: "var(--accent)" }}>
+              <Plus size={14} /> {submitting ? "Saving to Supabase…" : "Save to vault (L1 Self-Reported)"}
+            </button>
+            {vaultSaved && (
+              <span className="text-[13px] ml-2" style={{ color: "var(--verified-fg)" }}>Saved — verification level L1 until manager approves.</span>
+            )}
+          </form>
+        )}
+        {visibleVault.length === 0 ? (
+          <p className="text-sm opacity-60">No achievements in the vault yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {visibleVault.map((a) => {
+              const Icon = KIND_ICON[a.kind] ?? Award;
+              return (
+                <div key={a.id} className="p-4 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg shrink-0" style={{ background: "var(--accent-soft)" }}><Icon size={18} style={{ color: "var(--accent)" }} /></div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{achievementTitle(a.description)}</span>
+                        <LevelBadge level={a.verification_level} />
+                      </div>
+                      <div className="text-[12px] opacity-50 mt-0.5">{a.achievement_date ?? a.created_at.slice(0, 10)}</div>
+                      <p className="text-[13px] opacity-70 mt-1">{a.description}</p>
+                      {a.evidence_url && <p className="text-[12px] opacity-50 mt-1">Evidence: {a.evidence_url}</p>}
+                      <VerificationHistory targetTable="achievements" targetId={a.id} compact />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {!external && (
+        <FeedbackCycleCard userId={userId} field="employee_responses" title="This cycle — your responses"
+          subtitle="Saved to feedback_cycles in Supabase. Your manager adds their side separately." />
+      )}
+      {!external && <EmployeeValueScoreCard detail={valueScore} />}
       {!external && showOutlook && (
         <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
           <div className="flex items-center gap-2 mb-2"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Professional Outlook</h3><InferredTag /></div>
-          <p className="text-[14px] leading-relaxed">Trajectory suggests promotion-readiness within 2–3 quarters, anchored by consistent cross-functional delivery and rising skill velocity.</p>
-          <TransparencyNote>A model-generated prediction, not a fact. It blends your validated skill rate, kudos trend, and feedback alignment. Visible only to you, never on your external passport. You can dispute or hide it in Settings.</TransparencyNote>
+          {outlook ? (
+            <>
+              <p className="text-[14px] leading-relaxed">{outlook.text}</p>
+              <TransparencyNote>{outlook.evidence} — model-generated prediction from promotion_readiness, not a fact. Visible only to you, never on your external passport.</TransparencyNote>
+            </>
+          ) : (
+            <p className="text-[14px] opacity-70">No AI outlook yet for your profile. When promotion_readiness rows exist, they appear here as guidance only.</p>
+          )}
         </Card>
       )}
     </div>
@@ -728,70 +1225,473 @@ function EmployeeView({ userId, showOutlook }: { userId: string; showOutlook: bo
 }
 
 function ManagerView({ userId }: { userId: string }) {
-  const reports = [
-    { n: "A. Rivera", role: "Equity Analyst II", morale: 0.82, dev: 0.12, flag: false },
-    { n: "J. Okafor", role: "Equity Analyst I", morale: 0.61, dev: 0.74, flag: true },
-    { n: "M. Chen", role: "Sr. Analyst", morale: 0.9, dev: 0.08, flag: false },
-  ];
+  const [verifyItems, setVerifyItems] = useState<VerifyQueueItem[]>([]);
+  const [coaching, setCoaching] = useState<{ who: string; label: string; evidence: string }[]>([]);
+  const [reviews, setReviews] = useState<Awaited<ReturnType<typeof fetchReviewRows>>>([]);
+  const [teamScores, setTeamScores] = useState<TeamValueScoreRow[]>([]);
+  const [promoRows, setPromoRows] = useState<PromotionReadinessRow[]>([]);
+  const [health, setHealth] = useState({ morale: null as number | null, workload: null as number | null, productivity: null as number | null, reportCount: 0 });
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setError(null);
+    try {
+      const reports = await fetchDirectReports(userId);
+      const ids = reports.map((r) => r.id);
+      const [queue, insights, reviewRows, teamHealth, scores, promo] = await Promise.all([
+        fetchVerifyQueue(userId),
+        fetchCoachingInsights(ids),
+        fetchReviewRows(userId),
+        fetchTeamHealth(ids),
+        fetchTeamValueScores(userId),
+        fetchPromotionReadinessRows(ids),
+      ]);
+      setVerifyItems(queue);
+      setCoaching(insights);
+      setReviews(reviewRows);
+      setHealth(teamHealth);
+      setTeamScores(scores);
+      setPromoRows(promo);
+    } catch (e) {
+      setError(errorMessage(e, "Could not load manager dashboard."));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  async function verifyAct(item: VerifyQueueItem, action: "approve" | "reject" | "clarify") {
+    setActing(item.id);
+    setError(null);
+    try {
+      await verifyQueueAction(userId, item, action);
+      await reload();
+    } catch (e) {
+      setError(errorMessage(e, "Verification action failed."));
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function runTeamAiGeneration() {
+    setGeneratingAi(true);
+    setError(null);
+    setAiNotice(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sign in again to generate insights.");
+      const result = await generateManagerInsights(session.access_token);
+      setAiNotice(
+        result.processed
+          ? `Generated AI insights for ${result.processed} of ${result.total} direct report(s). Refresh panels below — all labeled AI INFERENCE.`
+          : `No insights saved.${result.failed.length ? ` ${result.failed[0].error}` : ""}`,
+      );
+      await reload();
+    } catch (e) {
+      setError(errorMessage(e, "AI generation failed."));
+    } finally {
+      setGeneratingAi(false);
+    }
+  }
+
+  const burnoutRisk = health.workload != null && health.workload < 0.55 ? "High" : health.workload != null && health.workload < 0.7 ? "Moderate" : "Low";
+
+  if (loading) return <div className="opacity-60 text-sm">Loading manager dashboard…</div>;
+
   return (
     <div className="space-y-6">
       <ProfileEditor userId={userId} />
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Stat label="Team morale index" value="0.78" sub="↑ 0.04 vs last cycle" accent="var(--accent)" />
-        <Stat label="Open evaluations" value="2" sub="due in 5 days" />
-        <Stat label="Deviation flags" value="1" sub="needs coaching" accent="var(--warn)" />
-      </div>
-      <Card className="p-6">
-        <h3 className="font-semibold mb-4">Direct reports</h3>
-        <div className="space-y-3">
-          {reports.map((r, i) => (
-            <div key={i} className="flex items-center justify-between gap-4 p-3 rounded-xl border flex-wrap" style={{ borderColor: "var(--line)", background: r.flag ? "var(--warn-bg)" : "var(--surface-2)" }}>
-              <div className="min-w-0">
-                <div className="font-medium flex items-center gap-2">{r.n}{r.flag && <AlertTriangle size={14} style={{ color: "var(--warn)" }} />}</div>
-                <div className="text-[12px] opacity-60">{r.role}</div>
-              </div>
-              <div className="flex items-center gap-5 text-[13px]">
-                <div className="text-right"><div className="opacity-50 text-[11px] uppercase">Morale</div><div className="font-semibold">{r.morale.toFixed(2)}</div></div>
-                <div className="text-right"><div className="opacity-50 text-[11px] uppercase">Δ Dev</div><div className="font-semibold" style={{ color: r.dev > 0.5 ? "var(--warn)" : "var(--ink)" }}>{r.dev.toFixed(2)}</div></div>
-                <button className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white inline-flex items-center gap-1" style={{ background: "var(--accent)" }}>Draft outlook <ChevronRight size={14} /></button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <TransparencyNote>Deviation (Δ) is the gap between an employee's self-rating and yours on the same competency. High isn't bad — it surfaces a blind spot worth a conversation. Coaching signal only; never published.</TransparencyNote>
+      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
+      {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
+
+      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+        <SectionHeader icon={Sparkles} title="Generate AI insights" tag={<InferredTag />}
+          sub="Calls Anthropic server-side using verified team data, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores. You decide every outcome." />
+        <p className="text-[13px] opacity-80 mb-4">
+          Requires <code className="text-[12px]">SUPABASE_SERVICE_ROLE_KEY</code> and <code className="text-[12px]">ANTHROPIC_API_KEY</code> in .env.local.
+          Generates for all direct reports ({health.reportCount}).
+        </p>
+        <button
+          type="button"
+          disabled={generatingAi || health.reportCount === 0}
+          onClick={runTeamAiGeneration}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
+          style={{ background: "var(--accent)" }}
+        >
+          <Sparkles size={16} />
+          {generatingAi ? "Generating… (may take a minute)" : "Generate insights for my team"}
+        </button>
       </Card>
-      <FeedbackCycleCard userId={userId} field="manager_responses" title="Manager feedback — your responses"
-        subtitle="Prototype: saved on your feedback_cycles row. In production, managers would write on each report's cycle." />
+
+      <Card className="p-6">
+        <SectionHeader icon={Activity} title="Team Health Overview" sub={`${health.reportCount} direct reports — from pulse_surveys and employee_value_scores.`} />
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <Stat label="Morale" value={health.morale != null ? health.morale.toFixed(2) : "—"} sub="pulse avg" accent="var(--accent)" />
+          <Stat label="Productivity" value={health.productivity != null ? health.productivity.toFixed(2) : "—"} sub="value score index" accent="var(--verified-fg)" />
+          <Stat label="Workload balance" value={health.workload != null ? health.workload.toFixed(2) : "—"} sub="pulse balance" />
+          <div className="rounded-2xl border p-5" style={{ borderColor: "var(--line)", background: "var(--inferred-bg)" }}>
+            <div className="flex items-center gap-1 mb-1"><InferredTag /></div>
+            <div className="text-[12px] uppercase tracking-widest opacity-60">Burnout risk</div>
+            <div className="mt-1 text-2xl font-semibold serif" style={{ color: burnoutRisk === "Low" ? "var(--verified-fg)" : "var(--warn)" }}>{burnoutRisk}</div>
+            <div className="text-[12px] mt-1 opacity-60">inferred from pulse</div>
+          </div>
+          <Stat label="Pending verifications" value={String(verifyItems.length)} sub="awaiting you" />
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <SectionHeader icon={ShieldCheck} title="Employee Verification Center"
+          sub="Approve KPIs, projects, certifications, promotions, and awards. Each action creates a permanent audit record and sets verification level L2 (Manager Verified)." />
+        {verifyItems.length === 0 ? (
+          <p className="text-sm opacity-60">No pending items. Assign direct reports via profiles.manager_id, then they can submit achievements and KPIs.</p>
+        ) : (
+          <div className="space-y-3">
+            {verifyItems.map((it) => {
+              const Icon = KIND_ICON[it.kind] ?? Target;
+              const pending = it.status === "pending" || it.status === "clarify";
+              return (
+                <div key={`${it.sourceTable}-${it.id}`} className="p-4 rounded-xl border" style={{ borderColor: "var(--line)", background: it.status === "rejected" ? "var(--warn-bg)" : "var(--surface-2)" }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg shrink-0" style={{ background: "var(--accent-soft)" }}><Icon size={18} style={{ color: "var(--accent)" }} /></div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{it.title}</span>
+                        <LevelBadge level={it.level} />
+                        <span className="text-[11px] opacity-50">{it.sourceTable}</span>
+                        {!pending && <span className="text-[11px] capitalize opacity-60">{it.status}</span>}
+                      </div>
+                      <div className="text-[13px] opacity-70 mt-0.5">{it.who}</div>
+                      <p className="text-[13px] opacity-60 mt-1">{it.desc}</p>
+                      <VerificationHistory targetTable={it.sourceTable} targetId={it.id} compact />
+                      {pending && (
+                        <>
+                          <p className="text-[12px] mt-2 px-2 py-1.5 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
+                            Approving writes to audit_log and sets L2 Manager Verified where applicable.
+                          </p>
+                          <div className="flex gap-2 mt-3 flex-wrap">
+                            <button disabled={acting === it.id} onClick={() => verifyAct(it, "approve")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white inline-flex items-center gap-1 disabled:opacity-60" style={{ background: "var(--verified-fg)" }}>
+                              <Check size={14} /> Approve
+                            </button>
+                            <button disabled={acting === it.id} onClick={() => verifyAct(it, "clarify")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium border inline-flex items-center gap-1 disabled:opacity-60" style={{ borderColor: "var(--line)" }}>
+                              <MessageSquareWarning size={14} /> Clarify
+                            </button>
+                            <button disabled={acting === it.id} onClick={() => verifyAct(it, "reject")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium border inline-flex items-center gap-1 disabled:opacity-60" style={{ borderColor: "var(--line)", color: "var(--warn)" }}>
+                              <X size={14} /> Reject
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-6">
+        <SectionHeader icon={ClipboardList} title="Performance Review Center" sub="Cycle reviews from feedback_cycles — you sign off; AI never completes a review." />
+        {reviews.length === 0 ? (
+          <p className="text-sm opacity-60">No direct reports found. Set profiles.manager_id on your team in Supabase.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[14px] min-w-[480px]">
+              <thead>
+                <tr className="text-left text-[12px] uppercase tracking-widest opacity-60 border-b" style={{ borderColor: "var(--line)" }}>
+                  <th className="pb-2 pr-4">Employee</th><th className="pb-2 pr-4">Cycle</th><th className="pb-2 pr-4">Updated</th><th className="pb-2 pr-4">Status</th><th className="pb-2">Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reviews.map((r) => (
+                  <tr key={r.profileId} className="border-b" style={{ borderColor: "var(--line)" }}>
+                    <td className="py-3 pr-4 font-medium">{r.who}</td>
+                    <td className="py-3 pr-4 opacity-70">{r.cycle}</td>
+                    <td className="py-3 pr-4 opacity-70">{r.due}</td>
+                    <td className="py-3 pr-4"><span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--surface-2)" }}>{r.status}</span></td>
+                    <td className="py-3">{r.rating}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-6" style={{ background: "var(--surface-2)" }}>
+        <SectionHeader icon={Activity} title="Team Value Scores" tag={<SupportingMetricTag />}
+          sub="0–1000 supporting index per direct report — compare against team average. Not used alone for decisions." />
+        {teamScores.length === 0 ? (
+          <p className="text-sm opacity-60">No direct reports with value scores. Assign manager_id and seed employee_value_scores.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[14px] min-w-[520px]">
+              <thead>
+                <tr className="text-left text-[12px] uppercase tracking-widest opacity-60 border-b" style={{ borderColor: "var(--line)" }}>
+                  <th className="pb-2 pr-4">Employee</th>
+                  <th className="pb-2 pr-4">Score</th>
+                  <th className="pb-2 pr-4">Top inputs</th>
+                  <th className="pb-2">vs team avg</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const withScores = teamScores.filter((t) => t.score != null);
+                  const teamAvg = withScores.length
+                    ? Math.round(withScores.reduce((a, t) => a + (t.score ?? 0), 0) / withScores.length)
+                    : null;
+                  return teamScores.map((t) => {
+                    const topInputs = t.inputs
+                      ? VALUE_INPUT_LABELS
+                          .map(({ key, label }) => ({ label, v: t.inputs![key] }))
+                          .sort((a, b) => b.v - a.v)
+                          .slice(0, 2)
+                          .map((x) => x.label)
+                          .join(", ")
+                      : "—";
+                    const delta = t.score != null && teamAvg != null ? t.score - teamAvg : null;
+                    return (
+                      <tr key={t.profileId} className="border-b" style={{ borderColor: "var(--line)" }}>
+                        <td className="py-3 pr-4 font-medium">{t.who}</td>
+                        <td className="py-3 pr-4 font-semibold serif">{t.score ?? "—"}</td>
+                        <td className="py-3 pr-4 opacity-70 text-[13px]">{topInputs}</td>
+                        <td className="py-3">
+                          {delta != null ? (
+                            <span style={{ color: delta >= 0 ? "var(--verified-fg)" : "var(--warn)" }}>
+                              {delta >= 0 ? "+" : ""}{delta}
+                            </span>
+                          ) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <TransparencyNote>
+          From employee_value_scores. Breakdown includes KPIs, reviews, verified projects, certs, leadership, innovation, skills, and recognition.
+          Disputable supporting context — never a verified fact or passport item.
+        </TransparencyNote>
+      </Card>
+
+      <PromotionReadinessPanel rows={promoRows} title="Promotion Readiness — your team" />
+
+      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+        <SectionHeader icon={Sparkles} title="AI Coaching Insights" tag={<InferredTag />}
+          sub="From promotion_readiness — evidence-based guidance only." />
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <InferredTag />
+          <span className="text-[13px] font-medium opacity-80">AI never makes the final call on promotions, ratings, or terminations.</span>
+        </div>
+        {coaching.length === 0 ? (
+          <p className="text-sm opacity-70">No coaching insights yet. Rows in promotion_readiness for your reports appear here.</p>
+        ) : (
+          <div className="space-y-3">
+            {coaching.map((c, i) => (
+              <div key={i} className="p-4 rounded-xl" style={{ background: "var(--surface)" }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium">{c.who}</span>
+                  <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{c.label}</span>
+                </div>
+                <div className="text-[13px] opacity-70 mt-1.5 flex items-start gap-1.5">
+                  <Info size={14} className="mt-0.5 shrink-0" style={{ color: "var(--inferred-fg)" }} />
+                  <span>{c.evidence}</span>
+                </div>
+                <TransparencyNote>From promotion_readiness table. Advisory signal — not a decision.</TransparencyNote>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
 
-function ExecutiveView() {
-  const morale = [0.71, 0.69, 0.73, 0.76, 0.74, 0.78];
+function ExecutiveView({ userId }: { userId: string }) {
+  const [selectedDept, setSelectedDept] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<Awaited<ReturnType<typeof fetchExecutiveDashboard>>["metrics"]>(null);
+  const [departments, setDepartments] = useState<Awaited<ReturnType<typeof fetchExecutiveDashboard>>["departments"]>([]);
+  const [promoRows, setPromoRows] = useState<PromotionReadinessRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generatingAi, setGeneratingAi] = useState(false);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setError(null);
+    const [data, promo] = await Promise.all([
+      fetchExecutiveDashboard(userId),
+      fetchOrgPromotionReadiness(userId),
+    ]);
+    setMetrics(data.metrics);
+    setDepartments(data.departments);
+    setPromoRows(promo);
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        await reload();
+      } catch (e) {
+        if (!cancelled) setError(errorMessage(e, "Could not load executive dashboard."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [reload]);
+
+  async function runOrgAiGeneration() {
+    setGeneratingAi(true);
+    setError(null);
+    setAiNotice(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Sign in again to generate insights.");
+      const result = await generateOrgInsights(session.access_token);
+      setAiNotice(
+        result.processed
+          ? `Generated AI insights for ${result.processed} of ${result.total} people org-wide. Dashboard and promotion panels refreshed — all labeled AI INFERENCE.`
+          : `No insights saved.${result.failed.length ? ` ${result.failed[0].error}` : ""}`,
+      );
+      await reload();
+    } catch (e) {
+      setError(errorMessage(e, "AI generation failed."));
+    } finally {
+      setGeneratingAi(false);
+    }
+  }
+
+  if (loading) return <div className="opacity-60 text-sm">Loading executive dashboard…</div>;
+
+  if (!metrics) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
+          <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence from Supabase.</p>
+        </div>
+        {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
+        <p className="text-sm opacity-60">Set profiles.org_id on your profile to see org metrics. Add departments, pulse_surveys, and compensation_recommendations for richer data.</p>
+      </div>
+    );
+  }
+
+  const m = metrics;
+
   return (
     <div className="space-y-6">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat label="Org morale index" value="0.78" sub="6-mo high" accent="var(--accent)" />
-        <Stat label="Friction coefficient" value="0.21" sub="↓ healthy" accent="var(--verified-fg)" />
-        <Stat label="Retention vector" value="Stable" sub="2 watch items" />
-        <Stat label="Reviews to sign off" value="5" sub="this week" accent="var(--warn)" />
+      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
+      {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
+
+      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+        <SectionHeader icon={Sparkles} title="Generate org-wide AI insights" tag={<InferredTag />}
+          sub="Calls Anthropic for every employee and manager in your org, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores." />
+        <p className="text-[13px] opacity-80 mb-4">
+          Requires <code className="text-[12px]">SUPABASE_SERVICE_ROLE_KEY</code> and <code className="text-[12px]">ANTHROPIC_API_KEY</code> in .env.local.
+          Covers {m.orgHeadcount > 1 ? `${m.orgHeadcount - 1} employees/managers` : "your org"} — you decide every comp and promotion outcome.
+        </p>
+        <button
+          type="button"
+          disabled={generatingAi}
+          onClick={runOrgAiGeneration}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
+          style={{ background: "var(--accent)" }}
+        >
+          <Sparkles size={16} />
+          {generatingAi ? "Generating… (may take several minutes)" : "Generate insights for entire organization"}
+        </button>
+      </Card>
+
+      <div>
+        <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
+        <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence ({m.orgHeadcount} profiles). Predictive metrics are labeled AI inference — never treated as decisions.</p>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-2"><LineChart size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Morale index trend</h3></div>
-          <Spark data={morale} color="var(--accent)" />
-          <div className="text-[12px] opacity-60 mt-1">MI = w₁·S + w₂·Kᵥ − w₃·Vd · (0.5 / 0.3 / 0.2)</div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Stat label="Workforce Health Score" value={String(m.workforceHealth)} sub="org composite /100" accent="var(--verified-fg)" />
+        <Stat label="Productivity Index" value={m.productivity.toFixed(2)} sub="employee_value_scores" accent="var(--accent)" />
+        <Stat label="Employee Morale Index" value={m.morale.toFixed(2)} sub="pulse_surveys avg" accent="var(--accent)" />
+        <Card className="p-5" style={{ background: "var(--inferred-bg)" }}>
+          <div className="mb-2"><InferredTag /></div>
+          <div className="text-[12px] uppercase tracking-widest opacity-60">Retention Risk Index</div>
+          <div className="mt-1 flex items-center gap-2"><RiskPill risk={m.retentionRisk} /><span className="text-[12px] opacity-60">from morale signals</span></div>
+          <TransparencyNote>Aggregated flight-risk model from morale, tenure, and comp equity signals. Routes attention — not individual decisions.</TransparencyNote>
         </Card>
-        <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
-          <div className="flex items-center gap-2 mb-2"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Retention prediction</h3><InferredTag /></div>
-          <p className="text-[14px] leading-relaxed">Two teams show early morale decline correlated with elevated friction. Model estimates raised flight risk over the next two quarters.</p>
-          <TransparencyNote>A predictive output, not a fact about any individual. Built from aggregated, de-identified trends. It guides where to look — never the sole basis for a personnel decision, and excluded from every external profile.</TransparencyNote>
+        <Stat label="Skills Growth Index" value={m.skillsGrowth.toFixed(2)} sub="pulse growth" />
+        <Stat label="Innovation Index" value={m.innovation.toFixed(2)} sub="process improvements + achievements" />
+        <Card className="p-5 sm:col-span-2" style={{ background: "var(--inferred-bg)" }}>
+          <div className="flex items-center gap-2 mb-2"><DollarSign size={16} style={{ color: "var(--inferred-fg)" }} /><span className="text-[12px] uppercase tracking-widest opacity-60">Compensation Intelligence</span><InferredTag /></div>
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            <div><div className="text-2xl font-semibold serif">{m.pendingRaises}</div><div className="text-[12px] opacity-60">Pending raises</div></div>
+            <div><div className="text-2xl font-semibold serif">{m.pendingBonuses}</div><div className="text-[12px] opacity-60">Bonus recs</div></div>
+            <div><div className="text-2xl font-semibold serif" style={{ color: m.underpaidAlerts ? "var(--warn)" : undefined }}>{m.underpaidAlerts}</div><div className="text-[12px] opacity-60">Underpaid alerts</div></div>
+          </div>
+          <div className="text-[13px] mt-3 opacity-70">Equity score: <strong>{m.equityScore.toFixed(2)}</strong> — open <strong>Comp Intelligence</strong> in the sidebar for full recommendations.</div>
+        </Card>
+        <Card className="p-5 sm:col-span-2" style={{ background: "var(--inferred-bg)" }}>
+          <div className="flex items-center gap-2 mb-2"><TrendingUp size={16} style={{ color: "var(--inferred-fg)" }} /><span className="text-[12px] uppercase tracking-widest opacity-60">Promotion Pipeline</span><InferredTag /></div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-center">
+            {[{ l: "Ready now", v: m.promoReadyNow }, { l: "6 mo", v: m.promo6mo }, { l: "12 mo", v: m.promo12mo }, { l: "Succession gaps", v: m.successionGaps }].map((x) => (
+              <div key={x.l} className="p-2 rounded-xl" style={{ background: "var(--surface)" }}>
+                <div className="text-xl font-semibold serif">{x.v}</div>
+                <div className="text-[11px] opacity-60">{x.l}</div>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
+
+      <div>
+        <SectionHeader icon={Building2} title="Departments" sub={departments.length ? "From departments table — per-dept metrics are estimated until profiles.department_id exists." : "Add rows to departments for your org."} />
+        {departments.length === 0 ? (
+          <p className="text-sm opacity-60">No departments configured for this org.</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            {departments.map((d) => (
+              <button key={d.id} type="button" onClick={() => setSelectedDept(d.id === selectedDept ? null : d.id)}
+                className="text-left rounded-2xl border p-5 transition hover:shadow-md"
+                style={{ borderColor: selectedDept === d.id ? "var(--accent)" : "var(--line)", background: selectedDept === d.id ? "var(--accent-soft)" : "var(--surface)" }}>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h4 className="font-semibold">{d.name}</h4>
+                  <span className="text-[13px] opacity-60">{d.headcount} people</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
+                  <div className="flex justify-between"><span className="opacity-60">Productivity</span><span className="font-medium inline-flex items-center gap-1">{d.productivity.toFixed(2)} <TrendArrow dir={d.trends.prod} /></span></div>
+                  <div className="flex justify-between"><span className="opacity-60">Morale</span><span className="font-medium inline-flex items-center gap-1">{d.morale.toFixed(2)} <TrendArrow dir={d.trends.morale} /></span></div>
+                  <div className="flex justify-between items-center"><span className="opacity-60">Retention</span><span className="inline-flex items-center gap-1"><RiskPill risk={d.retention} /> <TrendArrow dir={d.trends.retention} /></span></div>
+                  <div className="flex justify-between"><span className="opacity-60">Innovation</span><span className="font-medium">{d.innovation.toFixed(2)}</span></div>
+                  <div className="flex justify-between col-span-2"><span className="opacity-60">Comp health</span><span className="font-medium">{d.compHealth.toFixed(2)}</span></div>
+                </div>
+                {selectedDept === d.id && (
+                  <p className="text-[12px] mt-3 pt-3 border-t opacity-70" style={{ borderColor: "var(--line)" }}>
+                    Drill-down view coming soon — headcount trends, verification backlog, and pulse aggregates.
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <PromotionReadinessPanel
+        rows={promoRows}
+        title="Promotion Readiness — organization"
+        sub="Org-wide AI timing guidance by category. Exec and managers decide; never auto-promotes."
+      />
+
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-1"><Zap size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Special Circumstance sandbox</h3></div>
-        <p className="text-[13px] opacity-60 mb-3">Initiate a 360° blind review of your own leadership performance.</p>
-        <button className="px-4 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "var(--accent)" }}>Start self-evaluation</button>
+        <SectionHeader icon={LineChart} title="Morale trend (verified aggregate)" sub="De-identified pulse composite — not individual responses." />
+        <Spark data={m.moraleTrend.length ? m.moraleTrend : [m.morale]} color="var(--accent)" />
       </Card>
     </div>
   );
@@ -868,6 +1768,13 @@ function VerificationView({ userId }: { userId: string }) {
     setSending(false);
     if (insertError) setError(insertError.message);
     else if (data) {
+      await writeAuditLog({
+        actorId: userId,
+        action: "verification_request",
+        targetTable: "verification_requests",
+        targetId: data.id,
+        changes: { past_employer_email: email.trim() },
+      });
       setRequests((prev) => [data, ...prev]);
       setEmail("");
     }
@@ -876,7 +1783,7 @@ function VerificationView({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-1"><Send size={18} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold">Route A — Active outreach</h3><VerifiedTag /></div>
+        <div className="flex items-center gap-2 mb-1"><Send size={18} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold">Route A — Active outreach</h3><VerifiedFactTag /></div>
         <p className="text-[13px] opacity-70 mb-4 max-w-2xl">A secure attestation link goes to a named contact at a past employer. Only a confirmed human response creates a verified record — and it stays correctable with an audit trail.</p>
         <div className="flex gap-2 flex-wrap">
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="past-manager@company.com" className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
@@ -954,7 +1861,11 @@ function SettingsView({ userId, onOutlookChange }: { userId: string; onOutlookCh
     setSavingKey(key);
     const { error } = await supabase.from("user_settings").update({ [dbKey]: next }).eq("profile_id", userId);
     if (!error && dbKey === "passport_published") {
-      await supabase.from("profiles").update({ passport_published: next }).eq("id", userId);
+      try {
+        await setPassportPublished(userId, next);
+      } catch {
+        setT({ ...t, [key]: !next });
+      }
     }
     if (!error && dbKey === "show_outlook") onOutlookChange?.(next);
     setSavingKey(null);
@@ -1029,13 +1940,14 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "verify", label: "Verification", icon: FileBadge },
+    ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
     ...(role === "admin" ? [{ id: "admin", label: "Brand & Models", icon: SlidersHorizontal }] : []),
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
   const dashboard = userId ? {
     employee: <EmployeeView userId={userId} showOutlook={showOutlook} />,
     manager: <ManagerView userId={userId} />,
-    executive: <ExecutiveView />,
+    executive: <ExecutiveView userId={userId} />,
     admin: <AdminView theme={theme} setTheme={setTheme} />,
   }[role] : <div className="opacity-60 text-sm">Loading…</div>;
 
@@ -1096,6 +2008,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             </>
           )}
           {tab === "verify" && userId && <VerificationView userId={userId} />}
+          {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
           {tab === "admin" && <AdminView theme={theme} setTheme={setTheme} />}
           {tab === "settings" && userId && (
             <SettingsView userId={userId} onOutlookChange={setShowOutlook} />

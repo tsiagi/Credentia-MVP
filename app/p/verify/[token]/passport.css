@@ -1,0 +1,27 @@
+/* Verified Resume Network — block print/export affordances */
+@media print {
+  body.passport-view,
+  body.passport-view * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.passport-view::before {
+    content: "This verified resume is view-only and cannot be printed or downloaded.";
+    display: block !important;
+    visibility: visible !important;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+  }
+}
+
+.passport-no-print {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media print {
+  .passport-no-print {
+    display: none !important;
+  }
+}
