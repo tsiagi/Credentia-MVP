@@ -75,6 +75,18 @@ export function formatAuditAction(action: string): string {
     passport_slug_created: "Share link generated",
     verification_request: "Attestation requested",
     ai_insights_generated: "AI insights generated",
+    org_invite_sent: "Email invite sent",
+    org_invite_accepted: "Invite accepted",
+    org_membership_proposed: "Org chart change proposed",
+    org_membership_approved: "Org chart change approved",
+    org_membership_rejected: "Org chart change rejected",
+    personal_plan_subscribed: "Personal passport plan (mock)",
+    employee_departed: "Employee departed — records frozen",
+    trial_extended: "Trial extended",
+    manager_assignment_proposed: "Manager change proposed",
+    manager_assignment_approved: "Manager assignment approved",
+    manager_assignment_rejected: "Manager assignment rejected",
+    billing_settings_updated: "Billing settings updated",
   };
   return labels[action] ?? action.replace(/_/g, " ");
 }

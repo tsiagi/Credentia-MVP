@@ -20,7 +20,8 @@ begin
         'profiles', 'user_settings', 'verified_facts', 'achievements', 'kpis',
         'projects', 'process_improvements', 'feedback_cycles', 'verification_requests',
         'pulse_surveys', 'compensation_recommendations', 'promotion_readiness',
-        'employee_value_scores', 'audit_log', 'organizations', 'departments'
+        'employee_value_scores', 'audit_log', 'organizations', 'departments',
+        'invitations', 'org_membership_requests'
       )
   loop
     execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename);
@@ -69,9 +70,67 @@ returns boolean language sql stable security definer set search_path = public as
   )
 $$;
 
+create or replace function is_org_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select current_role_name() = 'admin'
+$$;
+
 -- ══════════════════════════════════════════════════════════════
--- PROFILES
+-- PROFILES — column-sensitive updates use a TRIGGER (see below)
+-- Postgres RLS is row-level only: a policy grants UPDATE on a row
+-- but cannot allow "update title" while blocking "update manager_id".
+-- We keep RLS for who may touch which rows; the trigger enforces
+-- which columns non-admins may change.
 -- ══════════════════════════════════════════════════════════════
+
+create or replace function guard_profiles_sensitive_columns()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  actor_role text;
+begin
+  if auth.uid() is null then
+    return new; -- service role / migrations
+  end if;
+
+  select role into actor_role from profiles where id = auth.uid();
+
+  -- Org admin may change org structure and lifecycle for members in their org
+  if actor_role = 'admin' and old.org_id is not distinct from current_org() then
+    return new;
+  end if;
+
+  if auth.uid() = old.id then
+    if new.manager_id is distinct from old.manager_id
+       or new.org_id is distinct from old.org_id
+       or new.role is distinct from old.role
+       or new.account_status is distinct from old.account_status
+       or new.provisioned_via is distinct from old.provisioned_via
+       or new.employment_ended_at is distinct from old.employment_ended_at
+       or new.trial_ends_at is distinct from old.trial_ends_at
+    then
+      raise exception 'Cannot self-update org structure or lifecycle fields';
+    end if;
+  elsif auth.uid() <> old.id then
+    -- Non-admin updating someone else's profile: only admin policy should apply;
+    -- block sensitive columns for everyone else (e.g. managers).
+    if actor_role <> 'admin' then
+      if new.manager_id is distinct from old.manager_id
+         or new.org_id is distinct from old.org_id
+         or new.role is distinct from old.role
+         or new.account_status is distinct from old.account_status
+      then
+        raise exception 'Only org admins may change manager_id, org_id, role, or account_status';
+      end if;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_profiles_sensitive on profiles;
+create trigger trg_profiles_sensitive
+  before update on profiles for each row execute function guard_profiles_sensitive_columns();
 
 create policy "profiles: insert own"
   on profiles for insert with check (id = auth.uid());
@@ -79,6 +138,7 @@ create policy "profiles: insert own"
 create policy "profiles: read own"
   on profiles for select using (id = auth.uid());
 
+-- Self-service profile edits (trigger blocks manager_id / lifecycle columns)
 create policy "profiles: update own"
   on profiles for update using (id = auth.uid());
 
@@ -88,6 +148,17 @@ create policy "profiles: manager reads reports"
 create policy "profiles: leaders read org"
   on profiles for select using (
     org_id = current_org() and current_role_name() in ('executive', 'admin')
+  );
+
+-- Admin may update any profile in their org (including manager_id after approving a request)
+create policy "profiles: admin update org members"
+  on profiles for update using (
+    is_org_admin() and org_id = current_org()
+  );
+
+create policy "profiles: admin read org"
+  on profiles for select using (
+    is_org_admin() and org_id = current_org()
   );
 
 -- ══════════════════════════════════════════════════════════════
@@ -222,6 +293,55 @@ create policy "dept: members read" on departments for select
 create policy "dept: admin manage" on departments for all
   using (org_id = current_org() and current_role_name() = 'admin');
 
+-- ══════════════════════════════════════════════════════════════
+-- INVITATIONS — manual fallback provisioning; admin-only
+-- ══════════════════════════════════════════════════════════════
+
+-- Admin in the org can create and view email invites (SSO/SCIM is the default path).
+create policy "invitations: admin insert"
+  on invitations for insert with check (
+    org_id = current_org() and is_org_admin()
+  );
+
+create policy "invitations: admin select"
+  on invitations for select using (
+    org_id = current_org() and is_org_admin()
+  );
+
+-- ══════════════════════════════════════════════════════════════
+-- ORG_MEMBERSHIP_REQUESTS — manager proposes, admin approves
+-- ══════════════════════════════════════════════════════════════
+
+-- Manager may file a request for a subject in their org (cannot set manager_id directly).
+create policy "org_req: manager insert"
+  on org_membership_requests for insert with check (
+    requested_by = auth.uid()
+    and org_id = current_org()
+    and current_role_name() in ('manager', 'executive')
+    and exists (
+      select 1 from profiles sub
+      where sub.id = subject_profile_id and sub.org_id = current_org()
+    )
+  );
+
+-- Manager sees requests they submitted.
+create policy "org_req: manager read own"
+  on org_membership_requests for select using (
+    requested_by = auth.uid()
+  );
+
+-- Org admin sees all requests in the org (approval queue).
+create policy "org_req: admin select"
+  on org_membership_requests for select using (
+    org_id = current_org() and is_org_admin()
+  );
+
+-- Org admin approves or rejects pending requests.
+create policy "org_req: admin update"
+  on org_membership_requests for update using (
+    org_id = current_org() and is_org_admin()
+  );
+
 -- ── NOTES ─────────────────────────────────────────────────────
 -- 1. INSERT on inference tables is intentionally NOT granted to clients.
 --    Generate those rows from a server-side route (service role key) so an
@@ -230,3 +350,10 @@ create policy "dept: admin manage" on departments for all
 --    (security definer) that returns ONLY department aggregates to leaders.
 -- 3. "with check" guards writes; "using" guards reads/which-rows. Keep both
 --    on owner policies so users can't write rows pointing at someone else.
+-- 4. COLUMN-LEVEL RESTRICTION (manager_id): Postgres RLS cannot express
+--    "UPDATE allowed but not on column X". Pattern used here:
+--      • RLS grants row access (who can touch which profile rows).
+--      • BEFORE UPDATE trigger guard_profiles_sensitive_columns() rejects
+--        changes to manager_id / org_id / role / account_status unless the
+--        actor is an org admin (or self-update of non-sensitive fields only).
+--    Managers must INSERT org_membership_requests; admins apply manager_id.

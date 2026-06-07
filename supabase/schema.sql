@@ -13,10 +13,26 @@ create extension if not exists "pgcrypto";
 -- ══════════════════════════════════════════════════════════════
 
 create table if not exists organizations (
-  id         uuid primary key default gen_random_uuid(),
-  name       text not null,
-  created_at timestamptz not null default now()
+  id                   uuid primary key default gen_random_uuid(),
+  name                 text not null,
+  -- IdP + billing (company subscription controls departing-employee trial)
+  sso_provider         text not null default 'none'
+                       check (sso_provider in ('okta', 'azure', 'google', 'none')),
+  sso_domain           text,
+  auto_trial_enabled   boolean not null default true,
+  trial_days           integer not null default 30
+                       check (trial_days between 1 and 365),
+  created_at           timestamptz not null default now()
 );
+
+comment on column organizations.sso_provider is
+  'Connected identity provider: okta/azure/google, or none (manual invite fallback only).';
+comment on column organizations.sso_domain is
+  'Email domain routed to this org on SSO login (e.g. acme.com). Used to resolve org from IdP assertion.';
+comment on column organizations.auto_trial_enabled is
+  'When true, departing employees enter former_trial for trial_days. Admin can disable org-wide.';
+comment on column organizations.trial_days is
+  'Length of personal passport trial after employment ends (default 30). Admin can extend per person in app.';
 
 -- ══════════════════════════════════════════════════════════════
 -- EXISTING TABLES (verification_level added to verified_facts)
@@ -28,18 +44,95 @@ create table if not exists profiles (
   org_id             uuid references organizations on delete set null,
   manager_id         uuid references profiles on delete set null,
   role               text not null default 'employee'
-                     check (role in ('employee', 'manager', 'executive', 'admin')),
+                     check (role in ('employee', 'manager', 'executive', 'admin', 'hr')),
   full_name          text,
   title              text,
   public_slug        text unique,
   passport_published boolean not null default false,
+  -- Account lifecycle (employed → departed → personal tier)
+  account_status     text not null default 'invited'
+                     check (account_status in (
+                       'active_sso', 'former_trial', 'former_free', 'former_paid', 'invited'
+                     )),
+  provisioned_via    text not null default 'invite'
+                     check (provisioned_via in ('sso', 'scim', 'invite', 'self')),
+  employment_ended_at timestamptz,
+  trial_ends_at      timestamptz,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
 
+comment on column profiles.account_status is
+  'active_sso = employed via company IdP; invited = pending/onboarded via email invite; former_* = left company, personal account.';
+comment on column profiles.provisioned_via is
+  'How this profile entered the system: sso/scim (IdP source of truth) or invite/self (fallback paths).';
+comment on column profiles.employment_ended_at is
+  'When the person left the employer. Triggers record freeze; org_id/manager_id cleared in departure flow.';
+comment on column profiles.trial_ends_at is
+  'End of former_trial personal passport window. After this, account_status moves to former_free unless paid.';
+comment on column profiles.manager_id is
+  'Reporting line — set only by admin/HR (or approved org_membership_request). Managers cannot self-assign reports.';
+
 -- If profiles already exists without org columns, run after organizations:
 -- alter table profiles add column if not exists org_id uuid references organizations on delete set null;
 -- alter table profiles add column if not exists manager_id uuid references profiles on delete set null;
+
+-- ══════════════════════════════════════════════════════════════
+-- PROVISIONING & ORG CHART
+-- SSO/SCIM = default path; invitations = fallback. Managers propose
+-- reporting changes; admin/HR approves (never self-assign reports).
+-- ══════════════════════════════════════════════════════════════
+
+-- Manual email invite when org has no IdP (exception, not default).
+create table if not exists invitations (
+  id           uuid primary key default gen_random_uuid(),
+  org_id       uuid not null references organizations on delete cascade,
+  email        text not null,
+  role         text not null default 'employee'
+               check (role in ('employee', 'manager', 'executive', 'hr')),
+  token        text not null unique default encode(gen_random_bytes(24), 'hex'),
+  status       text not null default 'pending'
+               check (status in ('pending', 'accepted', 'expired', 'revoked')),
+  created_at   timestamptz not null default now(),
+  accepted_at  timestamptz
+);
+
+comment on table invitations is
+  'Fallback provisioning path. IdP (SSO/SCIM) creates profiles automatically; invites are for orgs without an IdP.';
+comment on column invitations.token is
+  'Single-use accept token sent in invite link. Matched on signup/login to attach profile to org.';
+comment on column invitations.status is
+  'pending → accepted on first login with matching email; expired/revoked by admin or TTL.';
+
+create unique index if not exists idx_invitations_pending_email
+  on invitations (org_id, lower(email)) where status = 'pending';
+
+-- Manager proposes org-chart / reporting change; admin or HR approves before manager_id changes.
+create table if not exists org_membership_requests (
+  id                   uuid primary key default gen_random_uuid(),
+  org_id               uuid not null references organizations on delete cascade,
+  requested_by         uuid not null references profiles on delete cascade,
+  subject_profile_id   uuid not null references profiles on delete cascade,
+  proposed_manager_id  uuid not null references profiles on delete cascade,
+  status               text not null default 'pending'
+                       check (status in ('pending', 'approved', 'rejected')),
+  created_at           timestamptz not null default now()
+);
+
+comment on table org_membership_requests is
+  'Managers propose reporting-line changes. Only admin/HR applies manager_id after approval — protects RLS.';
+comment on column org_membership_requests.requested_by is
+  'Usually the proposing manager (or HR). Cannot directly mutate subject_profile.manager_id.';
+comment on column org_membership_requests.subject_profile_id is
+  'The employee whose reporting line would change.';
+comment on column org_membership_requests.proposed_manager_id is
+  'Suggested manager_id if this request is approved.';
+
+create unique index if not exists idx_org_membership_pending_subject
+  on org_membership_requests (subject_profile_id) where status = 'pending';
+
+create index if not exists idx_invitations_org on invitations (org_id);
+create index if not exists idx_org_membership_org on org_membership_requests (org_id, status);
 
 create table if not exists user_settings (
   profile_id           uuid primary key references profiles on delete cascade,
@@ -68,8 +161,12 @@ create table if not exists verified_facts (
   attested_at        timestamptz,
   verification_level smallint not null default 1
                      check (verification_level between 1 and 5),
+  frozen_at          timestamptz,
   created_at         timestamptz not null default now()
 );
+
+comment on column verified_facts.frozen_at is
+  'Set on employment end — row becomes immutable (no update/delete). We freeze, never silently delete attested facts.';
 
 create table if not exists verification_requests (
   id                   uuid primary key default gen_random_uuid(),
@@ -109,9 +206,13 @@ create table if not exists achievements (
   achievement_date   date,
   verification_level smallint not null default 1
                      check (verification_level between 1 and 5),
+  frozen_at          timestamptz,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
+
+comment on column achievements.frozen_at is
+  'Set on employment end — immutable attestation from employment period.';
 
 -- Employee KPIs tracked over a cycle; managers approve or send back for clarification.
 create table if not exists kpis (
@@ -124,6 +225,7 @@ create table if not exists kpis (
                      check (status in ('pending', 'approved', 'rejected', 'clarify')),
   verification_level smallint not null default 1
                      check (verification_level between 1 and 5),
+  frozen_at          timestamptz,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -139,9 +241,16 @@ create table if not exists projects (
   cost_savings       numeric,
   verification_level smallint not null default 1
                      check (verification_level between 1 and 5),
+  frozen_at          timestamptz,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
+
+comment on column projects.frozen_at is
+  'Set on employment end — immutable attestation from employment period.';
+
+comment on column kpis.frozen_at is
+  'Set on employment end — immutable attestation from employment period.';
 
 -- Operational improvements an employee drove (efficiency, savings, reach).
 create table if not exists process_improvements (
@@ -153,9 +262,13 @@ create table if not exists process_improvements (
   teams_impacted  integer,
   status          text not null default 'pending'
                   check (status in ('pending', 'approved', 'rejected', 'clarify')),
+  frozen_at       timestamptz,
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+comment on column process_improvements.frozen_at is
+  'Set on employment end — immutable attestation from employment period.';
 
 -- Quarterly employee pulse: six sentiment dimensions, one row per person per quarter.
 create table if not exists pulse_surveys (
@@ -240,6 +353,39 @@ create table if not exists audit_log (
 comment on table audit_log is
   'Append-only. App writes a row on verify, approve, reject, edit, publish, etc.';
 
+-- ── freeze verified rows on departure (immutable-friendly; never delete) ──
+create or replace function guard_frozen_verified_record()
+returns trigger language plpgsql as $$
+begin
+  if tg_op = 'DELETE' then
+    if old.frozen_at is not null then
+      raise exception 'Verified record is frozen — cannot delete employment-era attestation';
+    end if;
+    return old;
+  end if;
+  if tg_op = 'UPDATE' and old.frozen_at is not null then
+    raise exception 'Verified record is frozen — cannot modify employment-era attestation';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_verified_facts_frozen on verified_facts;
+create trigger trg_verified_facts_frozen
+  before update or delete on verified_facts for each row execute function guard_frozen_verified_record();
+drop trigger if exists trg_achievements_frozen on achievements;
+create trigger trg_achievements_frozen
+  before update or delete on achievements for each row execute function guard_frozen_verified_record();
+drop trigger if exists trg_kpis_frozen on kpis;
+create trigger trg_kpis_frozen
+  before update or delete on kpis for each row execute function guard_frozen_verified_record();
+drop trigger if exists trg_projects_frozen on projects;
+create trigger trg_projects_frozen
+  before update or delete on projects for each row execute function guard_frozen_verified_record();
+drop trigger if exists trg_process_improvements_frozen on process_improvements;
+create trigger trg_process_improvements_frozen
+  before update or delete on process_improvements for each row execute function guard_frozen_verified_record();
+
 -- ── indexes (foreign keys + common filters) ───────────────────
 create index if not exists idx_profiles_org on profiles (org_id);
 create index if not exists idx_profiles_manager on profiles (manager_id);
@@ -257,8 +403,12 @@ create index if not exists idx_audit_log_target on audit_log (target_table, targ
 create index if not exists idx_audit_log_actor on audit_log (actor_id);
 create index if not exists idx_verified_facts_profile on verified_facts (profile_id);
 create index if not exists idx_feedback_cycles_profile on feedback_cycles (profile_id);
+create index if not exists idx_profiles_account_status on profiles (account_status);
+create index if not exists idx_profiles_trial_ends on profiles (trial_ends_at) where trial_ends_at is not null;
 
 -- ── row level security (enable; policies in rls-policies.sql) ─
+alter table invitations enable row level security;
+alter table org_membership_requests enable row level security;
 alter table profiles enable row level security;
 alter table user_settings enable row level security;
 alter table feedback_cycles enable row level security;

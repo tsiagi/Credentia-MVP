@@ -11,6 +11,11 @@ import { setPassportPublished } from "@/lib/passport";
 import { generateManagerInsights, generateOrgInsights } from "@/lib/ai-client";
 import { VerificationHistory } from "@/components/VerificationHistory";
 import { PassportLinkCard } from "@/components/VerifiedResumePage";
+import { EmployeeDataRightsCard } from "@/components/OrgPeopleView";
+import { PeopleOrgConsole } from "@/components/PeopleOrgConsole";
+import { ManagerTeamChangePanel } from "@/components/ManagerTeamChangePanel";
+import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeExperience";
+import type { AccountStatus } from "@/lib/lifecycle";
 import {
   buildEmployeeTimeline, fetchEmployeeOutlook,
   fetchProfileOrgId, fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
@@ -34,7 +39,7 @@ import {
   LineChart, Lock, Zap, Send, FileBadge, ToggleLeft, ToggleRight, Palette,
   SlidersHorizontal, Globe, Menu, X, ArrowRight, Check, GitBranch, Workflow, ScanSearch,
   Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
-  ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus,
+  ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════════
@@ -44,7 +49,7 @@ import {
    ════════════════════════════════════════════════════════════════ */
 
 type Theme = { accent: string; mode: "light" | "dark" };
-type Role = "employee" | "manager" | "executive" | "admin";
+type Role = "employee" | "manager" | "executive" | "admin" | "hr";
 type AuthMode = "signin" | "signup";
 type FeedbackField = "employee_responses" | "manager_responses";
 type FeedbackResponses = Record<string, string>;
@@ -1008,7 +1013,7 @@ function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string;
   );
 }
 
-function EmployeeView({ userId, showOutlook }: { userId: string; showOutlook: boolean }) {
+function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: { userId: string; showOutlook: boolean; accountStatus?: AccountStatus; trialEndsAt?: string | null }) {
   const [external, setExternal] = useState(false);
   const [vault, setVault] = useState<AchievementRow[]>([]);
   const [vaultSaved, setVaultSaved] = useState(false);
@@ -1072,8 +1077,12 @@ function EmployeeView({ userId, showOutlook }: { userId: string; showOutlook: bo
 
   return (
     <div className="space-y-6">
+      {accountStatus === "former_trial" && (
+        <FormerTrialBanner accountStatus={accountStatus} trialEndsAt={trialEndsAt ?? null} />
+      )}
       <ProfileEditor userId={userId} />
       <PassportLinkCard userId={userId} />
+      <EmployeeDataRightsCard userId={userId} />
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       <Card className="p-6 flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -1306,6 +1315,7 @@ function ManagerView({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       <ProfileEditor userId={userId} />
+      <ManagerTeamChangePanel userId={userId} />
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
 
@@ -1912,6 +1922,8 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const [userId, setUserId] = useState<string | null>(null);
   const [showOutlook, setShowOutlook] = useState(true);
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
+  const [accountStatus, setAccountStatus] = useState<AccountStatus>("active_sso");
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1922,12 +1934,14 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         setUserId(id);
         await ensureUserSettings(id);
         const [{ data: profile }, { data: settings }] = await Promise.all([
-          supabase.from("profiles").select("public_slug").eq("id", id).single(),
+          supabase.from("profiles").select("public_slug, account_status, trial_ends_at").eq("id", id).single(),
           supabase.from("user_settings").select("show_outlook").eq("profile_id", id).single(),
         ]);
         if (!cancelled) {
           setPublicSlug(profile?.public_slug ?? null);
           setShowOutlook(settings?.show_outlook ?? true);
+          if (profile?.account_status) setAccountStatus(profile.account_status as AccountStatus);
+          setTrialEndsAt(profile?.trial_ends_at ?? null);
         }
       } catch {
         /* session may have expired */
@@ -1936,19 +1950,23 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     return () => { cancelled = true; };
   }, []);
 
-  const roleLabel: Record<Role, string> = { employee: "Employee", manager: "Manager", executive: "Executive", admin: "System Admin" };
+  const isFormer = accountStatus.startsWith("former_");
+  const roleLabel: Record<Role, string> = { employee: "Employee", manager: "Manager", executive: "Executive", admin: "System Admin", hr: "HR / People Ops" };
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "verify", label: "Verification", icon: FileBadge },
+    ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
+    ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
     ...(role === "admin" ? [{ id: "admin", label: "Brand & Models", icon: SlidersHorizontal }] : []),
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
   const dashboard = userId ? {
-    employee: <EmployeeView userId={userId} showOutlook={showOutlook} />,
+    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} />,
     manager: <ManagerView userId={userId} />,
     executive: <ExecutiveView userId={userId} />,
     admin: <AdminView theme={theme} setTheme={setTheme} />,
+    hr: <ExecutiveView userId={userId} />,
   }[role] : <div className="opacity-60 text-sm">Loading…</div>;
 
   const passportLabel = publicSlug ? `/p/verify/${publicSlug.slice(0, 4)}…` : "/p/verify/… (not published yet)";
@@ -2009,6 +2027,15 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           )}
           {tab === "verify" && userId && <VerificationView userId={userId} />}
           {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
+          {tab === "people-org" && role === "admin" && <PeopleOrgConsole />}
+          {tab === "plan" && userId && isFormer && (
+            <BillingPlanView
+              userId={userId}
+              accountStatus={accountStatus}
+              trialEndsAt={trialEndsAt}
+              onStatusChange={setAccountStatus}
+            />
+          )}
           {tab === "admin" && <AdminView theme={theme} setTheme={setTheme} />}
           {tab === "settings" && userId && (
             <SettingsView userId={userId} onOutlookChange={setShowOutlook} />

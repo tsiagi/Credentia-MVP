@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { writeAuditLog } from "@/lib/audit";
+import { canPublishPassport, PASSPORT_PAYWALL_MESSAGE, type AccountStatus } from "@/lib/lifecycle";
 
 export type PassportRecord = {
   id: string;
@@ -47,6 +48,17 @@ export async function ensurePassportSlug(userId: string): Promise<string> {
 }
 
 export async function setPassportPublished(userId: string, published: boolean) {
+  const { data: profile, error: profErr } = await supabase
+    .from("profiles")
+    .select("account_status")
+    .eq("id", userId)
+    .single();
+  if (profErr) throw profErr;
+
+  if (published && !canPublishPassport(profile.account_status as AccountStatus)) {
+    throw new Error(PASSPORT_PAYWALL_MESSAGE);
+  }
+
   if (published) await ensurePassportSlug(userId);
 
   const { error } = await supabase.from("profiles").update({ passport_published: published }).eq("id", userId);

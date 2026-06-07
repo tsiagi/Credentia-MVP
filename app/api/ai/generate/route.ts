@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const { data: managerProfile } = await userClient.from("profiles").select("role, org_id").eq("id", managerId).single();
   const role = managerProfile?.role;
-  if (!role || !["manager", "executive", "admin"].includes(role)) {
+  if (!role || !["manager", "executive", "admin", "hr"].includes(role)) {
     return NextResponse.json({ error: "Only managers, executives, or admins can generate AI insights" }, { status: 403 });
   }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   if (!targetIds.length) {
     if (scope === "org") {
-      if (role !== "executive" && role !== "admin") {
+      if (role !== "executive" && role !== "admin" && role !== "hr") {
         return NextResponse.json({ error: "Org-wide generation requires executive or admin role" }, { status: 403 });
       }
       const orgId = managerProfile?.org_id;
