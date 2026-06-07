@@ -12,11 +12,11 @@
 --
 --    Email                              | Role (for your notes)
 --    -----------------------------------|----------------------
---    superadmin@demo.credentia.test       | Platform operator
---    admin@demo.credentia.test          | Company admin
---    executive@demo.credentia.test        | Executive
---    manager@demo.credentia.test          | Manager
---    employee@demo.credentia.test         | Employee (reports to manager)
+--    superadmin@demo.corp.com       | Platform operator
+--    admin@demo.corp.com            | Company admin
+--    executive@demo.corp.com        | Executive
+--    manager@demo.corp.com          | Manager
+--    employee@demo.corp.com         | Employee (reports to manager)
 --
 -- 4. Copy each user's UUID from the Users list if you need to debug
 --    (this script resolves IDs by email automatically).
@@ -30,11 +30,11 @@
 
 do $$
 declare
-  v_super_email   text := 'superadmin@demo.credentia.test';
-  v_admin_email   text := 'admin@demo.credentia.test';
-  v_exec_email    text := 'executive@demo.credentia.test';
-  v_mgr_email     text := 'manager@demo.credentia.test';
-  v_emp_email     text := 'employee@demo.credentia.test';
+  v_super_email   text := 'superadmin@demo.corp.com';
+  v_admin_email   text := 'admin@demo.corp.com';
+  v_exec_email    text := 'executive@demo.corp.com';
+  v_mgr_email     text := 'manager@demo.corp.com';
+  v_emp_email     text := 'employee@demo.corp.com';
 
   v_org_id        uuid := 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
   v_super_id      uuid;
