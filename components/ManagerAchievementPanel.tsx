@@ -13,6 +13,7 @@ import {
 import { fetchOrgSettingsForUser } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { LevelBadge } from "@/lib/verification-ui";
+import { ProofDocumentUpload } from "@/components/ProofDocumentView";
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -39,6 +40,7 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
   const [target, setTarget] = useState<"self" | string>("self");
   const [contributionType, setContributionType] = useState<ContributionType>("individual");
   const [draft, setDraft] = useState({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
+  const [proofDoc, setProofDoc] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +73,8 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!draft.title.trim()) return;
-    if (requireProof && !draft.evidence.trim()) {
-      setError("Your organization requires proof or evidence before submission.");
+    if (requireProof && !proofDoc && !draft.evidence.trim()) {
+      setError("Your organization requires proof — attach a document or add a supporting link.");
       return;
     }
 
@@ -81,8 +83,9 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
     setError(null);
     setNotice(null);
     try {
-      await saveManagerAchievement(userId, profileId, orgId, draft, contributionType);
+      await saveManagerAchievement(userId, profileId, orgId, { ...draft, evidence: proofDoc ?? draft.evidence.trim() }, contributionType);
       setDraft({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
+      setProofDoc(null);
       setNotice("Achievement submitted. It stays at L1 until an executive approves — you'll see pending status below.");
       await reload();
     } catch (err) {
@@ -152,10 +155,10 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
         </div>
         <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="Description" rows={2}
           className="w-full px-3 py-2 rounded-lg border text-sm resize-y" style={{ borderColor: "var(--line)", background: "var(--surface)" }} />
+        <ProofDocumentUpload requireProof={requireProof} documentDataUrl={proofDoc} onDocumentChange={(url) => setProofDoc(url)} />
         <input value={draft.evidence} onChange={(e) => setDraft({ ...draft, evidence: e.target.value })}
-          placeholder={requireProof ? "Evidence URL or note (required)" : "Evidence URL or note (optional)"}
-          className="w-full px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface)" }}
-          required={requireProof} />
+          placeholder="Or paste a supporting link"
+          className="w-full px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface)" }} />
         <button type="submit" disabled={submitting}
           className="px-4 py-2 rounded-lg text-sm font-medium text-white inline-flex items-center gap-1 disabled:opacity-60"
           style={{ background: "var(--accent)" }}>

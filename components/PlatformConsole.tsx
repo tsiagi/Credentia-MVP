@@ -9,6 +9,7 @@ import {
   SAMPLE_SUPERADMIN_CSV, parseSimpleCsv, validateSimpleRows, buildBatchResult,
   type ImportBatchResult,
 } from "@/lib/csv-import-mock";
+import { PlatformBillingSection } from "@/components/PlatformBillingSection";
 
 /** Platform operator view — administrative records only, no AI inference. */
 
@@ -306,7 +307,7 @@ export function PlatformConsole() {
           <div>
             <div className="font-semibold text-[14px]">Audit trail active</div>
             <p className="text-[13px] opacity-80 mt-0.5">
-              Every action in this console — provisioning, invites, user adds, CSV imports — is written to <code className="text-[12px]">audit_log</code> with actor, target, and timestamp. Mock UI for now; wire to <code className="text-[12px]">writeAuditLog</code> when connected live.
+              Every action in this console — provisioning, invites, user adds, CSV imports, billing changes — is written to the audit log with actor, target, and timestamp.
             </p>
           </div>
         </div>
@@ -378,6 +379,8 @@ export function PlatformConsole() {
           </form>
         )}
       </Card>
+
+      <PlatformBillingSection />
 
       {/* Tenant list */}
       <Card className="p-5 sm:p-6 overflow-hidden">

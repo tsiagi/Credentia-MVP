@@ -36,6 +36,14 @@ create table if not exists organizations (
   evaluation_model         text not null default 'A'
                        check (evaluation_model in ('A', 'B', 'both')),
   logo_url                 text,
+  -- Company subscription billing (mock-money ledger — no card data in DB)
+  trial_starts_at          timestamptz,
+  trial_ends_at            timestamptz,
+  billing_status           text not null default 'trial'
+                       check (billing_status in ('trial', 'active', 'past_due', 'canceled')),
+  monthly_price            numeric,
+  seats                    integer,
+  billing_notes            text,
   created_at           timestamptz not null default now()
 );
 
@@ -66,6 +74,43 @@ comment on column organizations.evaluation_model is
   'A = peer selection, B = kudos ecosystem, both = run both models concurrently.';
 comment on column organizations.logo_url is
   'Company logo shown in app shell for this org (mock URL until Storage).';
+comment on column organizations.trial_starts_at is
+  'When the company platform trial began (set by superadmin).';
+comment on column organizations.trial_ends_at is
+  'When the company platform trial ends — extend or convert to active plan.';
+comment on column organizations.billing_status is
+  'trial | active | past_due | canceled — commercial subscription state (no card numbers stored).';
+comment on column organizations.monthly_price is
+  'Mock/list price per month in dollars — real charges go through a payment processor later.';
+comment on column organizations.seats is
+  'Licensed seat count for the org subscription.';
+comment on column organizations.billing_notes is
+  'Internal operator notes (superadmin only) — e.g. contract terms, PO reference.';
+
+-- Append-only ledger of billing actions (mock charges included). No payment instrument data.
+create table if not exists billing_events (
+  id          uuid primary key default gen_random_uuid(),
+  org_id      uuid not null references organizations on delete cascade,
+  type        text not null
+              check (type in ('trial_started', 'trial_extended', 'trial_ended', 'plan_set', 'charge_mocked', 'canceled')),
+  amount      numeric,
+  created_by  uuid references profiles on delete set null,
+  created_at  timestamptz not null default now(),
+  detail      jsonb not null default '{}'
+);
+
+comment on table billing_events is
+  'Append-only billing ledger — trial changes, plan updates, mocked charges. Real card data never stored.';
+comment on column billing_events.type is
+  'Event kind: trial_started, plan_set, charge_mocked, etc.';
+comment on column billing_events.amount is
+  'Dollar amount when applicable (mock charges use this for operator visibility).';
+comment on column billing_events.created_by is
+  'Superadmin profile who performed the action.';
+comment on column billing_events.detail is
+  'Extra context (trial days, seat count, mock flag) — jsonb for flexibility.';
+
+create index if not exists idx_billing_events_org on billing_events (org_id, created_at desc);
 
 -- How each tenant's data was integrated (manual, CSV, SCIM, Okta, etc.)
 create table if not exists tenant_integrations (
@@ -553,6 +598,7 @@ alter table verified_facts enable row level security;
 alter table verification_requests enable row level security;
 alter table shareable_links enable row level security;
 alter table removal_requests enable row level security;
+alter table billing_events enable row level security;
 alter table organizations enable row level security;
 alter table departments enable row level security;
 alter table achievements enable row level security;

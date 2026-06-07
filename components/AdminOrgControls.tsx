@@ -197,7 +197,7 @@ export function AdminOrgControls({ userId }: { userId: string }) {
               <ImageIcon size={16} /> Upload logo
               <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             </label>
-            <p className="text-[12px] opacity-60 mt-2">Mock upload — stored as preview URL until Supabase Storage is wired.</p>
+            <p className="text-[12px] opacity-60 mt-2">Preview upload until secure file storage is enabled.</p>
             {logoNotice && <p className="text-[12px] mt-1" style={{ color: "var(--verified-fg)" }}>{logoNotice}</p>}
           </div>
         </div>

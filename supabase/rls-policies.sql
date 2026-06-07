@@ -19,7 +19,7 @@ begin
       and tablename in (
         'profiles', 'user_settings', 'verified_facts', 'achievements', 'kpis',
         'projects', 'process_improvements', 'feedback_cycles', 'verification_requests',
-        'shareable_links', 'removal_requests',
+        'shareable_links', 'removal_requests', 'billing_events',
         'pulse_surveys', 'compensation_recommendations', 'promotion_readiness',
         'employee_value_scores', 'audit_log', 'organizations', 'departments',
         'invitations', 'org_membership_requests', 'tenant_integrations', 'data_import_batches'
@@ -328,12 +328,48 @@ create policy "audit: superadmin read" on audit_log for select
 create policy "org: members read" on organizations for select
   using (id = current_org() and is_company_user());
 
-create policy "org: admin manage" on organizations for all
+-- Company admin: update org settings but NOT billing columns (enforced by trigger below).
+create policy "org: admin update settings" on organizations for update
   using (id = current_org() and is_org_admin())
   with check (id = current_org() and is_org_admin());
 
--- Superadmin: create and manage all tenants (platform operator).
+create policy "org: admin insert" on organizations for insert
+  with check (is_org_admin() and id = current_org());
+
+-- Company admin read-only view of their trial/billing status (limited columns via RPC/view in app;
+-- full row SELECT still gated — sensitive billing columns protected by trigger on UPDATE only).
+create policy "org: admin read billing summary" on organizations for select
+  using (id = current_org() and is_org_admin());
+
+-- Superadmin: create and manage all tenants including billing fields (platform operator).
 create policy "org: superadmin all" on organizations for all
+  using (is_superadmin()) with check (is_superadmin());
+
+-- Block non-superadmin updates to billing columns on organizations.
+create or replace function guard_org_billing_columns()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if is_superadmin() then
+    return new;
+  end if;
+  if new.billing_status is distinct from old.billing_status
+     or new.trial_starts_at is distinct from old.trial_starts_at
+     or new.trial_ends_at is distinct from old.trial_ends_at
+     or new.monthly_price is distinct from old.monthly_price
+     or new.seats is distinct from old.seats
+     or new.billing_notes is distinct from old.billing_notes then
+    raise exception 'Only platform operators can change billing fields';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_guard_org_billing on organizations;
+create trigger trg_guard_org_billing
+  before update on organizations for each row execute function guard_org_billing_columns();
+
+-- billing_events: superadmin read/write only; writes also happen via service role API.
+create policy "billing_events: superadmin all" on billing_events for all
   using (is_superadmin()) with check (is_superadmin());
 
 create policy "dept: members read" on departments for select

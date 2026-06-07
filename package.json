@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:test-users": "node scripts/seed-test-users.mjs"
+    "seed:test-users": "node scripts/seed-test-users.mjs",
+    "seed:demo-company": "node scripts/seed-demo-company.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

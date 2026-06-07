@@ -100,6 +100,12 @@ export function formatAuditAction(action: string): string {
     achievement_manager_submitted: "Manager submitted achievement",
     achievement_executive_approved: "Executive approved achievement",
     achievement_executive_rejected: "Executive rejected achievement",
+    billing_trial_started: "Company trial started",
+    billing_trial_extended: "Company trial extended",
+    billing_trial_ended: "Company trial ended",
+    billing_plan_set: "Billing plan updated",
+    billing_charge_mocked: "Mock charge recorded",
+    billing_canceled: "Subscription canceled",
   };
   return labels[action] ?? action.replace(/_/g, " ");
 }

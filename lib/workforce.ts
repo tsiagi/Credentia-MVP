@@ -29,6 +29,7 @@ export type VerifyQueueItem = {
   desc: string;
   level: number;
   status: string;
+  evidenceUrl?: string | null;
 };
 
 export type CoachingInsight = {
@@ -506,7 +507,7 @@ export async function fetchVerifyQueue(managerId: string): Promise<VerifyQueueIt
   const names = Object.fromEntries(reports.map((r) => [r.id, displayName(r)]));
 
   const [achRes, kpiRes, projRes, piRes] = await Promise.all([
-    supabase.from("achievements").select("id, profile_id, kind, description, verification_level").in("profile_id", ids).eq("verification_level", 1),
+    supabase.from("achievements").select("id, profile_id, kind, description, verification_level, evidence_url").in("profile_id", ids).eq("verification_level", 1),
     supabase.from("kpis").select("id, employee_id, title, verification_level, status, progress, target").in("employee_id", ids).in("status", ["pending", "clarify"]),
     supabase.from("projects").select("id, profile_id, description, verification_level").in("profile_id", ids).eq("verification_level", 1),
     supabase.from("process_improvements").select("id, profile_id, type, hours_saved, dollars_saved, status").in("profile_id", ids).in("status", ["pending", "clarify"]),
@@ -525,6 +526,7 @@ export async function fetchVerifyQueue(managerId: string): Promise<VerifyQueueIt
       desc: a.description,
       level: a.verification_level,
       status: "pending",
+      evidenceUrl: a.evidence_url,
     });
   }
 

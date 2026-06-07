@@ -21,12 +21,15 @@ import { ManagerAchievementPanel } from "@/components/ManagerAchievementPanel";
 import { ExecutiveAchievementQueue } from "@/components/ExecutiveAchievementQueue";
 import { RemovalRequestPanel, FormerEmployeeDeletePanel } from "@/components/AccountRemovalPanels";
 import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeExperience";
+import { AchievementVaultView } from "@/components/AchievementVaultView";
+import { ProofDocumentView, ProofDocumentUpload } from "@/components/ProofDocumentView";
+import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
 import { fetchOrgSettingsForUser, buildExecutiveMetricsCsv, downloadCsv } from "@/lib/org-settings";
 import type { AccountStatus } from "@/lib/lifecycle";
 import {
   buildEmployeeTimeline, fetchEmployeeOutlook,
-  fetchProfileOrgId, fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
+  fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
   fetchCoachingInsights, fetchDirectReports, fetchReviewRows, fetchExecutiveDashboard,
   fetchEmployeeValueScore, fetchTeamValueScores, fetchPromotionReadinessRows,
   fetchOrgPromotionReadiness, fetchCompensationIntelligence,
@@ -37,15 +40,13 @@ import {
 /** Achievement Vault — load/save via lib/supabase.ts → achievements table */
 import {
   fetchAchievements,
-  saveAchievement,
-  achievementTitle,
   type AchievementRow,
 } from "@/lib/achievements";
 import {
   ShieldCheck, Sparkles, LayoutDashboard, Users, Award, Settings as SettingsIcon,
   AlertTriangle, BadgeCheck, Eye, EyeOff, ChevronRight, Info, Building2, UserCircle2,
   LineChart, Lock, Zap, Send, FileBadge, ToggleLeft, ToggleRight, Palette,
-  SlidersHorizontal, Globe, Menu, X, ArrowRight, Check, GitBranch, Workflow, ScanSearch,
+  SlidersHorizontal, Globe, Menu, X, ArrowRight, ArrowLeft, Check, GitBranch, Workflow, ScanSearch,
   Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
   Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
@@ -231,6 +232,19 @@ const Card = ({ children, className = "", style = {} }: { children: ReactNode; c
     {children}
   </div>
 );
+
+function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-4 text-[13px] font-medium inline-flex items-center gap-1.5 opacity-70 hover:opacity-100 transition"
+      style={{ color: "var(--ink-2)" }}
+    >
+      <ArrowLeft size={16} aria-hidden /> {label}
+    </button>
+  );
+}
 
 const Stat = ({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) => (
   <Card className="p-5">
@@ -501,7 +515,7 @@ function CompensationIntelligenceView({ userId }: { userId: string }) {
         <SectionHeader icon={Sparkles} title="Generate org-wide AI recommendations" tag={<InferredTag />}
           sub="Runs Anthropic for every employee and manager in your org, then writes to compensation_recommendations, promotion_readiness, and employee_value_scores." />
         <p className="text-[13px] opacity-80 mb-4">
-          Requires <code className="text-[12px]">SUPABASE_SERVICE_ROLE_KEY</code> and <code className="text-[12px]">ANTHROPIC_API_KEY</code> in .env.local.
+          Requires service role and Anthropic API keys configured on the server.
           Executive-only; comp committee still decides every outcome.
         </p>
         <button
@@ -586,7 +600,7 @@ const KIND_ICON: Record<string, typeof Target> = {
 };
 
 /* ═══════════════════ PUBLIC MARKETING SITE ═══════════════════ */
-function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: Theme; setTheme: (theme: Theme) => void }) {
+function PublicSite({ onEnter }: { onEnter: () => void }) {
   const [menu, setMenu] = useState(false);
   const [accessForm, setAccessForm] = useState({ company: "", size: "", email: "" });
   const [accessSubmitted, setAccessSubmitted] = useState(false);
@@ -629,8 +643,6 @@ function PublicSite({ onEnter, theme, setTheme }: { onEnter: () => void; theme: 
             <a href="#features" className="hover:opacity-70">Platform</a>
             <a href="#companies" className="hover:opacity-70">For companies</a>
             <a href="#trust" className="hover:opacity-70">Transparency</a>
-            <button onClick={() => setTheme({ ...theme, mode: theme.mode === "dark" ? "light" : "dark" })}
-              className="opacity-70 hover:opacity-100">{theme.mode === "dark" ? "Light" : "Dark"}</button>
             <button onClick={onEnter} className="px-4 py-2 rounded-xl font-medium text-white" style={{ background: "var(--accent)" }}>
               Sign in
             </button>
@@ -915,7 +927,9 @@ function AuthScreen({ onLogin, onBack }: { onLogin: (role: Role) => void; onBack
   return (
     <div className="min-h-screen flex items-center justify-center px-5" style={{ background: "var(--bg)" }}>
       <Card className="w-full max-w-md p-7">
-        <button type="button" onClick={onBack} className="text-[13px] opacity-60 mb-5 inline-flex items-center gap-1">‹ Back to site</button>
+        <button type="button" onClick={onBack} className="text-[13px] opacity-60 mb-5 inline-flex items-center gap-1.5 hover:opacity-100">
+          <ArrowLeft size={16} aria-hidden /> Back to site
+        </button>
         <div className="flex items-center gap-2 mb-1">
           <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
           <span className="serif text-xl font-semibold">Credentia</span>
@@ -1083,32 +1097,29 @@ function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string;
           <button type="submit" disabled={saving} className="px-4 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-60" style={{ background: "var(--accent)" }}>
             {saving ? "Saving…" : "Save responses"}
           </button>
-          {saved && <span className="text-[13px]" style={{ color: "var(--verified-fg)" }}>Saved to Supabase</span>}
+          {saved && <span className="text-[13px]" style={{ color: "var(--verified-fg)" }}>Saved</span>}
         </div>
       </form>
     </Card>
   );
 }
 
-function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt, requireProof = true }: {
-  userId: string; showOutlook: boolean; accountStatus?: AccountStatus; trialEndsAt?: string | null; requireProof?: boolean;
+function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: {
+  userId: string; showOutlook: boolean; accountStatus?: AccountStatus; trialEndsAt?: string | null;
 }) {
   const [external, setExternal] = useState(false);
   const [vault, setVault] = useState<AchievementRow[]>([]);
-  const [vaultSaved, setVaultSaved] = useState(false);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [outlook, setOutlook] = useState<{ text: string; evidence: string } | null>(null);
   const [valueScore, setValueScore] = useState<ValueScoreDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
 
   const reload = useCallback(async () => {
     setError(null);
     try {
       const [ach, events, ol, vs] = await Promise.all([
-        fetchAchievements(userId), // ← Supabase achievements table on mount
+        fetchAchievements(userId),
         buildEmployeeTimeline(userId),
         showOutlook ? fetchEmployeeOutlook(userId) : Promise.resolve(null),
         fetchEmployeeValueScore(userId),
@@ -1129,32 +1140,7 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt, require
   }, [reload]);
 
   const visibleTimeline = external ? timeline.filter((e) => e.level >= 2) : timeline;
-  const visibleVault = external ? vault.filter((a) => a.verification_level >= 2) : vault;
   const maxLevel = vault.reduce((m, a) => Math.max(m, a.verification_level), timeline.reduce((m, e) => Math.max(m, e.level), 0));
-
-  async function addAchievement(e: FormEvent) {
-    e.preventDefault();
-    if (!draft.title.trim()) return;
-    if (requireProof && !draft.evidence.trim()) {
-      setError("Your organization requires proof or evidence before submission.");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    setVaultSaved(false);
-    try {
-      const orgId = await fetchProfileOrgId(userId);
-      const row = await saveAchievement(userId, orgId, draft); // ← insert into achievements
-      setVault((prev) => [row, ...prev]);
-      setTimeline(await buildEmployeeTimeline(userId));
-      setDraft({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
-      setVaultSaved(true);
-    } catch (err) {
-      setError(errorMessage(err, "Could not save achievement."));
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   if (loading) return <div className="opacity-60 text-sm">Loading career record…</div>;
 
@@ -1185,7 +1171,7 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt, require
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat label="Vault items" value={String(vault.length)} sub={`${vault.filter((a) => a.verification_level >= 2).length} verified`} />
         <Stat label="Timeline events" value={String(visibleTimeline.length)} sub={external ? "public-safe" : "full history"} />
-        <Stat label="Highest level" value={maxLevel ? `L${maxLevel}` : "—"} sub={maxLevel >= 4 ? "company verified" : "from Supabase"} accent="var(--accent)" />
+        <Stat label="Highest level" value={maxLevel ? `L${maxLevel}` : "—"} sub={maxLevel >= 4 ? "company verified" : "on your record"} accent="var(--accent)" />
         <Stat label="Verified facts" value={String(timeline.filter((e) => e.level >= 2).length)} sub="L2+ entries" accent="var(--verified-fg)" />
       </div>
 
@@ -1230,83 +1216,9 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt, require
         )}
       </Card>
 
-      <Card className="p-6">
-        <SectionHeader
-          icon={Award}
-          title="Verified Achievement Vault"
-          sub="Connected to Supabase achievements — loads on mount, saves on submit. New items start at L1 (Self-Reported); your manager can verify to L2+."
-        />
-        {!external && (
-          <form onSubmit={addAchievement} className="p-4 rounded-xl border mb-5 space-y-2" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
-            <div className="grid sm:grid-cols-2 gap-2">
-              <select value={draft.kind ?? "achievement"} onChange={(e) => setDraft({ ...draft, kind: e.target.value })}
-                className="px-3 py-2 rounded-lg border text-sm outline-none sm:col-span-2"
-                style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
-                <option value="achievement">Kind: Achievement</option>
-                <option value="kpi">Kind: KPI</option>
-                <option value="certification">Kind: Certification</option>
-                <option value="promotion">Kind: Promotion</option>
-                <option value="award">Kind: Award</option>
-              </select>
-              <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Achievement title" required
-                className="px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
-              <input value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} placeholder="Date (YYYY-MM)"
-                className="px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
-            </div>
-            <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="Description" rows={2}
-              className="w-full px-3 py-2 rounded-lg border text-sm outline-none resize-y" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }} />
-            <input value={draft.evidence} onChange={(e) => setDraft({ ...draft, evidence: e.target.value })}
-              placeholder={requireProof ? "Evidence URL or note (required)" : "Evidence URL or note"}
-              className="w-full px-3 py-2 rounded-lg border text-sm outline-none" style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}
-              required={requireProof} />
-            <button type="submit" disabled={submitting} className="px-4 py-2 rounded-lg text-sm font-medium text-white inline-flex items-center gap-1 disabled:opacity-60" style={{ background: "var(--accent)" }}>
-              <Plus size={14} /> {submitting ? "Saving to Supabase…" : "Save to vault (L1 Self-Reported)"}
-            </button>
-            {vaultSaved && (
-              <span className="text-[13px] ml-2" style={{ color: "var(--verified-fg)" }}>Saved — verification level L1 until manager approves.</span>
-            )}
-          </form>
-        )}
-        {visibleVault.length === 0 ? (
-          <p className="text-sm opacity-60">No achievements in the vault yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {visibleVault.map((a) => {
-              const Icon = KIND_ICON[a.kind] ?? Award;
-              return (
-                <div key={a.id} className="p-4 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg shrink-0" style={{ background: "var(--accent-soft)" }}><Icon size={18} style={{ color: "var(--accent)" }} /></div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{achievementTitle(a.description)}</span>
-                        <LevelBadge level={a.verification_level} />
-                        {a.contribution_type && (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                            style={{ background: a.contribution_type === "team" ? "var(--accent-soft)" : "var(--surface)", color: a.contribution_type === "team" ? "var(--accent)" : "var(--ink-2)" }}>
-                            {a.contribution_type === "team" ? "Team contribution" : "Individual contribution"}
-                          </span>
-                        )}
-                        {a.pending_executive && (
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>Pending executive approval</span>
-                        )}
-                      </div>
-                      <div className="text-[12px] opacity-50 mt-0.5">{a.achievement_date ?? a.created_at.slice(0, 10)}</div>
-                      <p className="text-[13px] opacity-70 mt-1">{a.description}</p>
-                      {a.evidence_url && <p className="text-[12px] opacity-50 mt-1">Evidence: {a.evidence_url}</p>}
-                      <VerificationHistory targetTable="achievements" targetId={a.id} compact />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
       {!external && (
         <FeedbackCycleCard userId={userId} field="employee_responses" title="This cycle — your responses"
-          subtitle="Saved to feedback_cycles in Supabase. Your manager adds their side separately." />
+          subtitle="Your responses are saved each cycle. Your manager adds their side separately." />
       )}
       {!external && <EmployeeValueScoreCard detail={valueScore} />}
       {!external && showOutlook && (
@@ -1421,7 +1333,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
         <SectionHeader icon={Sparkles} title="Generate AI insights" tag={<InferredTag />}
           sub="Calls Anthropic server-side using verified team data, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores. You decide every outcome." />
         <p className="text-[13px] opacity-80 mb-4">
-          Requires <code className="text-[12px]">SUPABASE_SERVICE_ROLE_KEY</code> and <code className="text-[12px]">ANTHROPIC_API_KEY</code> in .env.local.
+          Requires service role and Anthropic API keys configured on the server.
           Generates for all direct reports ({health.reportCount}).
         </p>
         <button
@@ -1478,6 +1390,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
                         <ReportIdentity name={it.who} avatarUrl={avatarMap[it.profileId]} size={28} />
                       </div>
                       <p className="text-[13px] opacity-60 mt-1">{it.desc}</p>
+                      {it.evidenceUrl && <ProofDocumentView evidenceUrl={it.evidenceUrl} compact />}
                       <VerificationHistory targetTable={it.sourceTable} targetId={it.id} compact />
                       {pending && (
                         <>
@@ -1509,7 +1422,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
       <Card className="p-6">
         <SectionHeader icon={ClipboardList} title="Performance Review Center" sub="Cycle reviews from feedback_cycles — you sign off; AI never completes a review." />
         {reviews.length === 0 ? (
-          <p className="text-sm opacity-60">No direct reports found. Set profiles.manager_id on your team in Supabase.</p>
+          <p className="text-sm opacity-60">No direct reports found. Ask your admin to assign team members to you.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-[14px] min-w-[480px]">
@@ -1700,7 +1613,7 @@ function ExecutiveView({ userId, orgSettings }: { userId: string; orgSettings?: 
       <div className="space-y-4">
         <div>
           <h2 className="serif text-2xl font-semibold">Workforce Verify — Executive Dashboard</h2>
-          <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence from Supabase.</p>
+          <p className="text-[14px] opacity-60 mt-1">Org-wide intelligence from your workforce data.</p>
         </div>
         {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
         <p className="text-sm opacity-60">Set profiles.org_id on your profile to see org metrics. Add departments, pulse_surveys, and compensation_recommendations for richer data.</p>
@@ -1722,7 +1635,7 @@ function ExecutiveView({ userId, orgSettings }: { userId: string; orgSettings?: 
         <SectionHeader icon={Sparkles} title="Generate org-wide AI insights" tag={<InferredTag />}
           sub="Calls Anthropic for every employee and manager in your org, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores." />
         <p className="text-[13px] opacity-80 mb-4">
-          Requires <code className="text-[12px]">SUPABASE_SERVICE_ROLE_KEY</code> and <code className="text-[12px]">ANTHROPIC_API_KEY</code> in .env.local.
+          Requires service role and Anthropic API keys configured on the server.
           Covers {m.orgHeadcount > 1 ? `${m.orgHeadcount - 1} employees/managers` : "your org"} — you decide every comp and promotion outcome.
         </p>
         <button
@@ -1851,6 +1764,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
   const [selectedItem, setSelectedItem] = useState<AttestItem | null>(null);
   const [email, setEmail] = useState("");
   const [evidence, setEvidence] = useState("");
+  const [proofDoc, setProofDoc] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1890,13 +1804,15 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
     setSelectedItem(null);
     setEmail("");
     setEvidence("");
+    setProofDoc(null);
     setError(null);
   }
 
   async function sendAttestation() {
     if (!email.trim() || !selectedItem) return;
-    if (requireProof && !evidence.trim()) {
-      setError("Your organization requires proof or evidence before sending an attestation request.");
+    const hasProof = Boolean(proofDoc || evidence.trim());
+    if (requireProof && !hasProof) {
+      setError("Your organization requires proof — attach a document or add a supporting link.");
       return;
     }
     setSending(true);
@@ -1919,7 +1835,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
         action: "verification_request",
         targetTable: "verification_requests",
         targetId: data.id,
-        changes: { past_employer_email: email.trim(), item_type: selectedItem.type, item_label: selectedItem.label, evidence: evidence.trim() || null },
+        changes: { past_employer_email: email.trim(), item_type: selectedItem.type, item_label: selectedItem.label, evidence: (proofDoc ?? evidence.trim()) || null },
       });
       setRequests((prev) => [data, ...prev]);
       resetFlow();
@@ -1990,16 +1906,21 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
             <div className="p-3 rounded-xl text-[13px]" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
               Verifying: <strong>{selectedItem.label}</strong> ({selectedItem.type})
             </div>
-            <div className="flex gap-2 flex-wrap flex-col sm:flex-row">
+            <div className="space-y-3">
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="past-manager@company.com"
-                className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl border text-sm outline-none"
+                className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
                 style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
+              <ProofDocumentUpload
+                requireProof={requireProof}
+                documentDataUrl={proofDoc}
+                onDocumentChange={(url) => setProofDoc(url)}
+              />
               <input value={evidence} onChange={(e) => setEvidence(e.target.value)}
-                placeholder={requireProof ? "Proof / evidence (required)" : "Proof / evidence (optional)"}
-                className="flex-1 min-w-[220px] px-3 py-2.5 rounded-xl border text-sm outline-none"
-                style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
-                required={requireProof} />
-              <button type="button" onClick={sendAttestation} disabled={sending || !email.trim() || (requireProof && !evidence.trim())}
+                placeholder="Or paste a supporting link"
+                className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
+                style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }} />
+              <button type="button" onClick={sendAttestation}
+                disabled={sending || !email.trim() || (requireProof && !proofDoc && !evidence.trim())}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
                 style={{ background: "var(--verified-fg)" }}>
                 <Send size={15} /> {sending ? "Sending…" : "Send attestation"}
@@ -2133,7 +2054,7 @@ function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountSta
       const dataUrl = reader.result as string;
       setAvatarUrl(dataUrl);
       const { error } = await supabase.from("profiles").update({ avatar_url: dataUrl }).eq("id", userId);
-      setPhotoNotice(error ? error.message : "Photo updated (mock — Supabase Storage coming later).");
+              setPhotoNotice(error ? error.message : "Photo updated.");
       setTimeout(() => setPhotoNotice(null), 4000);
     };
     reader.readAsDataURL(file);
@@ -2176,7 +2097,7 @@ function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountSta
                 <Camera size={16} /> Change photo
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </label>
-              <p className="text-[12px] opacity-60 mt-2 max-w-sm">Mock upload — stored as a preview URL until Supabase Storage is wired.</p>
+              <p className="text-[12px] opacity-60 mt-2 max-w-sm">Preview upload until secure file storage is enabled.</p>
               {photoNotice && <p className="text-[12px] mt-1" style={{ color: "var(--verified-fg)" }}>{photoNotice}</p>}
             </div>
           </div>
@@ -2185,7 +2106,11 @@ function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountSta
 
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4"><Palette size={18} style={{ color: "var(--accent)" }} /><h3 className="font-semibold">Your theme</h3></div>
-        <p className="text-[13px] opacity-60 mb-3">Personal accent color — applies to your app experience only.</p>
+        <p className="text-[13px] opacity-60 mb-2">Personal accent color — applies to buttons and highlights in your app experience.</p>
+        <p className="text-[13px] opacity-60 mb-3 p-3 rounded-xl" style={{ background: "var(--surface-2)" }}>
+          <strong>Light or dark appearance</strong> follows your device setting automatically (via <code className="text-[12px]">prefers-color-scheme</code>).
+          Change it in your OS: Windows Settings → Personalization → Colors, or macOS System Settings → Appearance.
+        </p>
         <div className="flex gap-2 flex-wrap">
           {THEME_SWATCHES.map((c) => (
             <button key={c} type="button" onClick={() => saveThemeColor(c)}
@@ -2257,7 +2182,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           setShowOutlook(settings?.show_outlook ?? true);
           if (profile?.account_status) setAccountStatus(profile.account_status as AccountStatus);
           setTrialEndsAt(profile?.trial_ends_at ?? null);
-          if (profile?.theme_color) setTheme({ mode: theme.mode, accent: profile.theme_color });
+          if (profile?.theme_color) setTheme({ accent: profile.theme_color, mode: theme.mode });
           if (org) {
             setOrgSettings(org);
             setOrgLogoUrl(org.logo_url);
@@ -2275,6 +2200,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "verify", label: "Verification History", icon: FileBadge },
+    ...(role !== "admin" && role !== "superadmin" ? [{ id: "vault", label: "Achievement Vault", icon: Award }] : []),
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
@@ -2285,7 +2211,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const requireProof = orgSettings?.require_proof ?? true;
 
   const dashboard = userId ? {
-    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} requireProof={requireProof} />,
+    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} />,
     manager: <ManagerView userId={userId} orgSettings={orgSettings} />,
     executive: <ExecutiveView userId={userId} orgSettings={orgSettings} />,
     admin: <AdminView userId={userId} />,
@@ -2356,6 +2282,9 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           </div>
         )}
         <main className="min-w-0">
+          {tab !== "dashboard" && (
+            <BackButton onClick={() => setTab("dashboard")} label="Back to Dashboard" />
+          )}
           {tab === "dashboard" && (
             <>
               <Card className="p-6 mb-6" style={{ background: "linear-gradient(135deg, var(--surface), var(--inferred-bg))" }}>
@@ -2372,6 +2301,9 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             </>
           )}
           {tab === "verify" && userId && <VerificationView userId={userId} requireProof={requireProof} />}
+          {tab === "vault" && userId && role !== "admin" && role !== "superadmin" && (
+            <AchievementVaultView userId={userId} requireProof={requireProof} />
+          )}
           {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
           {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}
           {tab === "platform" && role === "superadmin" && <PlatformConsole />}
@@ -2405,7 +2337,12 @@ export default function CredentiaSite() {
   const [screen, setScreen] = useState<"public" | "auth" | "app">("public");
   const [role, setRole] = useState<Role>("employee");
   const [authReady, setAuthReady] = useState(false);
-  const [theme, setTheme] = useState<Theme>({ accent: "#0f6e5c", mode: "light" });
+  const colorScheme = usePrefersColorScheme();
+  const [accent, setAccent] = useState("#0f6e5c");
+  const theme = useMemo(() => ({ accent, mode: colorScheme }), [accent, colorScheme]);
+  const setTheme = useCallback((t: Theme) => {
+    if (t.accent) setAccent(t.accent);
+  }, []);
   const vars = useThemeVars(theme);
 
   const enterApp = useCallback((r: Role) => {
@@ -2470,7 +2407,7 @@ export default function CredentiaSite() {
   return (
     <div style={{ ...vars, background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
       {FONTS}
-      {screen === "public" && <PublicSite onEnter={() => setScreen("auth")} theme={theme} setTheme={setTheme} />}
+      {screen === "public" && <PublicSite onEnter={() => setScreen("auth")} />}
       {screen === "auth" && <AuthScreen onBack={() => setScreen("public")} onLogin={enterApp} />}
       {screen === "app" && <AppShell role={role} theme={theme} setTheme={setTheme} onSignOut={handleSignOut} />}
     </div>
