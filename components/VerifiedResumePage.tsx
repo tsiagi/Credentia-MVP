@@ -235,17 +235,17 @@ export default function VerifiedResumePage({ token }: { token: string }) {
   }, [token]);
 
   const theme = {
-    "--bg": "#faf9f7",
-    "--surface": "#ffffff",
-    "--surface-2": "#f3f2ef",
-    "--ink": "#1a1a1a",
-    "--ink-2": "#4b5563",
-    "--line": "#e5e2dc",
-    "--accent": "#0f6e5c",
-    "--verified-fg": "#0f6e5c",
-    "--verified-bg": "#0f6e5c12",
-    "--warn": "#b45309",
-    "--warn-bg": "#b453091a",
+    "--bg": "#EAEAF2",
+    "--surface": "#FBFAFD",
+    "--surface-2": "#E4E3EE",
+    "--ink": "#242838",
+    "--ink-2": "#4A4F63",
+    "--line": "#D8D6E3",
+    "--accent": "#6B7FC0",
+    "--verified-fg": "#586340",
+    "--verified-bg": "#E7EAD7",
+    "--warn": "#A5731F",
+    "--warn-bg": "#F6E7C7",
   } as CSSProperties;
 
   if (loading) {
@@ -270,11 +270,6 @@ export default function VerifiedResumePage({ token }: { token: string }) {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-        .passport-page, .passport-page * { font-family: 'IBM Plex Sans', system-ui, sans-serif; box-sizing: border-box; }
-        .passport-page h1, .passport-page h2, .passport-page .serif { font-family: 'Fraunces', Georgia, serif !important; }
-      `}</style>
     <div
       className="min-h-screen passport-no-print passport-page select-none"
       style={{ ...theme, background: "var(--bg)", color: "var(--ink)" }}

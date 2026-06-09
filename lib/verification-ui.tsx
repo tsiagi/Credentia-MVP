@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 import { BadgeCheck, Sparkles } from "lucide-react";
 
 export const VERIFICATION_LEVELS = [
-  { n: 1, label: "Self Reported", fg: "#6b7280", bg: "#6b72801a" },
-  { n: 2, label: "Manager Verified", fg: "#1f4ed8", bg: "#1f4ed81a" },
-  { n: 3, label: "HR Verified", fg: "#7c3aed", bg: "#7c3aed1a" },
-  { n: 4, label: "Company Verified", fg: "#0f6e5c", bg: "#0f6e5c1a" },
-  { n: 5, label: "Multi-Source Verified", fg: "#b45309", bg: "#b453091a" },
+  { n: 1, label: "Self Reported", fg: "var(--ink-3)", bg: "var(--surface-2)" },
+  { n: 2, label: "Manager Verified", fg: "var(--accent-text)", bg: "var(--accent-soft)" },
+  { n: 3, label: "HR Verified", fg: "var(--inferred-fg)", bg: "var(--inferred-bg)" },
+  { n: 4, label: "Company Verified", fg: "var(--verified-fg)", bg: "var(--verified-bg)" },
+  { n: 5, label: "Multi-Source Verified", fg: "var(--warn-fg)", bg: "var(--warn-bg)" },
 ] as const;
 
 export function LevelBadge({ level }: { level: number }) {

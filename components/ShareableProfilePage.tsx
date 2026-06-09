@@ -50,15 +50,17 @@ export default function ShareableProfilePage({ token }: { token: string }) {
   }
 
   return (
-    <div className="min-h-screen px-5 py-10" style={{ background: "linear-gradient(180deg, #eef0f3 0%, #fff 40%)", color: "#16181d" }}>
+    <div className="min-h-screen px-5 py-10" style={{ background: "var(--bg)", color: "var(--ink)" }}>
       <div className="max-w-lg mx-auto">
         <div className="flex items-center gap-2 text-[13px] opacity-50 mb-6">
-          <ShieldCheck size={16} /> Credentia · Verified profile
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/cairn-logo-mark.svg" alt="" className="h-6 w-6" />
+          Credentia · Verified profile
         </div>
 
-        <div className="rounded-2xl border p-6 sm:p-8 bg-white shadow-sm" style={{ borderColor: "#e3e6ea" }}>
+        <div className="border p-6 sm:p-8" style={{ borderColor: "var(--line)", background: "var(--surface)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)" }}>
           <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full"
-            style={{ background: "#dcf3ed", color: "#0f6e5c" }}>
+            style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
             <BadgeCheck size={12} /> VERIFIED FACTS ONLY
           </span>
           <h1 className="text-2xl sm:text-3xl font-semibold mt-4 serif">{profile.name}</h1>
@@ -73,9 +75,9 @@ export default function ShareableProfilePage({ token }: { token: string }) {
                 {profile.achievements.map((a, i) => {
                   const Icon = KIND_ICON[a.kind] ?? Award;
                   return (
-                    <li key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "#f5f6f8" }}>
-                      <div className="p-1.5 rounded-lg shrink-0" style={{ background: "#0f6e5c1a" }}>
-                        <Icon size={16} style={{ color: "#0f6e5c" }} />
+                    <li key={i} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "var(--surface-2)" }}>
+                      <div className="p-1.5 rounded-lg shrink-0" style={{ background: "var(--verified-bg)" }}>
+                        <Icon size={16} style={{ color: "var(--verified-fg)" }} />
                       </div>
                       <div className="min-w-0">
                         <div className="text-[14px] font-medium leading-snug">{a.label}</div>

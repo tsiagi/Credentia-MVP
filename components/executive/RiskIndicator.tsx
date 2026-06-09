@@ -4,7 +4,7 @@ import type { RiskLevel } from "./types";
 const CONFIG: Record<RiskLevel, { label: string; bg: string; fg: string; Icon: typeof CheckCircle2 }> = {
   healthy: { label: "Healthy", bg: "var(--verified-bg)", fg: "var(--verified-fg)", Icon: CheckCircle2 },
   attention: { label: "Needs attention", bg: "var(--warn-bg)", fg: "var(--warn)", Icon: AlertCircle },
-  high: { label: "High risk", bg: "#be123c1a", fg: "#be123c", Icon: AlertTriangle },
+  high: { label: "High risk", bg: "var(--danger-bg)", fg: "var(--danger-fg)", Icon: AlertTriangle },
 };
 
 export function RiskIndicator({

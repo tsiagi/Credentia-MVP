@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, {
   useState, useMemo, useEffect, useCallback,
@@ -37,26 +37,27 @@ import {
   type TimelineEvent, type VerifyQueueItem,
   type ValueScoreDetail, type TeamValueScoreRow, type PromotionReadinessRow, type CompRecommendation,
 } from "@/lib/workforce";
-/** Achievement Vault — load/save via lib/supabase.ts → achievements table */
+/* Achievement Vault — load/save via lib/supabase.ts, achievements table */
 import {
   fetchAchievements,
   type AchievementRow,
 } from "@/lib/achievements";
 import {
   ShieldCheck, Sparkles, LayoutDashboard, Users, Award, Settings as SettingsIcon,
-  AlertTriangle, BadgeCheck, Eye, EyeOff, ChevronRight, Info, Building2, UserCircle2,
+  AlertTriangle, BadgeCheck, Eye, EyeOff, ChevronRight, ChevronDown, Info, Building2, UserCircle2,
   LineChart, Lock, Zap, Send, FileBadge, ToggleLeft, ToggleRight, Palette,
   SlidersHorizontal, Globe, Menu, X, ArrowRight, ArrowLeft, Check, GitBranch, Workflow, ScanSearch,
   Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
   Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
+  Compass, Quote, Play, Clock, Layers, History, Luggage, Inbox, CheckCircle2,
 } from "lucide-react";
 
-/* ════════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    CREDENTIA — full responsive site
    Public marketing site  +  authenticated multi-tier app
    Verified facts vs AI inferences kept as separate, labeled types.
-   ════════════════════════════════════════════════════════════════ */
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 type Theme = { accent: string; mode: "light" | "dark" };
 type Role = "employee" | "manager" | "executive" | "admin" | "hr" | "superadmin";
@@ -100,7 +101,9 @@ const ROLE_LABELS: Record<Role, string> = {
   admin: "System Admin", hr: "HR / People Ops", superadmin: "Platform Operator",
 };
 
-const THEME_SWATCHES = ["#0f6e5c", "#1f4ed8", "#7c3aed", "#b45309", "#be123c"];
+/* Cairn palette — periwinkle default + coral, lavender, olive, ochre accents */
+const CAIRN_DEFAULT_ACCENT = "#6B7FC0";
+const THEME_SWATCHES = ["#6B7FC0", "#E07C5E", "#8E7CB0", "#6E7A4F", "#C28A2C"];
 
 function ProfileAvatar({ name, url, size = 40 }: { name?: string | null; url?: string | null; size?: number }) {
   const initials = (name?.trim() || "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -155,44 +158,21 @@ function DashboardWelcome({ userId, role }: { userId: string; role: Role }) {
   );
 }
 
-// ── theme ──────────────────────────────────────────────────────
+// â”€â”€ theme (Cairn design tokens — colors.css; optional accent override) â”€â”€
 function useThemeVars(theme: Theme) {
   return useMemo(() => {
-    const dark = theme.mode === "dark";
+    if (theme.accent === CAIRN_DEFAULT_ACCENT) return {};
     return {
       "--accent": theme.accent,
-      "--accent-soft": theme.accent + "1a",
-      "--ink": dark ? "#e8eaed" : "#16181d",
-      "--ink-2": dark ? "#b6bac2" : "#4a4f59",
-      "--surface": dark ? "#1c1f26" : "#ffffff",
-      "--surface-2": dark ? "#23272f" : "#f5f6f8",
-      "--bg": dark ? "#14161b" : "#eef0f3",
-      "--line": dark ? "#31353e" : "#e3e6ea",
-      "--verified-fg": "#0f6e5c",
-      "--verified-bg": dark ? "#0f3d34" : "#dcf3ed",
-      "--inferred-fg": "#7c3aed",
-      "--inferred-bg": dark ? "#241a3d" : "#efe9fb",
-      "--warn": "#b45309",
-      "--warn-bg": dark ? "#3a2a12" : "#fdf0dc",
-    };
-  }, [theme]);
+      "--accent-soft": `${theme.accent}1a`,
+      "--accent-hover": theme.accent,
+      "--accent-press": theme.accent,
+      "--accent-text": theme.accent,
+    } as Record<string, string>;
+  }, [theme.accent]);
 }
 
-const FONTS = (
-  <>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-    <style>{`
-      *{font-family:'IBM Plex Sans',system-ui,sans-serif;box-sizing:border-box}
-      h1,h2,h3,h4,.serif{font-family:'Fraunces','Georgia',serif!important}
-      @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-      .rise{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
-      html{scroll-behavior:smooth}
-      ::selection{background:var(--accent);color:#fff}
-    `}</style>
-  </>
-);
-
-// ── shared primitives ──────────────────────────────────────────
+// â”€â”€ shared primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const VerifiedFactTag = () => (
   <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full"
     style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
@@ -227,8 +207,16 @@ function TransparencyNote({ children }: { children: ReactNode }) {
 }
 
 const Card = ({ children, className = "", style = {} }: { children: ReactNode; className?: string; style?: CSSProperties }) => (
-  <div className={`rounded-2xl border ${className}`}
-    style={{ borderColor: "var(--line)", background: "var(--surface)", boxShadow: "0 1px 2px rgba(0,0,0,.04)", ...style }}>
+  <div
+    className={`border ${className}`}
+    style={{
+      borderColor: "var(--line)",
+      background: "var(--surface)",
+      borderRadius: "var(--radius-lg)",
+      boxShadow: "var(--shadow-sm)",
+      ...style,
+    }}
+  >
     {children}
   </div>
 );
@@ -246,7 +234,6 @@ function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: 
   );
 }
 
-/** Standard horizontal hamburger — opens/closes the mobile nav drawer */
 function MobileNavToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <button
@@ -262,10 +249,10 @@ function MobileNavToggle({ open, onToggle }: { open: boolean; onToggle: () => vo
 }
 
 const Stat = ({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) => (
-  <Card className="p-5">
-    <div className="text-[12px] uppercase tracking-widest opacity-60">{label}</div>
-    <div className="mt-1 text-3xl font-semibold serif" style={{ color: accent || "var(--ink)" }}>{value}</div>
-    {sub && <div className="text-[12px] mt-1 opacity-60">{sub}</div>}
+  <Card className="p-6">
+    <div className="cairn-eyebrow">{label}</div>
+    <div className="mt-1 text-[32px] font-semibold serif tabular" style={{ color: accent || "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.05 }}>{value}</div>
+    {sub && <div className="text-[12px] mt-1" style={{ color: "var(--ink-3)" }}>{sub}</div>}
   </Card>
 );
 
@@ -285,7 +272,7 @@ function RiskPill({ risk }: { risk: "Low" | "Moderate" | "High" }) {
   const colors = {
     Low: { fg: "var(--verified-fg)", bg: "var(--verified-bg)" },
     Moderate: { fg: "var(--warn)", bg: "var(--warn-bg)" },
-    High: { fg: "#be123c", bg: "#be123c1a" },
+    High: { fg: "var(--danger-fg)", bg: "var(--danger-bg)" },
   };
   const c = colors[risk];
   return (
@@ -614,289 +601,1166 @@ const KIND_ICON: Record<string, typeof Target> = {
   promotion: TrendingUp, award: Award, process_improvement: Lightbulb, leadership: Crown,
 };
 
-/* ═══════════════════ PUBLIC MARKETING SITE ═══════════════════ */
-function PublicSite({ onEnter }: { onEnter: () => void }) {
-  const [menu, setMenu] = useState(false);
-  const [accessForm, setAccessForm] = useState({ company: "", size: "", email: "" });
-  const [accessSubmitted, setAccessSubmitted] = useState(false);
-  const features = [
-    { icon: BadgeCheck, t: "Verified talent passport", d: "Every profile resolves to an immutable-but-correctable public URL showing only attested facts — confirmed tenure, titles, and validated skills." },
-    { icon: Workflow, t: "Multi-layer feedback engine", d: "Employee and manager answer tailored prompts; AI processes sentiment, verifies impact, and surfaces a deviation score for coaching." },
-    { icon: LineChart, t: "Executive analytics", d: "Morale index, organizational friction, and retention signals — quantified, weighted, and explainable." },
-    { icon: ScanSearch, t: "Past-experience validation", d: "Reach past employers for one-click attestation, or get an internal AI likelihood estimate that routes where to look." },
-  ];
-  const steps = [
-    { n: "01", t: "Collect", d: "Tailored prompts go to employee and manager each cycle." },
-    { n: "02", t: "Synthesize", d: "AI produces a consensus summary, a delta log, and an outlook." },
-    { n: "03", t: "Verify", d: "Facts get attested by real people and locked with an audit trail." },
-    { n: "04", t: "Carry", d: "Employees take a verified passport to their next opportunity." },
-  ];
-  const onboardingSteps = [
-    { n: "1", icon: Handshake, t: "Request access", d: "Tell us about your company — we'll schedule a demo and scope your rollout." },
-    { n: "2", icon: Building2, t: "We provision your workspace", d: "Our team creates your tenant, assigns a company admin, and configures your plan." },
-    { n: "3", icon: Link2, t: "Connect SSO or import people", d: "Connect Okta/Azure AD via SCIM, or bulk-import your roster via CSV." },
-    { n: "4", icon: Zap, t: "Go live", d: "Employees sign in through your IdP. Verified records start accumulating from day one." },
-  ];
+/* ═══════════════════ PUBLIC MARKETING SITE — multi-page ═══════════════════ */
 
-  function handleAccessRequest(e: FormEvent) {
-    e.preventDefault();
-    if (!accessForm.company.trim() || !accessForm.email.trim()) return;
-    setAccessSubmitted(true);
-  }
+type MktRoute = "home" | "platform" | "why" | "different" | "employers" | "transparency";
+const MKT_ROUTES: MktRoute[] = ["home", "platform", "why", "different", "employers", "transparency"];
+const MAX_W = "1120px";
+
+function parseMktHash(): { route: MktRoute; anchor: string | null } {
+  const raw = (window.location.hash || "").replace(/^#\/?/, "").trim();
+  const idx = raw.indexOf("::");
+  const r = idx >= 0 ? raw.slice(0, idx) : raw;
+  const a = idx >= 0 ? raw.slice(idx + 2) : "";
+  return { route: (MKT_ROUTES.includes(r as MktRoute) ? r : "home") as MktRoute, anchor: a || null };
+}
+
+function mktScrollTo(y: number) {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { window.scrollTo(0, Math.max(0, y)); return; }
+  const startY = window.scrollY;
+  const dist = Math.max(0, y) - startY;
+  if (Math.abs(dist) < 2) return;
+  const dur = Math.min(700, Math.max(280, Math.abs(dist) * 0.5));
+  const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+  const t0 = Date.now();
+  const id = setInterval(() => {
+    const p = Math.min(1, (Date.now() - t0) / dur);
+    window.scrollTo(0, Math.round(startY + dist * ease(p)));
+    if (p >= 1) clearInterval(id);
+  }, 16);
+}
+
+function mktScrollToAnchor(id: string): boolean {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  mktScrollTo(el.getBoundingClientRect().top + window.scrollY - 82);
+  return true;
+}
+function mktScrollWhenReady(id: string, tries = 0) {
+  if (mktScrollToAnchor(id)) return;
+  if (tries < 30) setTimeout(() => mktScrollWhenReady(id, tries + 1), 40);
+}
+
+function useReveal(delay = 0, y = 26) {
+  const ref = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const io = typeof IntersectionObserver !== "undefined";
+    const r = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (!io || reduce || r.top < vh * 0.85) return;
+    el.style.opacity = "0";
+    el.style.transform = `translateY(${y}px)`;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          el.style.transition = `opacity .7s var(--ease-out) ${delay}ms, transform .7s var(--ease-out) ${delay}ms`;
+          el.style.opacity = "1";
+          el.style.transform = "none";
+          obs.disconnect();
+        }
+      });
+    }, { threshold: 0.14, rootMargin: "0px 0px -7% 0px" });
+    obs.observe(el);
+  }, [delay, y]);
+  return ref;
+}
+
+function Reveal({ children, delay = 0, y = 26, style = {}, className = "" }: { children: ReactNode; delay?: number; y?: number; style?: CSSProperties; className?: string }) {
+  const ref = useReveal(delay, y);
+  return <div ref={ref} style={style} className={className}>{children}</div>;
+}
+
+function CountUp({ value, decimals = 0, suffix = "", prefix = "" }: { value: number; decimals?: number; suffix?: string; prefix?: string }) {
+  const [n, setN] = useState(value);
+  const elRef = useCallback((el: HTMLSpanElement | null) => {
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const r = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (r.top < vh * 0.85) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        obs.disconnect();
+        let raf: number;
+        const dur = 1400;
+        let start: number | undefined;
+        const tick = (t: number) => {
+          if (!start) start = t;
+          const p = Math.min(1, (t - start) / dur);
+          setN(value * (1 - Math.pow(1 - p, 3)));
+          if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+      });
+    }, { threshold: 0.4 });
+    obs.observe(el);
+  }, [value]);
+  return <span ref={elRef}>{prefix}{n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}{suffix}</span>;
+}
+
+const MktCard = ({ children, className = "", style = {}, tone }: { children: ReactNode; className?: string; style?: CSSProperties; tone?: "inferred" }) => (
+  <div className={`border ${className}`} style={{
+    borderColor: "var(--line)", background: tone === "inferred" ? "var(--inferred-bg)" : "var(--surface)",
+    borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)", ...style,
+  }}>{children}</div>
+);
+
+function PassportMock() {
   return (
-    <div>
-      {/* nav */}
-      <header className="sticky top-0 z-30 border-b backdrop-blur"
-        style={{ borderColor: "var(--line)", background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}>
-        <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
-            <span className="serif text-xl font-semibold">Credentia</span>
+    <MktCard style={{ padding: 22, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
+          <Globe size={14} /> /p/verify/8f3a…c2
+        </span>
+        <VerifiedTag />
+      </div>
+      <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)" }}>Tyrell S.</div>
+      <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2 }}>Senior Equity Program Lead</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 18 }}>
+        {[["Tenure", "6.2 yr"], ["Skills", "14"], ["Validations", "9"]].map(([label, val]) => (
+          <div key={label}><div className="cairn-eyebrow">{label}</div><div style={{ fontSize: 20, fontWeight: 600, fontFamily: "var(--font-display)", color: "var(--ink)" }}>{val}</div></div>
+        ))}
+      </div>
+    </MktCard>
+  );
+}
+function FeedbackMock() {
+  return (
+    <MktCard style={{ padding: 22, width: "100%" }}>
+      <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)", marginBottom: 14 }}>This cycle — consensus</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {[["Employee", "Led the bands rollout end-to-end."], ["Manager", "Owned it; unblocked two teams."]].map(([who, txt]) => (
+          <div key={who} style={{ background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: 12 }}>
+            <div className="cairn-eyebrow" style={{ marginBottom: 6 }}>{who}</div>
+            <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>{txt}</div>
           </div>
-          <nav className="hidden md:flex items-center gap-7 text-[14px]" style={{ color: "var(--ink-2)" }}>
-            <a href="#how" className="hover:opacity-70">How it works</a>
-            <a href="#features" className="hover:opacity-70">Platform</a>
-            <a href="#companies" className="hover:opacity-70">For companies</a>
-            <a href="#trust" className="hover:opacity-70">Transparency</a>
-            <button onClick={onEnter} className="px-4 py-2 rounded-xl font-medium text-white" style={{ background: "var(--accent)" }}>
-              Sign in
-            </button>
-          </nav>
-          <MobileNavToggle open={menu} onToggle={() => setMenu(!menu)} />
+        ))}
+      </div>
+      <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Alignment</span>
+        <InferredTag />
+      </div>
+      <ConfidenceBar value={0.92} />
+    </MktCard>
+  );
+}
+function AnalyticsMock() {
+  const rows: [string, number, string][] = [["Engineering", 86, "var(--verified-fg)"], ["Sales", 74, "var(--warn-fg)"], ["Customer Success", 68, "var(--danger-fg)"], ["Finance", 88, "var(--verified-fg)"]];
+  return (
+    <MktCard style={{ padding: 22, width: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
+        <div className="cairn-eyebrow">Company health</div>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 600, color: "var(--accent)", lineHeight: 1 }}>83</div>
+      </div>
+      {rows.map(([name, val, c]) => (
+        <div key={name} style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 5 }}>
+            <span style={{ color: "var(--ink-2)" }}>{name}</span>
+            <span style={{ color: "var(--ink)", fontWeight: 600 }}>{val}</span>
+          </div>
+          <div style={{ height: 7, borderRadius: "var(--radius-pill)", background: "var(--surface-inset)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${val}%`, background: c, borderRadius: "var(--radius-pill)" }} />
+          </div>
         </div>
-        {menu && (
-          <div className="md:hidden border-t px-5 py-4 space-y-3" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
-            {["how", "features", "companies", "trust"].map((h) => (
-              <a key={h} href={`#${h}`} onClick={() => setMenu(false)} className="block text-[15px] capitalize">{h === "how" ? "How it works" : h === "features" ? "Platform" : h === "companies" ? "For companies" : "Transparency"}</a>
-            ))}
-            <button onClick={onEnter} className="w-full px-4 py-2.5 rounded-xl font-medium text-white" style={{ background: "var(--accent)" }}>Sign in</button>
+      ))}
+    </MktCard>
+  );
+}
+function ValidationMock() {
+  return (
+    <MktCard style={{ padding: 22, width: "100%" }}>
+      <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>Past-experience check</div>
+      <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>Acme Corp · 2019–2022 · Analyst</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--verified-bg)", borderRadius: "var(--radius-md)" }}>
+          <BadgeCheck size={16} style={{ color: "var(--verified-fg)", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "var(--ink)" }}>Employer attested — one click</span>
+        </div>
+        <div style={{ padding: "10px 12px", background: "var(--inferred-bg)", borderRadius: "var(--radius-md)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <InferredTag />
+            <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>Likelihood estimate</span>
           </div>
-        )}
-      </header>
+          <ConfidenceBar value={0.78} />
+        </div>
+      </div>
+    </MktCard>
+  );
+}
+function RecruitMock() {
+  const cands: [string, string, number, string][] = [["Tyrell S.", "Equity Program Lead", 5, "9 validations"], ["Mara D.", "Staff Engineer", 5, "12 validations"], ["Priya R.", "Revenue Ops", 4, "7 validations"]];
+  return (
+    <MktCard style={{ padding: 20, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div className="cairn-eyebrow">Verified shortlist</div>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--ink-3)" }}>3 of 28 matched</span>
+      </div>
+      {cands.map(([name, role, , val]) => (
+        <div key={name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", background: "var(--surface-2)", borderRadius: "var(--radius-md)", marginBottom: 10 }}>
+          <span style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>{name[0]}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{name}</div>
+            <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{role}</div>
+          </div>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-3)" }}>{val}</span>
+        </div>
+      ))}
+    </MktCard>
+  );
+}
 
-      {/* hero */}
-      <section className="max-w-6xl mx-auto px-5 pt-16 pb-20 md:pt-24 md:pb-28">
-        <div className="max-w-3xl rise">
-          <span className="inline-flex items-center gap-2 text-[13px] font-medium px-3 py-1 rounded-full mb-6"
-            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+const MKT_FEATURES = [
+  { slug: "passport", Icon: BadgeCheck, t: "Verified talent passport", d: "Every profile resolves to a correctable public URL showing only attested facts — confirmed tenure, titles, and validated skills.", Mock: PassportMock },
+  { slug: "feedback", Icon: Workflow, t: "Multi-layer feedback engine", d: "Employee and manager answer tailored prompts; AI processes sentiment, verifies impact, and surfaces an alignment score for coaching.", Mock: FeedbackMock },
+  { slug: "analytics", Icon: LineChart, t: "Executive analytics", d: "Morale index, organizational friction, and retention signals — quantified, weighted, and explainable.", Mock: AnalyticsMock },
+  { slug: "validation", Icon: ScanSearch, t: "Past-experience validation", d: "Reach past employers for one-click attestation, or get an internal AI likelihood estimate that routes where to look.", Mock: ValidationMock },
+] as const;
+
+const MKT_STEPS = [
+  { n: "01", Icon: Inbox, t: "Collect", d: "Tailored prompts go to employee and manager each cycle.", long: "Every review cycle, Cairn sends role- and level-aware prompts to the employee and, separately, to their manager. No blank-page reviews — just a few sharp questions tuned to the work that actually happened.", points: ["Adaptive prompts by role, level, and recent projects", "Employee and manager answer independently", "~10 minutes per cycle, with gentle reminders", "Every submission is timestamped to the audit log"] },
+  { n: "02", Icon: Sparkles, t: "Synthesize", d: "AI produces a consensus summary, a delta log, and an outlook.", long: "The model reconciles both sides into a consensus summary, flags where the two accounts diverge, and drafts a forward outlook — all of it clearly labeled as inference, never as fact.", points: ["Sentiment + impact analysis across both responses", "A deviation score surfaces coaching moments", "Every output is tagged AI INFERENCE", "Each carries a 'How was this decided?' explainer"] },
+  { n: "03", Icon: BadgeCheck, t: "Verify", d: "Facts get attested by real people and locked with an audit trail.", long: "A real person attests each claim, promoting it up the five-level verification ladder. Verified facts are immutable-but-correctable: locked against silent edits, yet always disputable with a full history.", points: ["Attested by a real, accountable person", "Verification levels L1 (self) → L5 (multi-source)", "Immutable but correctable, never silently permanent", "Complete, viewable verification history"] },
+  { n: "04", Icon: Luggage, t: "Carry", d: "Employees take a verified passport to their next opportunity.", long: "The employee owns a portable passport at a correctable public URL. It shows attested facts only — self-reported items and internal inferences never leave the org — and the employee can revoke or correct it anytime.", points: ["Public URL shows manager-verified (L2+) facts only", "Self-reported and inferred items stay internal", "Revocable and correctable by the employee", "Portable across every employer on Cairn"] },
+];
+
+const MKT_NAV = [
+  { label: "Platform", route: "platform" as MktRoute, sections: [{ label: "Verified Talent Passport", anchor: "platform-passport" }, { label: "Multi-Layer Feedback Engine", anchor: "platform-feedback" }, { label: "Executive Analytics", anchor: "platform-analytics" }, { label: "Past-Experience Validation", anchor: "platform-validation" }, { label: "How It Works", anchor: "platform-how" }] },
+  { label: "Why Cairn", route: "why" as MktRoute, sections: [{ label: "The Shift", anchor: "why-shift" }, { label: "Our Mission", anchor: "why-mission" }, { label: "Value on Both Sides", anchor: "why-value" }, { label: "What You Get", anchor: "why-benefits" }] },
+  { label: "What's Different", route: "different" as MktRoute, sections: [{ label: "What Sets Us Apart", anchor: "different-pillars" }, { label: "How Cairn Compares", anchor: "different-compare" }] },
+  { label: "For Employers", route: "employers" as MktRoute, sections: [{ label: "Hire From Proof", anchor: "employers-proof" }, { label: "Testimonials", anchor: "employers-testimonials" }] },
+  { label: "Transparency", route: "transparency" as MktRoute, sections: [{ label: "Facts vs. Inferences", anchor: "transparency-types" }, { label: "Verification Ladder", anchor: "transparency-ladder" }] },
+];
+
+const INDUSTRIES = ["Healthcare", "Manufacturing", "Financial Services", "Public Sector", "Higher Education", "Technology", "Retail", "Logistics"];
+
+function MktLogo() {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+      <img src="/cairn-logo-mark.svg" alt="" style={{ width: 34, height: 34 }} />
+      <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)" }}>Credentia</span>
+    </span>
+  );
+}
+
+function PageHero({ eyebrow, eyebrowIcon, title, lede, children, tone = "default", goBack }: { eyebrow?: string; eyebrowIcon?: ReactNode; title: string; lede?: string; children?: ReactNode; tone?: "default" | "warm"; goBack: () => void }) {
+  return (
+    <section style={{ position: "relative", overflow: "hidden", borderBottom: "1px solid var(--line)" }}>
+      <div aria-hidden style={{ position: "absolute", top: -120, left: "50%", transform: "translateX(-50%)", width: "100vw", height: 560, background: "var(--dusk-gradient)", opacity: tone === "warm" ? 0.5 : 0.4, zIndex: 0, pointerEvents: "none", maskImage: "linear-gradient(to bottom, #000 0%, #000 30%, transparent 92%)", WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 30%, transparent 92%)" }} />
+      <div style={{ position: "relative", zIndex: 1, maxWidth: MAX_W, margin: "0 auto", padding: "30px 24px 60px" }}>
+        <button type="button" onClick={goBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer", marginBottom: 26, padding: "8px 15px 8px 12px", borderRadius: "var(--radius-pill)", border: "1px solid var(--line)", background: "var(--surface)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, color: "var(--ink-2)", boxShadow: "var(--shadow-sm)" }}>
+          <ArrowLeft size={16} style={{ color: "var(--accent)" }} /> Back
+        </button>
+        <Reveal style={{ maxWidth: 760 }}>
+          {eyebrow && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)", color: "var(--accent-text)", marginBottom: 20 }}>
+              {eyebrowIcon} {eyebrow}
+            </span>
+          )}
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 54, fontWeight: 600, lineHeight: 1.06, letterSpacing: "-0.025em", color: "var(--ink)", margin: 0 }}>{title}</h1>
+          {lede && <p style={{ fontSize: 19, lineHeight: 1.6, color: "var(--ink-2)", marginTop: 20, maxWidth: 600 }}>{lede}</p>}
+          {children}
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function MktHeader({ route, navigate, onEnter }: { route: MktRoute; navigate: (to: MktRoute, anchor?: string) => void; onEnter: () => void }) {
+  const [compressed, setCompressed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<number | null>(null);
+  useEffect(() => {
+    const onScroll = () => setCompressed(window.scrollY > 56);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const audiences: [string, boolean, MktRoute][] = [["For Talent", false, "why"], ["For Employers", true, "employers"], ["For Career Teams", false, "platform"]];
+  return (
+    <header style={{ position: "sticky", top: 0, zIndex: 40, background: "color-mix(in srgb, var(--bg) 93%, transparent)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${compressed ? "var(--line)" : "transparent"}`, boxShadow: compressed ? "var(--shadow-sm)" : "none", transition: "box-shadow .3s var(--ease-out), border-color .3s var(--ease-out)" }}>
+      {/* audience bar */}
+      <div style={{ background: "var(--ink)", color: "var(--on-accent)", overflow: "hidden", maxHeight: compressed ? 0 : 46, opacity: compressed ? 0 : 1, transition: "max-height .35s var(--ease-out), opacity .25s var(--ease-out)" }}>
+        <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "0 24px", height: 46, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "color-mix(in srgb, var(--on-accent) 72%, transparent)" }}>
+            <ShieldCheck size={14} style={{ color: "var(--gold)" }} /> Verified facts. Labeled inferences. Built for every industry.
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {audiences.map(([label, hot, target]) => (
+              <button key={label} type="button" onClick={() => navigate(target)}
+                style={{ fontSize: 12.5, fontWeight: 600, padding: "5px 13px", borderRadius: "var(--radius-pill)", border: 0, cursor: "pointer", color: hot ? "var(--on-accent)" : "color-mix(in srgb, var(--on-accent) 78%, transparent)", background: hot ? "var(--accent)" : "transparent" }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* main nav */}
+      <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", height: compressed ? 60 : 80, transition: "height .3s var(--ease-out)" }}>
+        <button type="button" onClick={() => navigate("home")} style={{ justifySelf: "start", background: "none", border: 0, cursor: "pointer", padding: 0, transform: compressed ? "scale(0.92)" : "none", transformOrigin: "left center", transition: "transform .3s var(--ease-out)" }}>
+          <MktLogo />
+        </button>
+        <nav style={{ justifySelf: "center", display: "flex", alignItems: "center", gap: 4, height: "100%" }} className="mkt-desktop-nav">
+          {MKT_NAV.map((item, i) => (
+            <div key={item.label} style={{ position: "relative", display: "flex", alignItems: "center", height: "100%" }}
+              onMouseEnter={() => setOpenMenu(i)} onMouseLeave={() => setOpenMenu((o) => o === i ? null : o)}>
+              <button type="button" onClick={() => { setOpenMenu(null); navigate(item.route); }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14.5, fontWeight: 500, color: (route === item.route || openMenu === i) ? "var(--ink)" : "var(--ink-2)", background: "none", border: 0, cursor: "pointer", whiteSpace: "nowrap", padding: "6px 8px" }}>
+                {item.label}
+                <ChevronDown size={14} style={{ color: "var(--ink-3)", transition: "transform .25s var(--ease-out)", transform: openMenu === i ? "rotate(180deg)" : "none" }} />
+              </button>
+              {openMenu === i && (
+                <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", paddingTop: 12, zIndex: 50 }}>
+                  <div style={{ width: 220, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--radius-xl)", boxShadow: "var(--shadow-xl)", padding: 8 }}>
+                    {item.sections.map((s) => (
+                      <button key={s.anchor} type="button" onClick={() => { navigate(item.route, s.anchor); setOpenMenu(null); }}
+                        className="mkt-menu-row"
+                        style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", border: 0, background: "transparent", padding: "10px 14px", borderRadius: "var(--radius-md)" }}>
+                        <span style={{ display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--terracotta-700)", lineHeight: 1.3 }}>{s.label}</span>
+                      </button>
+                    ))}
+                    <div style={{ borderTop: "1px solid var(--line)", marginTop: 6, paddingTop: 6 }}>
+                      <button type="button" onClick={() => { navigate(item.route); setOpenMenu(null); }} className="mkt-menu-row"
+                        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", border: 0, background: "transparent", cursor: "pointer", padding: "9px 14px", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, color: "var(--accent-text)" }}>
+                        View the full {item.label} page <ArrowRight size={14} style={{ color: "var(--accent)" }} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+        <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 14 }}>
+          <button type="button" onClick={onEnter} className="mkt-desktop-nav" style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)", background: "none", border: 0, cursor: "pointer", whiteSpace: "nowrap" }}>Sign in</button>
+          <button type="button" onClick={onEnter} style={{ display: "none", background: "none", border: 0, cursor: "pointer", padding: 4 }} className="mkt-mobile-toggle" aria-label="Menu">
+            {mobileOpen ? <X size={24} style={{ color: "var(--ink)" }} /> : <Menu size={24} style={{ color: "var(--ink)" }} />}
+          </button>
+          <button type="button" onClick={onEnter} className="mkt-desktop-nav" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 14, fontWeight: 600, border: 0, cursor: "pointer" }}>
+            Request access
+          </button>
+          <button type="button" onClick={() => setMobileOpen((m) => !m)} className="mkt-mobile-toggle" style={{ display: "none", background: "none", border: 0, cursor: "pointer", padding: 4 }} aria-label="Menu">
+            {mobileOpen ? <X size={24} style={{ color: "var(--ink)" }} /> : <Menu size={24} style={{ color: "var(--ink)" }} />}
+          </button>
+        </div>
+      </div>
+      {mobileOpen && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 45, borderTop: "1px solid var(--line)", background: "var(--surface)", boxShadow: "var(--shadow-lg)", padding: "8px 24px 20px", maxHeight: "78vh", overflowY: "auto" }}>
+          {MKT_NAV.map((item) => (
+            <div key={item.label} style={{ padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+              <button type="button" onClick={() => { navigate(item.route); setMobileOpen(false); }} style={{ display: "block", padding: "8px 0", fontSize: 16, fontWeight: 600, color: route === item.route ? "var(--accent-text)" : "var(--ink)", background: "none", border: 0, cursor: "pointer", textAlign: "left", width: "100%" }}>{item.label}</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1, paddingLeft: 2, paddingBottom: 6 }}>
+                {item.sections.map((s) => (
+                  <button key={s.anchor} type="button" onClick={() => { navigate(item.route, s.anchor); setMobileOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", width: "100%", border: 0, background: "transparent", cursor: "pointer", padding: "8px 0", fontFamily: "var(--font-sans)", fontSize: 14, color: "var(--ink-2)" }}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button type="button" onClick={() => { setMobileOpen(false); onEnter(); }} style={{ display: "block", width: "100%", marginTop: 14, padding: "12px 20px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Request access</button>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function MktFooter({ navigate, onEnter }: { navigate: (to: MktRoute) => void; onEnter: () => void }) {
+  const cols: [string, [string, MktRoute][]][] = [
+    ["Product", [["Platform", "platform"], ["Transparency", "transparency"]]],
+    ["Company", [["Why Cairn", "why"], ["What's different", "different"], ["For employers", "employers"]]],
+    ["Audiences", [["For Talent", "why"], ["For Employers", "employers"], ["For Career Teams", "platform"]]],
+  ];
+  return (
+    <footer style={{ borderTop: "1px solid var(--line)", background: "var(--surface)" }}>
+      <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "56px 24px 32px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 36 }} className="mkt-footer-grid">
+        <div>
+          <MktLogo />
+          <p style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 14, maxWidth: 280, lineHeight: 1.6 }}>The verified record of how good someone actually is. Manage your people today; let them carry proof to tomorrow.</p>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 18, padding: "9px 18px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 14, fontWeight: 600, border: 0, cursor: "pointer" }}>
+            Request access <ArrowRight size={15} />
+          </button>
+        </div>
+        {cols.map(([title, items]) => (
+          <div key={title}>
+            <div className="cairn-eyebrow" style={{ marginBottom: 14 }}>{title}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {items.map(([label, to]) => (
+                <button key={label} type="button" onClick={() => navigate(to)} style={{ fontSize: 14, color: "var(--ink-2)", background: "none", border: 0, cursor: "pointer", textAlign: "left", padding: 0 }}>{label}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: "1px solid var(--line)", padding: "20px 0" }}>
+        <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontSize: 13, color: "var(--ink-3)" }}>
+          <span>Â© 2026 Credentia. Verified facts. Labeled inferences. Your data, correctable.</span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ═══════════════════ Home page ═══════════════════ */
+function MktHero({ onEnter, onOpenTour }: { onEnter: () => void; onOpenTour: () => void }) {
+  return (
+    <section style={{ position: "relative", maxWidth: MAX_W, margin: "0 auto", padding: "64px 24px 36px" }}>
+      <div aria-hidden style={{ position: "absolute", top: -88, left: "50%", transform: "translateX(-50%)", width: "100vw", height: 620, background: "var(--dusk-gradient)", opacity: 0.42, zIndex: 0, pointerEvents: "none", maskImage: "linear-gradient(to bottom, #000 0%, #000 32%, transparent 92%)", WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 32%, transparent 92%)" }} />
+      <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 48, alignItems: "center" }} className="mkt-hero-grid">
+        <Reveal>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)", color: "var(--accent-text)", marginBottom: 22 }}>
             <Sparkles size={14} /> Performance you can prove
           </span>
-          <h1 className="serif text-4xl md:text-6xl font-semibold leading-[1.05] tracking-tight">
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 58, fontWeight: 600, lineHeight: 1.05, letterSpacing: "-0.025em", color: "var(--ink)", margin: 0 }}>
             The verified record of how good someone actually is.
           </h1>
-          <p className="text-lg md:text-xl mt-6 leading-relaxed" style={{ color: "var(--ink-2)" }}>
-            Credentia turns ongoing performance feedback into an attested talent passport — so hiring no longer
-            starts from an unverifiable resume. Manage your people today; let them carry proof to tomorrow.
+          <p style={{ fontSize: 19, lineHeight: 1.6, color: "var(--ink-2)", marginTop: 22, maxWidth: 540 }}>
+            Credentia turns ongoing performance feedback into an attested talent passport — so hiring no longer starts from an unverifiable resume.
           </p>
-          <div className="flex flex-wrap gap-3 mt-8">
-            <button onClick={onEnter} className="px-6 py-3.5 rounded-xl font-medium text-white inline-flex items-center gap-2"
-              style={{ background: "var(--accent)" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 30 }}>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>
               Enter the platform <ArrowRight size={18} />
             </button>
-            <a href="#trust" className="px-6 py-3.5 rounded-xl font-medium border inline-flex items-center gap-2"
-              style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
-              How decisions are made
-            </a>
-            <a href="#companies" className="px-6 py-3.5 rounded-xl font-medium border inline-flex items-center gap-2"
-              style={{ borderColor: "var(--line)", color: "var(--ink)" }}>
-              For companies <Building2 size={18} />
-            </a>
+            <button type="button" onClick={onOpenTour} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>
+              <Play size={16} /> Watch the 2-min tour
+            </button>
           </div>
-        </div>
-
-        {/* floating passport preview */}
-        <div className="mt-16 grid md:grid-cols-3 gap-4 rise" style={{ animationDelay: ".15s" }}>
-          <Card className="p-5 md:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-[13px] opacity-60"><Globe size={14} /> /p/verify/8f3a…c2</div>
-              <VerifiedFactTag />
-            </div>
-            <div className="serif text-2xl font-semibold">Tyrell S. — Senior Equity Program Lead</div>
-            <div className="grid grid-cols-3 gap-4 mt-5">
-              <div><div className="text-[11px] uppercase tracking-widest opacity-50">Tenure</div><div className="text-xl font-semibold serif">6.2 yr</div></div>
-              <div><div className="text-[11px] uppercase tracking-widest opacity-50">Attested skills</div><div className="text-xl font-semibold serif">14</div></div>
-              <div><div className="text-[11px] uppercase tracking-widest opacity-50">Validations</div><div className="text-xl font-semibold serif">9</div></div>
-            </div>
-          </Card>
-          <Card className="p-5" style={{ background: "var(--inferred-bg)" }}>
-            <InferredTag />
-            <div className="serif text-lg font-semibold mt-3">Internal only</div>
-            <p className="text-[13px] mt-1 opacity-75">Outlooks and likelihood scores live inside the company — never on the public passport.</p>
-          </Card>
-        </div>
-      </section>
-
-      {/* how */}
-      <section id="how" className="py-20" style={{ background: "var(--surface)" }}>
-        <div className="max-w-6xl mx-auto px-5">
-          <h2 className="serif text-3xl md:text-4xl font-semibold">How it works</h2>
-          <div className="grid md:grid-cols-4 gap-5 mt-10">
-            {steps.map((s) => (
-              <div key={s.n}>
-                <div className="serif text-3xl font-semibold opacity-30">{s.n}</div>
-                <div className="font-semibold text-lg mt-2">{s.t}</div>
-                <p className="text-[14px] opacity-70 mt-1 leading-relaxed">{s.d}</p>
-              </div>
+        </Reveal>
+        <Reveal delay={120} y={34}>
+          <div style={{ position: "relative", borderRadius: "var(--radius-xl)", overflow: "hidden", border: "1px solid var(--line)", boxShadow: "var(--shadow-lg)", background: "var(--surface-inset)" }}>
+            <PassportMock />
+            <button type="button" onClick={onOpenTour} aria-label="Watch the tour"
+              style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-end", padding: 18, border: 0, cursor: "pointer", background: "linear-gradient(to top, rgba(28,30,41,0.45), transparent 50%)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 11, color: "var(--on-accent)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600 }}>
+                <span style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <Play size={16} style={{ color: "var(--on-accent)" }} />
+                </span>
+                Watch the 2-min tour
+              </span>
+            </button>
+          </div>
+        </Reveal>
+      </div>
+      <Reveal delay={120} style={{ position: "relative", zIndex: 1, marginTop: 64 }}>
+        <div className="cairn-eyebrow" style={{ textAlign: "center", marginBottom: 18 }}>Built for accuracy across every industry</div>
+        <div style={{ position: "relative", overflow: "hidden", maskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)" }}>
+          <div className="mkt-marquee-track">
+            {[...INDUSTRIES, ...INDUSTRIES].map((name, i) => (
+              <span key={i} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 8, padding: "0 28px", fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+                <CheckCircle2 size={16} style={{ color: "var(--accent)" }} /> {name}
+              </span>
             ))}
           </div>
         </div>
-      </section>
+      </Reveal>
+    </section>
+  );
+}
 
-      {/* features */}
-      <section id="features" className="max-w-6xl mx-auto px-5 py-20">
-        <h2 className="serif text-3xl md:text-4xl font-semibold">One platform, two jobs</h2>
-        <p className="text-lg mt-3 opacity-70 max-w-2xl">Run rich internal performance management, and produce a portable, verified credential as a by-product.</p>
-        <div className="grid md:grid-cols-2 gap-5 mt-10">
-          {features.map((f) => {
-            const Icon = f.icon;
+function MktFeatureShowcase({ navigate }: { navigate: (to: MktRoute) => void }) {
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused) return;
+    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const id = setInterval(() => setActive((a) => (a + 1) % MKT_FEATURES.length), 4200);
+    return () => clearInterval(id);
+  }, [paused]);
+  const feat = MKT_FEATURES[active];
+  const Mock = feat.Mock;
+  return (
+    <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px" }}>
+      <Reveal>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)", color: "var(--accent-text)", marginBottom: 16 }}>Platform</span>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>One platform, two jobs</h2>
+        <p style={{ fontSize: 18, color: "var(--ink-2)", marginTop: 12, maxWidth: 560 }}>Run rich internal performance management, and produce a portable, verified credential as a by-product. Pick a capability to see it.</p>
+      </Reveal>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.05fr", gap: 36, marginTop: 44, alignItems: "center" }} className="mkt-split">
+        <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {MKT_FEATURES.map((f, i) => {
+            const on = i === active;
+            const Icon = f.Icon;
             return (
-              <Card key={f.t} className="p-6">
-                <div className="p-2.5 rounded-xl w-max" style={{ background: "var(--accent-soft)" }}><Icon size={22} style={{ color: "var(--accent)" }} /></div>
-                <h3 className="font-semibold text-xl mt-4">{f.t}</h3>
-                <p className="opacity-70 mt-2 leading-relaxed text-[15px]">{f.d}</p>
-              </Card>
+              <button key={f.t} type="button" onClick={() => setActive(i)} style={{ display: "flex", gap: 14, alignItems: "flex-start", textAlign: "left", cursor: "pointer", padding: "18px 18px", borderRadius: "var(--radius-lg)", border: `1px solid ${on ? "var(--accent-line)" : "var(--line)"}`, background: on ? "var(--surface)" : "transparent", boxShadow: on ? "var(--shadow-md)" : "none", transition: "all .35s var(--ease-out)" }}>
+                <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--accent)" : "var(--accent-soft)", transition: "background .35s var(--ease-out)" }}>
+                  <Icon size={20} style={{ color: on ? "var(--on-accent)" : "var(--accent)" }} />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)", lineHeight: 1.25 }}>{f.t}</span>
+                  {on && <span style={{ display: "block", fontSize: 14, color: "var(--ink-2)", marginTop: 6, lineHeight: 1.55 }}>{f.d}</span>}
+                </span>
+              </button>
+            );
+          })}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6, paddingLeft: 4 }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              {MKT_FEATURES.map((_, i) => (
+                <span key={i} onClick={() => setActive(i)} style={{ width: i === active ? 22 : 8, height: 8, borderRadius: "var(--radius-pill)", background: i === active ? "var(--accent)" : "var(--line-strong)", cursor: "pointer", transition: "all .35s var(--ease-out)", display: "inline-block" }} />
+              ))}
+            </div>
+            <button type="button" onClick={() => navigate("platform")} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, color: "var(--accent-text)", background: "none", border: 0, cursor: "pointer" }}>
+              Explore the platform <ArrowRight size={15} style={{ color: "var(--accent)" }} />
+            </button>
+          </div>
+        </div>
+        <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+          style={{ position: "relative", padding: 28, borderRadius: "var(--radius-2xl)", background: "linear-gradient(150deg, var(--surface-2), var(--accent-soft))", border: "1px solid var(--line)", minHeight: 340, display: "flex", alignItems: "center" }}>
+          <div key={active} className="mkt-swap-in" style={{ width: "100%" }}>
+            <Mock />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MktStatsBand() {
+  const stats = [
+    { v: 2.4, dec: 1, suffix: "M", label: "Verified facts attested", sub: "across customer orgs" },
+    { v: 98, suffix: "%", label: "Attestation completion", sub: "within one cycle" },
+    { v: 4.7, dec: 1, suffix: "Ã—", label: "Faster reference checks", sub: "vs. manual outreach" },
+    { fixed: "0", label: "Inferences shown externally", sub: "facts only, always" },
+  ] as const;
+  return (
+    <section style={{ background: "var(--ink)", color: "var(--on-accent)" }}>
+      <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "72px 24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 28 }} className="mkt-stat-grid">
+          {stats.map((s, i) => (
+            <Reveal key={i} delay={i * 90}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 50, fontWeight: 600, letterSpacing: "-0.02em", color: "#F2C9B4" }}>
+                {"fixed" in s ? s.fixed : <CountUp value={s.v} decimals={"dec" in s ? s.dec : 0} suffix={s.suffix} />}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, marginTop: 8, color: "var(--on-accent)" }}>{s.label}</div>
+              <div style={{ fontSize: 13, color: "color-mix(in srgb, var(--on-accent) 62%, transparent)", marginTop: 2 }}>{s.sub}</div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MktPillars({ navigate }: { navigate: (to: MktRoute) => void }) {
+  const pillars = [
+    { to: "why" as MktRoute, Icon: Compass, accent: "var(--accent)", soft: "var(--accent-soft)", eyebrow: "Why Cairn", t: "A record you can trust", d: "The mission, the value, and why a verified record beats an unverifiable resume — for talent and teams alike.", cta: "See why Cairn" },
+    { to: "different" as MktRoute, Icon: GitBranch, accent: "var(--coral)", soft: "var(--coral-soft)", eyebrow: "What's different", t: "Not another HR tool", d: "Fact and inference, kept separate by design. The methodology and standout features competitors can't copy.", cta: "What sets us apart" },
+    { to: "employers" as MktRoute, Icon: Building2, accent: "var(--gold)", soft: "var(--gold-soft)", eyebrow: "For employers", t: "Hire from proof", d: "A verified talent pool, reference checks in minutes, and partner stories from teams already hiring on Credentia.", cta: "Explore for employers" },
+  ];
+  return (
+    <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px" }}>
+      <Reveal style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 44px" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>Where to go next</h2>
+        <p style={{ fontSize: 18, color: "var(--ink-2)", marginTop: 12 }}>Three ways into Credentia, depending on what you came to learn.</p>
+      </Reveal>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="mkt-stat-grid">
+        {pillars.map((p, i) => {
+          const Icon = p.Icon;
+          return (
+            <Reveal key={p.to} delay={i * 100}>
+              <button type="button" onClick={() => navigate(p.to)} style={{ textAlign: "left", background: "none", border: 0, cursor: "pointer", display: "block", width: "100%", height: "100%" }}>
+                <MktCard style={{ padding: 28, height: "100%", display: "flex", flexDirection: "column", transition: "box-shadow .2s var(--ease-out)" }} className="mkt-interactive-card">
+                  <span style={{ width: 50, height: 50, borderRadius: "var(--radius-md)", background: p.soft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon size={24} style={{ color: p.accent }} />
+                  </span>
+                  <div className="cairn-eyebrow" style={{ marginTop: 18 }}>{p.eyebrow}</div>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "6px 0 0", lineHeight: 1.2 }}>{p.t}</h3>
+                  <p style={{ fontSize: 14.5, color: "var(--ink-2)", marginTop: 10, lineHeight: 1.6, flex: 1 }}>{p.d}</p>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 18, fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>
+                    {p.cta} <ArrowRight size={16} style={{ color: p.accent }} />
+                  </span>
+                </MktCard>
+              </button>
+            </Reveal>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MktHomeCta({ onEnter }: { onEnter: () => void }) {
+  return (
+    <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "100px 24px", textAlign: "center" }}>
+      <Reveal>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 50, fontWeight: 600, color: "var(--ink)", maxWidth: 760, margin: "0 auto", lineHeight: 1.1, letterSpacing: "-0.02em" }}>Stop evaluating resumes. Start trusting records.</h2>
+        <div style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>
+            Enter the platform <ArrowRight size={20} />
+          </button>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>
+            Request access
+          </button>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ═══════════════════ Platform page ═══════════════════ */
+function MktPlatformPage({ onEnter, goBack }: { onEnter: () => void; goBack: () => void }) {
+  const [openStep, setOpenStep] = useState(0);
+  const step = MKT_STEPS[openStep];
+  const StepIcon = step.Icon;
+  return (
+    <>
+      <PageHero eyebrow="Platform" eyebrowIcon={<LayoutDashboard size={14} />} title="One platform, two jobs." lede="Run rich internal performance management — and produce a portable, verified credential as a by-product. Every capability earns its place in both." goBack={goBack}>
+        <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Enter the platform <ArrowRight size={18} /></button>
+        </div>
+      </PageHero>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "84px 24px", display: "flex", flexDirection: "column", gap: 72 }}>
+        {MKT_FEATURES.map((f, i) => {
+          const flip = i % 2 === 1;
+          const Icon = f.Icon;
+          const Mock = f.Mock;
+          return (
+            <Reveal key={f.t}>
+              <div id={`platform-${f.slug}`} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center", scrollMarginTop: 90 }} className="mkt-split">
+                <div style={{ order: flip ? 2 : 1 }}>
+                  <span style={{ width: 46, height: 46, borderRadius: "var(--radius-md)", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon size={22} style={{ color: "var(--accent)" }} />
+                  </span>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 600, color: "var(--ink)", margin: "18px 0 0", letterSpacing: "-0.01em", lineHeight: 1.2 }}>{f.t}</h3>
+                  <p style={{ fontSize: 16.5, color: "var(--ink-2)", marginTop: 12, lineHeight: 1.6, maxWidth: 460 }}>{f.d}</p>
+                </div>
+                <div style={{ order: flip ? 1 : 2, padding: 26, borderRadius: "var(--radius-2xl)", background: "linear-gradient(150deg, var(--surface-2), var(--accent-soft))", border: "1px solid var(--line)" }}>
+                  <Mock />
+                </div>
+              </div>
+            </Reveal>
+          );
+        })}
+      </section>
+      <section id="platform-how" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", scrollMarginTop: 70 }}>
+        <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "88px 24px" }}>
+          <Reveal>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)", color: "var(--accent-text)", marginBottom: 16 }}>How it works</span>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>From a quiet review cycle to a portable record</h2>
+            <p style={{ fontSize: 17, color: "var(--ink-2)", marginTop: 12, maxWidth: 560 }}>Four steps, every cycle. Open any step for the detail.</p>
+          </Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 28, marginTop: 40, alignItems: "start" }} className="mkt-split">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {MKT_STEPS.map((s, i) => {
+                const on = openStep === i;
+                const SIcon = s.Icon;
+                return (
+                  <button key={s.n} type="button" onClick={() => setOpenStep(i)} style={{ display: "flex", gap: 14, alignItems: "center", textAlign: "left", cursor: "pointer", width: "100%", padding: "16px 18px", borderRadius: "var(--radius-lg)", border: `1px solid ${on ? "var(--accent-line)" : "var(--line)"}`, background: on ? "var(--bg)" : "transparent", boxShadow: on ? "var(--shadow-sm)" : "none", transition: "all .3s var(--ease-out)" }}>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--accent)", opacity: on ? 1 : 0.5, width: 30 }}>{s.n}</span>
+                    <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: "var(--radius-md)", background: on ? "var(--accent)" : "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .3s var(--ease-out)" }}>
+                      <SIcon size={19} style={{ color: on ? "var(--on-accent)" : "var(--accent)" }} />
+                    </span>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)" }}>{s.t}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <MktCard key={openStep} style={{ padding: 30, minHeight: 300 }}>
+              <div className="cairn-eyebrow">Step {step.n}</div>
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, color: "var(--ink)", margin: "6px 0 0", letterSpacing: "-0.01em" }}>{step.t}</h3>
+              <p style={{ fontSize: 16, color: "var(--ink-2)", marginTop: 14, lineHeight: 1.65 }}>{step.long}</p>
+              <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 11, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
+                {step.points.map((pt) => (
+                  <div key={pt} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+                    <Check size={17} style={{ color: "var(--verified-fg)", marginTop: 1, flexShrink: 0 }} /> {pt}
+                  </div>
+                ))}
+              </div>
+            </MktCard>
+          </div>
+        </div>
+      </section>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px", textAlign: "center" }}>
+        <Reveal>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0, maxWidth: 680, marginInline: "auto", lineHeight: 1.12 }}>Two jobs, one source of truth.</h2>
+          <p style={{ fontSize: 18, color: "var(--ink-2)", marginTop: 14, maxWidth: 520, marginInline: "auto" }}>The work you do to manage people becomes the proof they carry forward.</p>
+          <div style={{ marginTop: 30, display: "flex", justifyContent: "center" }}>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Request access <ArrowRight size={18} /></button>
+          </div>
+        </Reveal>
+      </section>
+    </>
+  );
+}
+
+/* ═══════════════════ Why Cairn page ═══════════════════ */
+function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack: () => void; navigate: (to: MktRoute) => void }) {
+  const audiences = [
+    { Icon: UserCircle2, who: "For talent", t: "Proof you own and carry", pts: ["A passport at a correctable public URL", "Verified facts only — you control what's shown", "Portable across every employer on Credentia", "Revocable and disputable, always"] },
+    { Icon: Users, who: "For people teams", t: "Management that compounds", pts: ["~10-minute review cycles people finish", "Consensus summaries, not blank-page reviews", "An audit trail on every attested fact", "Reference checks answered in one click"] },
+  ];
+  const benefits: [typeof Check, string, string][] = [
+    [ScanSearch as typeof Check, "Hire from facts, not claims", "Tenure, titles, and skills confirmed by accountable people — never a self-written resume."],
+    [Clock as typeof Check, "Cut weeks to minutes", "One-click employer attestation replaces weeks of back-and-forth reference outreach."],
+    [GitBranch as typeof Check, "Separate fact from inference", "AI estimates stay labeled and internal. Only attested facts ever leave the org."],
+    [Lock as typeof Check, "Correctable, not permanent", "Records are immutable against silent edits, yet always disputable with full history."],
+  ];
+  return (
+    <>
+      <PageHero eyebrow="Why Cairn" eyebrowIcon={<Compass size={14} />} title="Hiring starts from a document no one can verify." lede="Resumes are self-written and rarely checked. Credentia replaces the unverifiable resume with an attested record of real performance — built from the work people already do." goBack={goBack}>
+        <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Enter the platform <ArrowRight size={18} /></button>
+          <button type="button" onClick={() => navigate("different")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>What makes us different</button>
+        </div>
+      </PageHero>
+      <section id="why-shift" style={{ maxWidth: 980, margin: "0 auto", padding: "80px 24px", scrollMarginTop: 70 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 28, alignItems: "center" }} className="mkt-shift">
+          <Reveal>
+            <MktCard style={{ padding: 26, borderStyle: "dashed" }}>
+              <div className="cairn-eyebrow" style={{ color: "var(--danger-fg)" }}>The old way</div>
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "8px 0 12px" }}>The unverifiable resume</h3>
+              {["Self-written, rarely checked", "References take weeks", "Skills are claimed, not proven", "Nothing is correctable"].map((t) => (
+                <div key={t} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14.5, color: "var(--ink-2)", marginTop: 8 }}>
+                  <X size={16} style={{ color: "var(--danger-fg)", marginTop: 2, flexShrink: 0 }} /> {t}
+                </div>
+              ))}
+            </MktCard>
+          </Reveal>
+          <Reveal delay={120} style={{ display: "flex", justifyContent: "center" }}>
+            <span style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--shadow-md)" }}>
+              <ArrowRight size={22} style={{ color: "var(--on-accent)" }} />
+            </span>
+          </Reveal>
+          <Reveal delay={200}>
+            <MktCard style={{ padding: 26, borderColor: "var(--accent-line)", boxShadow: "var(--shadow-md)" }}>
+              <div className="cairn-eyebrow" style={{ color: "var(--verified-fg)" }}>The Credentia way</div>
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "8px 0 12px" }}>The verified record</h3>
+              {["Attested by accountable people", "References in one click", "Skills validated and leveled", "Correctable, with an audit trail"].map((t) => (
+                <div key={t} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14.5, color: "var(--ink-2)", marginTop: 8 }}>
+                  <Check size={16} style={{ color: "var(--verified-fg)", marginTop: 2, flexShrink: 0 }} /> {t}
+                </div>
+              ))}
+            </MktCard>
+          </Reveal>
+        </div>
+      </section>
+      <section id="why-mission" style={{ background: "var(--ink)", color: "var(--on-accent)", scrollMarginTop: 70 }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", padding: "84px 24px", textAlign: "center" }}>
+          <Reveal>
+            <div className="cairn-eyebrow" style={{ color: "var(--gold)", justifyContent: "center", display: "flex" }}>Our mission</div>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: 34, fontWeight: 500, lineHeight: 1.32, letterSpacing: "-0.01em", marginTop: 18, color: "var(--on-accent)" }}>
+              Make the truth about someone's work portable — so opportunity follows proven contribution, not the polish of a résumé.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+      <section id="why-value" style={{ maxWidth: MAX_W, margin: "0 auto", padding: "88px 24px", scrollMarginTop: 70 }}>
+        <Reveal style={{ marginBottom: 40 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>Value on both sides of the table</h2>
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }} className="mkt-split">
+          {audiences.map((a, i) => {
+            const AIcon = a.Icon;
+            return (
+              <Reveal key={a.who} delay={i * 110}>
+                <MktCard style={{ padding: 30, height: "100%" }}>
+                  <span style={{ width: 48, height: 48, borderRadius: "var(--radius-md)", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <AIcon size={23} style={{ color: "var(--accent)" }} />
+                  </span>
+                  <div className="cairn-eyebrow" style={{ marginTop: 16 }}>{a.who}</div>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: 23, fontWeight: 600, color: "var(--ink)", margin: "6px 0 16px" }}>{a.t}</h3>
+                  {a.pts.map((p) => (
+                    <div key={p} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 11 }}>
+                      <Check size={17} style={{ color: "var(--verified-fg)", marginTop: 1, flexShrink: 0 }} /> {p}
+                    </div>
+                  ))}
+                </MktCard>
+              </Reveal>
             );
           })}
         </div>
       </section>
-
-      {/* For companies / onboarding */}
-      <section id="companies" className="py-20" style={{ background: "var(--surface)" }}>
-        <div className="max-w-6xl mx-auto px-5">
-          <span className="inline-flex items-center gap-2 text-[13px] font-medium px-3 py-1 rounded-full mb-4"
-            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-            <Building2 size={14} /> For companies
-          </span>
-          <h2 className="serif text-3xl md:text-4xl font-semibold">Get started with Credentia</h2>
-          <p className="text-lg mt-3 opacity-70 max-w-2xl">
-            Access is provisioned — there is no public self-signup. Here is how your organization comes aboard.
-          </p>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-10">
-            {onboardingSteps.map((s) => {
-              const Icon = s.icon;
-              return (
-                <div key={s.n} className="relative">
-                  <Card className="p-5 h-full">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="serif text-2xl font-semibold opacity-30">{s.n}</span>
-                      <div className="p-2 rounded-xl" style={{ background: "var(--accent-soft)" }}>
-                        <Icon size={18} style={{ color: "var(--accent)" }} />
-                      </div>
-                    </div>
-                    <div className="font-semibold text-lg">{s.t}</div>
-                    <p className="text-[14px] opacity-70 mt-2 leading-relaxed">{s.d}</p>
-                  </Card>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-12 grid lg:grid-cols-2 gap-8 items-start">
-            <div>
-              <h3 className="font-semibold text-xl mb-2">Request access</h3>
-              <p className="text-[15px] opacity-70 leading-relaxed">
-                Tell us about your company and we will reach out to schedule a demo and begin provisioning your workspace.
-                No backend send yet — confirmation only.
-              </p>
-            </div>
-            <Card className="p-6">
-              {accessSubmitted ? (
-                <div className="text-center py-4">
-                  <div className="inline-flex p-3 rounded-full mb-4" style={{ background: "var(--verified-bg)" }}>
-                    <Check size={28} style={{ color: "var(--verified-fg)" }} />
+      <section id="why-benefits" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", scrollMarginTop: 70 }}>
+        <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "88px 24px" }}>
+          <Reveal style={{ marginBottom: 40, maxWidth: 560 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>What you get with Credentia</h2>
+          </Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 18 }} className="mkt-split">
+            {benefits.map(([BIcon, t, d], i) => (
+              <Reveal key={t} delay={i * 80}>
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-start", padding: 22, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: "var(--radius-lg)" }}>
+                  <span style={{ width: 44, height: 44, flexShrink: 0, borderRadius: "var(--radius-md)", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <BIcon size={21} style={{ color: "var(--accent)" }} />
+                  </span>
+                  <div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)" }}>{t}</div>
+                    <p style={{ fontSize: 14.5, color: "var(--ink-2)", marginTop: 5, lineHeight: 1.55 }}>{d}</p>
                   </div>
-                  <h4 className="font-semibold text-lg">Request received</h4>
-                  <p className="text-[14px] opacity-70 mt-2 leading-relaxed">
-                    Thanks, {accessForm.company}! We will contact {accessForm.email} within one business day to schedule your demo and provisioning kickoff.
-                  </p>
-                  <button type="button" onClick={() => { setAccessSubmitted(false); setAccessForm({ company: "", size: "", email: "" }); }}
-                    className="mt-4 text-[13px] font-medium" style={{ color: "var(--accent)" }}>
-                    Submit another request
-                  </button>
                 </div>
-              ) : (
-                <form onSubmit={handleAccessRequest} className="space-y-4">
-                  <label className="block text-[13px]">
-                    <span className="opacity-70">Company name</span>
-                    <input required value={accessForm.company} onChange={(e) => setAccessForm({ ...accessForm, company: e.target.value })}
-                      placeholder="Acme Industries" className="mt-1 w-full px-3 py-2.5 rounded-xl border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
-                  </label>
-                  <label className="block text-[13px]">
-                    <span className="opacity-70">Company size</span>
-                    <select required value={accessForm.size} onChange={(e) => setAccessForm({ ...accessForm, size: e.target.value })}
-                      className="mt-1 w-full px-3 py-2.5 rounded-xl border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
-                      <option value="">Select…</option>
-                      {["1–50", "51–200", "201–1,000", "1,000+"].map((s) => <option key={s} value={s}>{s} employees</option>)}
-                    </select>
-                  </label>
-                  <label className="block text-[13px]">
-                    <span className="opacity-70">Contact email</span>
-                    <input required type="email" value={accessForm.email} onChange={(e) => setAccessForm({ ...accessForm, email: e.target.value })}
-                      placeholder="you@company.com" className="mt-1 w-full px-3 py-2.5 rounded-xl border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }} />
-                  </label>
-                  <button type="submit" className="w-full px-4 py-3 rounded-xl font-medium text-white inline-flex items-center justify-center gap-2"
-                    style={{ background: "var(--accent)" }}>
-                    Request access <Send size={16} />
-                  </button>
-                </form>
-              )}
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* trust */}
-      <section id="trust" className="py-20" style={{ background: "var(--surface)" }}>
-        <div className="max-w-4xl mx-auto px-5">
-          <div className="p-2.5 rounded-xl w-max" style={{ background: "var(--accent)" }}><ShieldCheck size={24} color="#fff" /></div>
-          <h2 className="serif text-3xl md:text-4xl font-semibold mt-4">How decisions are made</h2>
-          <p className="text-lg mt-4 leading-relaxed opacity-80">
-            We separate two things on purpose, and we say so everywhere they appear.
-          </p>
-          <div className="grid md:grid-cols-2 gap-5 mt-8">
-            <Card className="p-6">
-              <VerifiedFactTag />
-              <h3 className="font-semibold text-xl mt-3">Verified facts</h3>
-              <p className="opacity-70 mt-2 text-[15px] leading-relaxed">Confirmed by a real attesting person. These can appear on a public passport. They stay correctable, with an audit trail.</p>
-            </Card>
-            <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
-              <InferredTag />
-              <h3 className="font-semibold text-xl mt-3">AI inferences</h3>
-              <p className="opacity-80 mt-2 text-[15px] leading-relaxed">Model estimates — outlooks, likelihood vectors, retention signals. Labeled as such, kept internal, never treated as proof, always disputable.</p>
-            </Card>
-          </div>
-          <div className="mt-6 space-y-2">
-            {["Every AI output carries a \"How was this decided?\" explainer",
-              "Likelihood scores route attention — they never confirm a past role",
-              "Records are correctable and revocable, not silently permanent",
-              "Nothing inferred is ever shown to an outside party"].map((t) => (
-              <div key={t} className="flex items-start gap-2 text-[15px]">
-                <Check size={18} style={{ color: "var(--verified-fg)" }} className="mt-0.5 shrink-0" /> <span className="opacity-80">{t}</span>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
-
-      {/* cta */}
-      <section className="max-w-6xl mx-auto px-5 py-24 text-center">
-        <h2 className="serif text-3xl md:text-5xl font-semibold max-w-3xl mx-auto leading-tight">Stop evaluating resumes. Start trusting records.</h2>
-        <button onClick={onEnter} className="mt-8 px-7 py-4 rounded-xl font-medium text-white inline-flex items-center gap-2 text-lg"
-          style={{ background: "var(--accent)" }}>Enter the platform <ArrowRight size={20} /></button>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px", textAlign: "center" }}>
+        <Reveal>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 42, fontWeight: 600, color: "var(--ink)", maxWidth: 680, margin: "0 auto", lineHeight: 1.12, letterSpacing: "-0.02em" }}>Proof should travel with the people who earned it.</h2>
+          <div style={{ marginTop: 28, display: "flex", justifyContent: "center" }}>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Request access <ArrowRight size={18} /></button>
+          </div>
+        </Reveal>
       </section>
+    </>
+  );
+}
 
-      <footer className="border-t py-8" style={{ borderColor: "var(--line)" }}>
-        <div className="max-w-6xl mx-auto px-5 flex items-center justify-between flex-wrap gap-3 text-[13px] opacity-60">
-          <div className="flex items-center gap-2"><ShieldCheck size={16} /> Credentia — prototype</div>
-          <div>Verified facts. Labeled inferences. Your data, correctable.</div>
+/* ═══════════════════ What's Different page ═══════════════════ */
+function MktDifferentPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack: () => void; navigate: (to: MktRoute) => void }) {
+  const rows = [
+    ["Source of truth", "Self-written resume", "Manager memory", "Attested, leveled facts"],
+    ["Reference checks", "Weeks of outreach", "Skipped or informal", "One click, logged"],
+    ["AI usage", "Hidden scoring", "None", "Labeled, internal, disputable"],
+    ["Who owns the record", "The platform", "The employer", "The employee"],
+    ["Correctable", "No", "No", "Always, with audit trail"],
+  ];
+  const pillars = [
+    [GitBranch, "Fact and inference, separated by design", "Most tools blur AI scores into the record. We keep them as two labeled types — and only attested facts ever leave the org."],
+    [Layers, "A five-level verification ladder", "Every claim climbs from self-reported (L1) to multi-source attested (L5). Public passports show L2 and above, never raw claims."],
+    [Luggage, "The employee owns the passport", "Not the platform, not the employer. It's portable, revocable, and correctable — proof that follows the person."],
+    [History, "Immutable but correctable", "Records can't be silently edited, yet they're always disputable with a complete, viewable history."],
+  ] as const;
+  return (
+    <>
+      <PageHero tone="warm" eyebrow="What makes us different" eyebrowIcon={<GitBranch size={14} />} title="Not another HR tool. A new source of truth." lede="Performance tools score people. Background checks verify the past. Credentia does something neither does — it turns everyday management into a portable, verified record, with fact and inference kept rigorously apart." goBack={goBack}>
+        <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Enter the platform <ArrowRight size={18} /></button>
+          <button type="button" onClick={() => navigate("transparency")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>See the methodology</button>
         </div>
-      </footer>
+      </PageHero>
+      <section id="different-pillars" style={{ maxWidth: MAX_W, margin: "0 auto", padding: "84px 24px", scrollMarginTop: 70 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }} className="mkt-split">
+          {pillars.map(([PIcon, t, d], i) => (
+            <Reveal key={t} delay={i * 90}>
+              <MktCard style={{ padding: 30, height: "100%" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <span style={{ width: 48, height: 48, flexShrink: 0, borderRadius: "var(--radius-md)", background: "var(--coral-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <PIcon size={23} style={{ color: "var(--coral)" }} />
+                  </span>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color: "var(--ink)", margin: 0, lineHeight: 1.25 }}>{t}</h3>
+                </div>
+                <p style={{ fontSize: 15, color: "var(--ink-2)", marginTop: 14, lineHeight: 1.62 }}>{d}</p>
+              </MktCard>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+      <section id="different-compare" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", scrollMarginTop: 70 }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", padding: "84px 24px" }}>
+          <Reveal style={{ marginBottom: 36 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>How Credentia compares</h2>
+            <p style={{ fontSize: 17, color: "var(--ink-2)", marginTop: 12 }}>Side by side with the tools teams use today.</p>
+          </Reveal>
+          <Reveal>
+            <div style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: "var(--radius-xl)", background: "var(--bg)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
+                <thead>
+                  <tr>
+                    {["Capability", "Resume", "Annual review", "Credentia"].map((h, i) => (
+                      <th key={h} style={{ textAlign: "left", padding: "18px 20px", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: i === 3 ? "var(--accent-text)" : "var(--ink-3)", background: i === 3 ? "var(--accent-soft)" : "transparent", borderBottom: "1px solid var(--line)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, ri) => (
+                    <tr key={ri}>
+                      {r.map((cell, ci) => (
+                        <td key={ci} style={{ padding: "16px 20px", fontSize: 14.5, lineHeight: 1.4, color: ci === 0 ? "var(--ink)" : ci === 3 ? "var(--ink)" : "var(--ink-3)", fontWeight: ci === 0 || ci === 3 ? 600 : 400, background: ci === 3 ? "var(--accent-soft)" : "transparent", borderBottom: ri < rows.length - 1 ? "1px solid var(--line)" : "none", verticalAlign: "top" }}>
+                          {ci === 3 ? (<span style={{ display: "inline-flex", alignItems: "flex-start", gap: 8 }}><Check size={16} style={{ color: "var(--verified-fg)", marginTop: 2, flexShrink: 0 }} /> {cell}</span>) : cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px", textAlign: "center" }}>
+        <Reveal>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 42, fontWeight: 600, color: "var(--ink)", maxWidth: 640, margin: "0 auto", lineHeight: 1.12, letterSpacing: "-0.02em" }}>The difference is what we refuse to blur.</h2>
+          <div style={{ marginTop: 28, display: "flex", justifyContent: "center" }}>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Request access <ArrowRight size={18} /></button>
+          </div>
+        </Reveal>
+      </section>
+    </>
+  );
+}
+
+/* ═══════════════════ For Employers page ═══════════════════ */
+function MktEmployersPage({ onEnter, goBack }: { onEnter: () => void; goBack: () => void }) {
+  const points = [
+    [BadgeCheck, "Hire from attested facts", "Tenure, titles, and skills confirmed by real people — not a self-written resume."],
+    [Zap, "Reference checks in minutes", "One-click employer attestation replaces weeks of back-and-forth outreach."],
+    [ScanSearch, "Shortlist on proof", "Filter a verified talent pool by validated skills and level — never inferred claims."],
+  ] as const;
+  const quotes = [
+    { q: "We stopped guessing from resumes. Now we trust the record — our first interview starts from proof, not a PDF.", name: "Dana W.", role: "VP People Ops", co: "Meridian Manufacturing", initial: "D", accent: "var(--accent)" },
+    { q: "Reference checks used to take three weeks of chasing. With one-click attestation we close them in an afternoon.", name: "Marcus T.", role: "Head of Talent", co: "Northwind Health", initial: "M", accent: "var(--coral)" },
+    { q: "The labeled separation of facts and AI estimates is why our legal team signed off. Nothing inferred ever leaves the org.", name: "Priya N.", role: "Chief People Officer", co: "Atlas Financial", initial: "P", accent: "var(--gold)" },
+  ];
+  const cases = [
+    ["72%", "faster time-to-shortlist", "Meridian Manufacturing"],
+    ["3 wks → 1 day", "reference-check turnaround", "Northwind Health"],
+    ["0", "inferred claims shown to candidates", "every Credentia employer"],
+  ];
+  return (
+    <>
+      <PageHero eyebrow="For employers" eyebrowIcon={<Building2 size={14} />} title="Recruit from a record, not a resume." lede="Credentia gives hiring teams a verified talent pool where every claim traces back to an accountable person — so your first interview starts from proof." goBack={goBack}>
+        <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Hire on Credentia <ArrowRight size={18} /></button>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>Talk to sales</button>
+        </div>
+      </PageHero>
+      <section id="employers-proof" style={{ maxWidth: MAX_W, margin: "0 auto", padding: "84px 24px", scrollMarginTop: 70 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 52, alignItems: "center" }} className="mkt-split">
+          <Reveal>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 34, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0, lineHeight: 1.12 }}>Your first interview starts from proof</h2>
+            <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 16 }}>
+              {points.map(([PIcon, t, d]) => (
+                <div key={t} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: "var(--radius-md)", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <PIcon size={19} style={{ color: "var(--accent)" }} />
+                  </span>
+                  <div>
+                    <div style={{ fontSize: 16.5, fontWeight: 600, color: "var(--ink)" }}>{t}</div>
+                    <div style={{ fontSize: 14.5, color: "var(--ink-2)", marginTop: 3, lineHeight: 1.5 }}>{d}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+          <Reveal delay={130} y={34}>
+            <div style={{ position: "relative", padding: 26, borderRadius: "var(--radius-2xl)", background: "linear-gradient(150deg, var(--surface-2), var(--accent-soft))", border: "1px solid var(--line)" }}>
+              <RecruitMock />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+      <section id="employers-testimonials" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", scrollMarginTop: 70 }}>
+        <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "88px 24px" }}>
+          <Reveal style={{ maxWidth: 600, marginBottom: 44 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: "var(--radius-pill)", background: "var(--gold-soft)", color: "var(--gold)", marginBottom: 16 }}>
+              <Quote size={14} /> Testimonials
+            </span>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>Trusted by the teams who hire on proof</h2>
+            <p style={{ fontSize: 17, color: "var(--ink-2)", marginTop: 12 }}>Success stories from employer partners already recruiting from a verified talent pool.</p>
+          </Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="mkt-stat-grid">
+            {quotes.map((t, i) => (
+              <Reveal key={t.name} delay={i * 100}>
+                <MktCard style={{ padding: 28, height: "100%", display: "flex", flexDirection: "column" }}>
+                  <Quote size={24} style={{ color: t.accent }} />
+                  <p style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 500, color: "var(--ink)", marginTop: 14, lineHeight: 1.5, flex: 1 }}>"{t.q}"</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 22, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
+                    <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: t.accent }}>{t.initial}</span>
+                    <div>
+                      <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{t.name}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>{t.role} · {t.co}</div>
+                    </div>
+                  </div>
+                </MktCard>
+              </Reveal>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginTop: 24 }} className="mkt-stat-grid">
+            {cases.map(([big, label, co], i) => (
+              <Reveal key={i} delay={i * 90}>
+                <div style={{ padding: 26, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: "var(--radius-xl)" }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 600, color: "var(--accent)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>{big}</div>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)", marginTop: 12 }}>{label}</div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--ink-3)", marginTop: 6 }}>
+                    <Building2 size={13} style={{ color: "var(--ink-3)" }} /> {co}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px", textAlign: "center" }}>
+        <Reveal>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 42, fontWeight: 600, color: "var(--ink)", maxWidth: 660, margin: "0 auto", lineHeight: 1.12, letterSpacing: "-0.02em" }}>Build your shortlist from a verified talent pool.</h2>
+          <div style={{ marginTop: 28, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Hire on Credentia <ArrowRight size={18} /></button>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 15, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>Talk to sales</button>
+          </div>
+        </Reveal>
+      </section>
+    </>
+  );
+}
+
+/* ═══════════════════ Transparency page ═══════════════════ */
+function MktTransparencyPage({ onEnter, goBack }: { onEnter: () => void; goBack: () => void }) {
+  const points = [
+    "Every AI output carries a \"How was this decided?\" explainer",
+    "Likelihood scores route attention — they never confirm a past role",
+    "Records are correctable and revocable, not silently permanent",
+    "Nothing inferred is ever shown to an outside party",
+  ];
+  const levels: [string, string, string, string][] = [
+    ["L1", "Self-reported", "Internal only", "var(--ink-3)"],
+    ["L2", "Manager-verified", "Eligible for passport", "var(--accent)"],
+    ["L3", "Peer-corroborated", "Strengthens the record", "var(--accent)"],
+    ["L4", "Cross-checked", "Multiple sources agree", "var(--verified-fg)"],
+    ["L5", "Multi-source attested", "Highest confidence", "var(--verified-fg)"],
+  ];
+  return (
+    <>
+      <PageHero eyebrow="Transparency" eyebrowIcon={<ShieldCheck size={14} />} title="How decisions are made." lede="We separate two things on purpose — verified facts and AI inferences — and we say so everywhere they appear." goBack={goBack} />
+      <section id="transparency-types" style={{ maxWidth: 980, margin: "0 auto", padding: "72px 24px", scrollMarginTop: 70 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }} className="mkt-split">
+          <Reveal>
+            <MktCard style={{ padding: 28, height: "100%" }}>
+              <VerifiedTag />
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 600, color: "var(--ink)", marginTop: 12 }}>Verified facts</h3>
+              <p style={{ fontSize: 15, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>Confirmed by a real attesting person. These can appear on a public passport. They stay correctable, with a full audit trail.</p>
+            </MktCard>
+          </Reveal>
+          <Reveal delay={120}>
+            <MktCard tone="inferred" style={{ padding: 28, height: "100%" }}>
+              <InferredTag />
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 600, color: "var(--ink)", marginTop: 12 }}>AI inferences</h3>
+              <p style={{ fontSize: 15, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>Model estimates — outlooks, likelihood vectors, retention signals. Labeled as such, kept internal, never treated as proof, always disputable.</p>
+            </MktCard>
+          </Reveal>
+        </div>
+        <Reveal style={{ marginTop: 22 }}>
+          {points.map((t) => (
+            <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 15.5, color: "var(--ink-2)", marginBottom: 12 }}>
+              <Check size={18} style={{ color: "var(--verified-fg)", marginTop: 2, flexShrink: 0 }} /> {t}
+            </div>
+          ))}
+        </Reveal>
+      </section>
+      <section id="transparency-ladder" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", scrollMarginTop: 70 }}>
+        <div style={{ maxWidth: 980, margin: "0 auto", padding: "80px 24px" }}>
+          <Reveal>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 34, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>The five-level verification ladder</h2>
+            <p style={{ fontSize: 17, color: "var(--ink-2)", marginTop: 12, maxWidth: 560 }}>Every claim climbs from self-reported to multi-source attested. Only L2 and above can ever leave the org.</p>
+          </Reveal>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 36 }}>
+            {levels.map(([lv, t, note, c], i) => (
+              <Reveal key={lv} delay={i * 70}>
+                <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 20px", background: "var(--bg)", border: "1px solid var(--line)", borderRadius: "var(--radius-lg)" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700, color: c, width: 34 }}>{lv}</span>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)", flex: 1 }}>{t}</span>
+                  <span style={{ fontSize: 13.5, color: "var(--ink-3)" }}>{note}</span>
+                  <div style={{ width: `${(i + 1) * 18 + 10}%`, maxWidth: 160, height: 6, borderRadius: "var(--radius-pill)", background: c, opacity: 0.9 }} />
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px", textAlign: "center" }}>
+        <Reveal>
+          <div style={{ width: 54, height: 54, borderRadius: "var(--radius-md)", background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            <ShieldCheck size={27} style={{ color: "var(--on-accent)" }} />
+          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", margin: "18px auto 0", maxWidth: 620, lineHeight: 1.14, letterSpacing: "-0.02em" }}>Trust is the product. Everything else is built on it.</h2>
+          <div style={{ marginTop: 28, display: "flex", justifyContent: "center" }}>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Request access <ArrowRight size={18} /></button>
+          </div>
+        </Reveal>
+      </section>
+    </>
+  );
+}
+
+/* ═══════════════════ Video lightbox ═══════════════════ */
+function VideoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(28,30,41,0.78)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", width: "min(960px, 100%)" }}>
+        <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: -42, right: 0, background: "none", border: 0, color: "var(--on-accent)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--font-sans)", fontSize: 14 }}>
+          <X size={18} style={{ color: "var(--on-accent)" }} /> Close
+        </button>
+        <div style={{ width: "100%", borderRadius: "var(--radius-xl)", background: "var(--surface-inset)", boxShadow: "var(--shadow-xl)", aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center", color: "var(--ink-3)" }}>
+            <Play size={48} style={{ opacity: 0.4 }} />
+            <p style={{ fontSize: 14, marginTop: 12 }}>Tour video coming soon</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ═══════════════════ AUTH SCREEN — sign-in only (no public signup) ═══════════════════ */
+function PublicSite({ onEnter }: { onEnter: () => void }) {
+  const [route, setRoute] = useState<MktRoute>(() => {
+    if (typeof window === "undefined") return "home";
+    return parseMktHash().route;
+  });
+  const [videoOpen, setVideoOpen] = useState(false);
+  useEffect(() => {
+    const onHash = () => {
+      const { route: r, anchor } = parseMktHash();
+      setRoute(r);
+      window.scrollTo(0, 0);
+      if (anchor) mktScrollWhenReady(anchor);
+    };
+    window.addEventListener("hashchange", onHash);
+    const { anchor } = parseMktHash();
+    if (anchor) mktScrollWhenReady(anchor);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  const navigate = useCallback((to: MktRoute, anchor?: string) => {
+    const hash = anchor ? `#/${to}::${anchor}` : `#/${to}`;
+    window.history.pushState(null, "", hash);
+    setRoute(to);
+    window.scrollTo(0, 0);
+    if (anchor) mktScrollWhenReady(anchor);
+  }, []);
+
+  const goBack = useCallback(() => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate("home");
+    }
+  }, [navigate]);
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+      <VideoModal open={videoOpen} onClose={() => setVideoOpen(false)} />
+      <MktHeader route={route} navigate={navigate} onEnter={onEnter} />
+      <main style={{ flex: 1 }}>
+        {route === "home" && (
+          <>
+            <MktHero onEnter={onEnter} onOpenTour={() => setVideoOpen(true)} />
+            <MktFeatureShowcase navigate={navigate} />
+            <MktStatsBand />
+            <MktPillars navigate={navigate} />
+            <MktHomeCta onEnter={onEnter} />
+          </>
+        )}
+        {route === "platform" && <MktPlatformPage onEnter={onEnter} goBack={goBack} />}
+        {route === "why" && <MktWhyPage onEnter={onEnter} goBack={goBack} navigate={navigate} />}
+        {route === "different" && <MktDifferentPage onEnter={onEnter} goBack={goBack} navigate={navigate} />}
+        {route === "employers" && <MktEmployersPage onEnter={onEnter} goBack={goBack} />}
+        {route === "transparency" && <MktTransparencyPage onEnter={onEnter} goBack={goBack} />}
+      </main>
+      <MktFooter navigate={navigate} onEnter={onEnter} />
+    </div>
+  );
+}
+
+/* ═══════════════════ AUTH SCREEN - sign-in only (no public signup) ═══════════════════ */
 
 function AuthScreen({ onLogin, onBack }: { onLogin: (role: Role) => void; onBack: () => void }) {
   const [email, setEmail] = useState("");
@@ -1684,7 +2548,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-[12px] uppercase tracking-widest opacity-60">Step 2 — Select the specific item</div>
-              <button type="button" onClick={() => setStep("type")} className="text-[13px] opacity-60 hover:opacity-100">← Back</button>
+              <button type="button" onClick={() => setStep("type")} className="text-[13px] opacity-60 hover:opacity-100">â† Back</button>
             </div>
             {filteredItems.length === 0 ? (
               <p className="text-sm opacity-60">No {itemType === "role" ? "roles" : "achievements"} on your record yet. Add items to your career vault first.</p>
@@ -1706,7 +2570,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-[12px] uppercase tracking-widest opacity-60">Step 3 — Past employer contact</div>
-              <button type="button" onClick={() => setStep("item")} className="text-[13px] opacity-60 hover:opacity-100">← Back</button>
+              <button type="button" onClick={() => setStep("item")} className="text-[13px] opacity-60 hover:opacity-100">â† Back</button>
             </div>
             <div className="p-3 rounded-xl text-[13px]" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
               Verifying: <strong>{selectedItem.label}</strong> ({selectedItem.type})
@@ -1766,7 +2630,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
         <div className="flex items-center gap-2 mb-1"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Route B — Competency mapping</h3><InferredTag /></div>
         <p className="text-[13px] mb-3 max-w-2xl">When an employer can&apos;t be reached, the model produces an <strong>internal-only</strong> Likelihood Vector to help HR prioritize outreach. A hint, not a credential.</p>
         <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: "var(--surface)" }}>
-          <div className="text-2xl font-semibold serif" style={{ color: "var(--inferred-fg)" }}>Lᵥ 0.74</div>
+          <div className="text-2xl font-semibold serif" style={{ color: "var(--inferred-fg)" }}>Láµ¥ 0.74</div>
           <div className="text-[13px] opacity-70">&quot;Plausible — recommend outreach to confirm&quot;</div>
         </div>
         <TransparencyNote>A statistical estimate, never shown on the public passport or to outside parties as verification. Career-changers and fast upskillers may score lower despite truthful histories — which is exactly why it only routes attention rather than deciding anything.</TransparencyNote>
@@ -1786,7 +2650,7 @@ function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountSta
   const [t, setT] = useState<SettingsState>({ outlook: true, kudos: true, externalPassport: false, aiSummaries: true });
   const [profileRole, setProfileRole] = useState<Role>("employee");
   const [hireDate, setHireDate] = useState<string | null>(null);
-  const [themeColor, setThemeColor] = useState("#0f6e5c");
+  const [themeColor, setThemeColor] = useState(CAIRN_DEFAULT_ACCENT);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1823,7 +2687,7 @@ function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountSta
       if (profile) {
         setProfileRole(profile.role as Role);
         setHireDate(profile.hire_date ?? null);
-        setThemeColor(profile.theme_color ?? "#0f6e5c");
+        setThemeColor(profile.theme_color ?? CAIRN_DEFAULT_ACCENT);
         setAvatarUrl(profile.avatar_url ?? null);
         if (profile.theme_color) onThemeChange?.(profile.theme_color);
       }
@@ -2081,7 +2945,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={orgLogoUrl} alt="Company logo" className="h-7 sm:h-8 w-auto max-w-[100px] object-contain shrink-0" />
               ) : (
-                <div className="p-1.5 rounded-lg shrink-0" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
+                <img src="/cairn-logo-mark.svg" alt="" className="h-8 w-8 shrink-0" />
               )}
               <span className="serif text-lg sm:text-xl font-semibold truncate hidden sm:inline">Credentia</span>
             </div>
@@ -2166,7 +3030,7 @@ export default function CredentiaSite() {
   const [role, setRole] = useState<Role>("employee");
   const [authReady, setAuthReady] = useState(false);
   const colorScheme = usePrefersColorScheme();
-  const [accent, setAccent] = useState("#0f6e5c");
+  const [accent, setAccent] = useState(CAIRN_DEFAULT_ACCENT);
   const theme = useMemo(() => ({ accent, mode: colorScheme }), [accent, colorScheme]);
   const setTheme = useCallback((t: Theme) => {
     if (t.accent) setAccent(t.accent);
@@ -2225,16 +3089,14 @@ export default function CredentiaSite() {
 
   if (!authReady && screen === "public") {
     return (
-      <div style={{ ...vars, background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
-        {FONTS}
+      <div data-theme={theme.mode} style={{ ...vars, background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
         <div className="min-h-screen flex items-center justify-center opacity-60 text-sm">Loading…</div>
       </div>
     );
   }
 
   return (
-    <div style={{ ...vars, background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
-      {FONTS}
+    <div data-theme={theme.mode} style={{ ...vars, background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
       {screen === "public" && <PublicSite onEnter={() => setScreen("auth")} />}
       {screen === "auth" && <AuthScreen onBack={() => setScreen("public")} onLogin={enterApp} />}
       {screen === "app" && <AppShell role={role} theme={theme} setTheme={setTheme} onSignOut={handleSignOut} />}

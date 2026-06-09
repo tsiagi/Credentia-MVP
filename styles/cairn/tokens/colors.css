@@ -1,0 +1,152 @@
+/* Cairn Design System — color tokens (imported from Cairn DS) */
+
+:root {
+  --dusk-gradient: linear-gradient(105deg, #F4B6A0 0%, #D8C0D0 32%, #B9BEDC 58%, #A7B7E2 78%, #5C6B80 100%);
+
+  --sand-50:  #F6F4F7;
+  --sand-100: #ECEAF1;
+  --sand-200: #DCDBE6;
+  --sand-300: #C6C7D6;
+  --clay-400: #A6A9BD;
+  --taupe-500: #7F8398;
+  --umber-600: #5C6076;
+  --umber-700: #424659;
+  --espresso-800: #2B2E3D;
+  --espresso-900: #1C1E29;
+
+  --terracotta-50:  #EEF1FB;
+  --terracotta-100: #DEE4F6;
+  --terracotta-200: #C5D0EE;
+  --terracotta-300: #A7B7E2;
+  --terracotta-400: #8A9DD3;
+  --terracotta-500: #6B7FC0;
+  --terracotta-600: #54669E;
+  --terracotta-700: #41507C;
+
+  --coral-50:  #FCEEE8;
+  --coral-100: #FAE0D6;
+  --coral-200: #F6C9B7;
+  --coral-300: #F1B099;
+  --coral-400: #EB9376;
+  --coral-500: #E07C5E;
+  --coral-600: #C56043;
+  --coral-700: #A24A30;
+
+  --plum-100: #ECE6F3;
+  --plum-300: #C3B4DC;
+  --plum-500: #8E7CB0;
+  --plum-600: #6E5D90;
+
+  --ochre-100: #F6E7C7;
+  --ochre-300: #DDB565;
+  --ochre-500: #C28A2C;
+  --ochre-600: #A5731F;
+
+  --olive-100: #E7EAD7;
+  --olive-300: #A9B383;
+  --olive-500: #6E7A4F;
+  --olive-600: #586340;
+
+  --brick-100: #F4DDD6;
+  --brick-500: #A33B2A;
+  --brick-600: #872F20;
+
+  --bg:            #EAEAF2;
+  --surface:       #FBFAFD;
+  --surface-2:     #E4E3EE;
+  --surface-inset: #D9D8E5;
+
+  --line:        #D8D6E3;
+  --line-strong: #C2C0D1;
+
+  --ink:        #242838;
+  --ink-2:      #4A4F63;
+  --ink-3:      #7C8197;
+  --on-accent:  #F6F7FD;
+
+  --accent:       var(--terracotta-500);
+  --accent-hover: var(--terracotta-600);
+  --accent-press: var(--terracotta-700);
+  --accent-soft:  var(--terracotta-50);
+  --accent-line:  var(--terracotta-200);
+  --accent-text:  var(--terracotta-700);
+
+  --coral:       var(--coral-500);
+  --coral-hover: var(--coral-600);
+  --coral-press: var(--coral-700);
+  --coral-soft:  var(--coral-100);
+  --coral-line:  var(--coral-200);
+  --coral-text:  var(--coral-700);
+  --on-coral:    #FFFFFF;
+
+  --lavender:      var(--plum-500);
+  --lavender-soft: var(--plum-100);
+  --lavender-text: var(--plum-600);
+
+  --gold:      var(--ochre-500);
+  --gold-soft: var(--ochre-100);
+
+  --verified-fg: var(--olive-600);
+  --verified-bg: var(--olive-100);
+
+  --inferred-fg: var(--plum-600);
+  --inferred-bg: var(--plum-100);
+
+  --warn-fg: var(--ochre-600);
+  --warn-bg: var(--ochre-100);
+  --warn: var(--warn-fg);
+
+  --danger-fg: var(--brick-600);
+  --danger-bg: var(--brick-100);
+
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+:root[data-theme="dark"] {
+  --bg:            #15171F;
+  --surface:       #1E212B;
+  --surface-2:     #262A36;
+  --surface-inset: #1A1D26;
+
+  --line:        #333748;
+  --line-strong: #45495C;
+
+  --ink:        #EAEBF3;
+  --ink-2:      #B8BCCE;
+  --ink-3:      #838799;
+  --on-accent:  #F6F7FD;
+
+  --accent:       var(--terracotta-400);
+  --accent-hover: var(--terracotta-300);
+  --accent-press: var(--terracotta-200);
+  --accent-soft:  #232B3D;
+  --accent-line:  #38415C;
+  --accent-text:  var(--terracotta-300);
+
+  --coral:       var(--coral-400);
+  --coral-hover: var(--coral-300);
+  --coral-press: var(--coral-200);
+  --coral-soft:  #3A251D;
+  --coral-line:  #51342A;
+  --coral-text:  var(--coral-300);
+
+  --lavender:      var(--plum-300);
+  --lavender-soft: #2E2738;
+  --lavender-text: var(--plum-300);
+
+  --gold:      var(--ochre-300);
+  --gold-soft: #3A2E16;
+
+  --verified-fg: var(--olive-300);
+  --verified-bg: #2A2F1C;
+
+  --inferred-fg: var(--plum-300);
+  --inferred-bg: #2E2738;
+
+  --warn-fg: var(--ochre-300);
+  --warn-bg: #3A2E16;
+  --warn: var(--warn-fg);
+
+  --danger-fg: #D98570;
+  --danger-bg: #3A211A;
+}

@@ -22,7 +22,7 @@ export function MetricBadge({
     : value >= 0.8 ? "high" : value >= 0.6 ? "mid" : "low";
 
   const colors = isRisk
-    ? { high: { bg: "#be123c1a", fg: "#be123c" }, mid: { bg: "var(--warn-bg)", fg: "var(--warn)" }, low: { bg: "var(--verified-bg)", fg: "var(--verified-fg)" } }
+    ? { high: { bg: "var(--danger-bg)", fg: "var(--danger-fg)" }, mid: { bg: "var(--warn-bg)", fg: "var(--warn-fg)" }, low: { bg: "var(--verified-bg)", fg: "var(--verified-fg)" } }
     : { high: { bg: "var(--verified-bg)", fg: "var(--verified-fg)" }, mid: { bg: "var(--accent-soft)", fg: "var(--accent)" }, low: { bg: "var(--warn-bg)", fg: "var(--warn)" } };
 
   const c = colors[level];
