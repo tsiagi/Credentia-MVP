@@ -717,7 +717,9 @@ function PassportMock() {
         <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
           <Globe size={14} /> /p/verify/8f3a…c2
         </span>
-        <VerifiedTag />
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 10px", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)", color: "var(--accent-text)" }}>
+          <BadgeCheck size={11} /> Attested
+        </span>
       </div>
       <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)" }}>Tyrell S.</div>
       <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2 }}>Senior Equity Program Lead</div>
@@ -750,7 +752,7 @@ function FeedbackMock() {
   );
 }
 function AnalyticsMock() {
-  const rows: [string, number, string][] = [["Engineering", 86, "var(--verified-fg)"], ["Sales", 74, "var(--warn-fg)"], ["Customer Success", 68, "var(--danger-fg)"], ["Finance", 88, "var(--verified-fg)"]];
+  const rows: [string, number, string][] = [["Engineering", 86, "var(--accent)"], ["Sales", 74, "var(--warn-fg)"], ["Customer Success", 68, "var(--danger-fg)"], ["Finance", 88, "var(--accent)"]];
   return (
     <MktCard style={{ padding: 22, width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
@@ -777,8 +779,8 @@ function ValidationMock() {
       <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--ink)", marginBottom: 4 }}>Past-experience check</div>
       <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>Acme Corp · 2019–2022 · Analyst</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--verified-bg)", borderRadius: "var(--radius-md)" }}>
-          <BadgeCheck size={16} style={{ color: "var(--verified-fg)", flexShrink: 0 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--accent-soft)", borderRadius: "var(--radius-md)" }}>
+          <BadgeCheck size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
           <span style={{ fontSize: 13, color: "var(--ink)" }}>Employer attested — one click</span>
         </div>
         <div style={{ padding: "10px 12px", background: "var(--inferred-bg)", borderRadius: "var(--radius-md)" }}>
@@ -936,9 +938,6 @@ function MktHeader({ route, navigate, onEnter }: { route: MktRoute; navigate: (t
         </nav>
         <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 14 }}>
           <button type="button" onClick={onEnter} className="mkt-desktop-nav" style={{ fontSize: 14, fontWeight: 600, color: "var(--ink-2)", background: "none", border: 0, cursor: "pointer", whiteSpace: "nowrap" }}>Sign in</button>
-          <button type="button" onClick={onEnter} style={{ display: "none", background: "none", border: 0, cursor: "pointer", padding: 4 }} className="mkt-mobile-toggle" aria-label="Menu">
-            {mobileOpen ? <X size={24} style={{ color: "var(--ink)" }} /> : <Menu size={24} style={{ color: "var(--ink)" }} />}
-          </button>
           <button type="button" onClick={onEnter} className="mkt-desktop-nav" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 14, fontWeight: 600, border: 0, cursor: "pointer" }}>
             Request access
           </button>
@@ -997,7 +996,7 @@ function MktFooter({ navigate, onEnter }: { navigate: (to: MktRoute) => void; on
       </div>
       <div style={{ borderTop: "1px solid var(--line)", padding: "20px 0" }}>
         <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontSize: 13, color: "var(--ink-3)" }}>
-          <span>Â© 2026 Credentia. Verified facts. Labeled inferences. Your data, correctable.</span>
+          <span>© 2026 Credentia. Verified facts. Labeled inferences. Your data, correctable.</span>
         </div>
       </div>
     </footer>
@@ -1005,7 +1004,7 @@ function MktFooter({ navigate, onEnter }: { navigate: (to: MktRoute) => void; on
 }
 
 /* ═══════════════════ Home page ═══════════════════ */
-function MktHero({ onEnter, onOpenTour }: { onEnter: () => void; onOpenTour: () => void }) {
+function MktHero({ onEnter }: { onEnter: () => void }) {
   return (
     <section style={{ position: "relative", maxWidth: MAX_W, margin: "0 auto", padding: "64px 24px 36px" }}>
       <div aria-hidden style={{ position: "absolute", top: -88, left: "50%", transform: "translateX(-50%)", width: "100vw", height: 620, background: "var(--dusk-gradient)", opacity: 0.42, zIndex: 0, pointerEvents: "none", maskImage: "linear-gradient(to bottom, #000 0%, #000 32%, transparent 92%)", WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 32%, transparent 92%)" }} />
@@ -1024,23 +1023,14 @@ function MktHero({ onEnter, onOpenTour }: { onEnter: () => void; onOpenTour: () 
             <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>
               Enter the platform <ArrowRight size={18} />
             </button>
-            <button type="button" onClick={onOpenTour} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>
-              <Play size={16} /> Watch the 2-min tour
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>
+              Request access
             </button>
           </div>
         </Reveal>
         <Reveal delay={120} y={34}>
-          <div style={{ position: "relative", borderRadius: "var(--radius-xl)", overflow: "hidden", border: "1px solid var(--line)", boxShadow: "var(--shadow-lg)", background: "var(--surface-inset)" }}>
+          <div style={{ borderRadius: "var(--radius-xl)", overflow: "hidden", border: "1px solid var(--line)", boxShadow: "var(--shadow-lg)", background: "var(--surface-inset)" }}>
             <PassportMock />
-            <button type="button" onClick={onOpenTour} aria-label="Watch the tour"
-              style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-end", padding: 18, border: 0, cursor: "pointer", background: "linear-gradient(to top, rgba(28,30,41,0.45), transparent 50%)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 11, color: "var(--on-accent)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600 }}>
-                <span style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                  <Play size={16} style={{ color: "var(--on-accent)" }} />
-                </span>
-                Watch the 2-min tour
-              </span>
-            </button>
           </div>
         </Reveal>
       </div>
@@ -1265,7 +1255,7 @@ function MktPlatformPage({ onEnter, goBack }: { onEnter: () => void; goBack: () 
               <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 11, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
                 {step.points.map((pt) => (
                   <div key={pt} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-                    <Check size={17} style={{ color: "var(--verified-fg)", marginTop: 1, flexShrink: 0 }} /> {pt}
+                    <Check size={17} style={{ color: "var(--accent)", marginTop: 1, flexShrink: 0 }} /> {pt}
                   </div>
                 ))}
               </div>
@@ -1326,11 +1316,11 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
           </Reveal>
           <Reveal delay={200}>
             <MktCard style={{ padding: 26, borderColor: "var(--accent-line)", boxShadow: "var(--shadow-md)" }}>
-              <div className="cairn-eyebrow" style={{ color: "var(--verified-fg)" }}>The Credentia way</div>
+              <div className="cairn-eyebrow" style={{ color: "var(--accent-text)" }}>The Credentia way</div>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "8px 0 12px" }}>The verified record</h3>
               {["Attested by accountable people", "References in one click", "Skills validated and leveled", "Correctable, with an audit trail"].map((t) => (
                 <div key={t} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14.5, color: "var(--ink-2)", marginTop: 8 }}>
-                  <Check size={16} style={{ color: "var(--verified-fg)", marginTop: 2, flexShrink: 0 }} /> {t}
+                  <Check size={16} style={{ color: "var(--accent)", marginTop: 2, flexShrink: 0 }} /> {t}
                 </div>
               ))}
             </MktCard>
@@ -1364,7 +1354,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
                   <h3 style={{ fontFamily: "var(--font-display)", fontSize: 23, fontWeight: 600, color: "var(--ink)", margin: "6px 0 16px" }}>{a.t}</h3>
                   {a.pts.map((p) => (
                     <div key={p} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 11 }}>
-                      <Check size={17} style={{ color: "var(--verified-fg)", marginTop: 1, flexShrink: 0 }} /> {p}
+                      <Check size={17} style={{ color: "var(--accent)", marginTop: 1, flexShrink: 0 }} /> {p}
                     </div>
                   ))}
                 </MktCard>
@@ -1468,7 +1458,7 @@ function MktDifferentPage({ onEnter, goBack, navigate }: { onEnter: () => void; 
                     <tr key={ri}>
                       {r.map((cell, ci) => (
                         <td key={ci} style={{ padding: "16px 20px", fontSize: 14.5, lineHeight: 1.4, color: ci === 0 ? "var(--ink)" : ci === 3 ? "var(--ink)" : "var(--ink-3)", fontWeight: ci === 0 || ci === 3 ? 600 : 400, background: ci === 3 ? "var(--accent-soft)" : "transparent", borderBottom: ri < rows.length - 1 ? "1px solid var(--line)" : "none", verticalAlign: "top" }}>
-                          {ci === 3 ? (<span style={{ display: "inline-flex", alignItems: "flex-start", gap: 8 }}><Check size={16} style={{ color: "var(--verified-fg)", marginTop: 2, flexShrink: 0 }} /> {cell}</span>) : cell}
+                          {ci === 3 ? (<span style={{ display: "inline-flex", alignItems: "flex-start", gap: 8 }}><Check size={16} style={{ color: "var(--accent)", marginTop: 2, flexShrink: 0 }} /> {cell}</span>) : cell}
                         </td>
                       ))}
                     </tr>
@@ -1607,8 +1597,8 @@ function MktTransparencyPage({ onEnter, goBack }: { onEnter: () => void; goBack:
     ["L1", "Self-reported", "Internal only", "var(--ink-3)"],
     ["L2", "Manager-verified", "Eligible for passport", "var(--accent)"],
     ["L3", "Peer-corroborated", "Strengthens the record", "var(--accent)"],
-    ["L4", "Cross-checked", "Multiple sources agree", "var(--verified-fg)"],
-    ["L5", "Multi-source attested", "Highest confidence", "var(--verified-fg)"],
+    ["L4", "Cross-checked", "Multiple sources agree", "var(--accent)"],
+    ["L5", "Multi-source attested", "Highest confidence", "var(--accent)"],
   ];
   return (
     <>
@@ -1617,7 +1607,9 @@ function MktTransparencyPage({ onEnter, goBack }: { onEnter: () => void; goBack:
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }} className="mkt-split">
           <Reveal>
             <MktCard style={{ padding: 28, height: "100%" }}>
-              <VerifiedTag />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 10px", borderRadius: "var(--radius-pill)", background: "var(--accent-soft)", color: "var(--accent-text)" }}>
+                <BadgeCheck size={11} /> Verified fact
+              </span>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 600, color: "var(--ink)", marginTop: 12 }}>Verified facts</h3>
               <p style={{ fontSize: 15, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.6 }}>Confirmed by a real attesting person. These can appear on a public passport. They stay correctable, with a full audit trail.</p>
             </MktCard>
@@ -1633,7 +1625,7 @@ function MktTransparencyPage({ onEnter, goBack }: { onEnter: () => void; goBack:
         <Reveal style={{ marginTop: 22 }}>
           {points.map((t) => (
             <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 15.5, color: "var(--ink-2)", marginBottom: 12 }}>
-              <Check size={18} style={{ color: "var(--verified-fg)", marginTop: 2, flexShrink: 0 }} /> {t}
+              <Check size={18} style={{ color: "var(--accent)", marginTop: 2, flexShrink: 0 }} /> {t}
             </div>
           ))}
         </Reveal>
@@ -1705,7 +1697,6 @@ function PublicSite({ onEnter }: { onEnter: () => void }) {
     if (typeof window === "undefined") return "home";
     return parseMktHash().route;
   });
-  const [videoOpen, setVideoOpen] = useState(false);
   useEffect(() => {
     const onHash = () => {
       const { route: r, anchor } = parseMktHash();
@@ -1737,12 +1728,11 @@ function PublicSite({ onEnter }: { onEnter: () => void }) {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-      <VideoModal open={videoOpen} onClose={() => setVideoOpen(false)} />
       <MktHeader route={route} navigate={navigate} onEnter={onEnter} />
       <main style={{ flex: 1 }}>
         {route === "home" && (
           <>
-            <MktHero onEnter={onEnter} onOpenTour={() => setVideoOpen(true)} />
+            <MktHero onEnter={onEnter} />
             <MktFeatureShowcase navigate={navigate} />
             <MktStatsBand />
             <MktPillars navigate={navigate} />
