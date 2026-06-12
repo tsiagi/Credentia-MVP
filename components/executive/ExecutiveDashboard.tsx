@@ -4,8 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { buildOrgIntelTree, computeExecutiveSummary, flattenOrgTree } from "@/lib/executive-org-data";
 import type { OrgIntelNode } from "./types";
 import { ExecutiveSummaryBar } from "./ExecutiveSummaryBar";
-import { ExecutiveLanding } from "./ExecutiveLanding";
-import { FocusWorkspace } from "./FocusWorkspace";
+import { OrgMindMap } from "./OrgMindMap";
 import { ComparisonModal } from "./ComparisonModal";
 import { FloatingCompareBar } from "./FloatingCompareBar";
 
@@ -14,7 +13,6 @@ export function ExecutiveDashboard() {
   const summary = useMemo(() => computeExecutiveSummary(flattenOrgTree(root)), [root]);
   const allNodes = useMemo(() => flattenOrgTree(root), [root]);
 
-  const [focusPath, setFocusPath] = useState<OrgIntelNode[] | null>(null);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
   const [showCompare, setShowCompare] = useState(false);
 
@@ -32,12 +30,6 @@ export function ExecutiveDashboard() {
     });
   }, []);
 
-  const enterFocus = useCallback((node: OrgIntelNode) => {
-    const path: OrgIntelNode[] = [root];
-    if (node.id !== root.id) path.push(node);
-    setFocusPath(path);
-  }, [root]);
-
   const clearCompare = useCallback(() => setCompareIds(new Set()), []);
 
   const removeFromCompare = useCallback((id: string) => {
@@ -50,25 +42,21 @@ export function ExecutiveDashboard() {
   }, [compareIds.size]);
 
   return (
-    <div className="flex flex-col -mx-5 md:-mx-0 h-[calc(100vh-3.5rem)] min-h-[520px] overflow-hidden" style={{ background: "var(--bg)" }}>
+    <div className="flex flex-col -mx-5 md:-mx-0 min-h-[calc(100vh-3.5rem)]" style={{ background: "var(--bg)" }}>
       <ExecutiveSummaryBar summary={summary} />
 
-      <ExecutiveLanding
-        root={root}
-        onEnterFocus={enterFocus}
-        compareIds={compareIds}
-        onToggleCompare={toggleCompare}
-      />
+      <div className="flex-1 px-4 py-5 sm:px-6">
+        <div className="mb-4">
+          <div className="cairn-eyebrow flex items-center gap-1.5">Org health · command center</div>
+          <h1 className="serif text-2xl sm:text-3xl font-semibold mt-1">{root.department}</h1>
+          <p className="text-[14px] opacity-60 mt-1 max-w-2xl">
+            A live map of the organization. Click any department to zoom into its leader and direct reports, compare teams
+            side by side, or print the focused view. Every score here is an AI inference — internal decision support only.
+          </p>
+        </div>
 
-      {focusPath && (
-        <FocusWorkspace
-          path={focusPath}
-          onPathChange={setFocusPath}
-          onClose={() => setFocusPath(null)}
-          compareIds={compareIds}
-          onToggleCompare={toggleCompare}
-        />
-      )}
+        <OrgMindMap root={root} compareIds={compareIds} onToggleCompare={toggleCompare} />
+      </div>
 
       <FloatingCompareBar
         count={compareIds.size}
