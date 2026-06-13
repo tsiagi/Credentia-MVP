@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { writeAuditLog } from "@/lib/audit";
 import { LevelBadge, VerifiedTag, InferredTag, SelfReportedTag } from "@/lib/verification-ui";
 import { setPassportPublished } from "@/lib/passport";
-import { generateManagerInsights, generateOrgInsights } from "@/lib/ai-client";
+import { generateManagerInsights } from "@/lib/ai-client";
 import { VerificationHistory } from "@/components/VerificationHistory";
 import { PassportLinkCard } from "@/components/VerifiedResumePage";
 import { EmployeeDataRightsCard } from "@/components/OrgPeopleView";
@@ -22,6 +22,7 @@ import { RemovalRequestPanel, FormerEmployeeDeletePanel } from "@/components/Acc
 import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeExperience";
 import { AchievementVaultView } from "@/components/AchievementVaultView";
 import { ExecutiveDashboard } from "@/components/executive/ExecutiveDashboard";
+import { ExecutiveVerificationSection } from "@/components/executive/ExecutiveVerificationSection";
 import { ProofDocumentView, ProofDocumentUpload } from "@/components/ProofDocumentView";
 import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
@@ -32,10 +33,9 @@ import {
   fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
   fetchCoachingInsights, fetchDirectReports, fetchReviewRows,
   fetchEmployeeValueScore, fetchTeamValueScores, fetchPromotionReadinessRows,
-  fetchCompensationIntelligence,
   VALUE_INPUT_LABELS, PROMO_CATEGORY_LABELS,
   type TimelineEvent, type VerifyQueueItem,
-  type ValueScoreDetail, type TeamValueScoreRow, type PromotionReadinessRow, type CompRecommendation,
+  type ValueScoreDetail, type TeamValueScoreRow, type PromotionReadinessRow,
 } from "@/lib/workforce";
 /* Achievement Vault — load/save via lib/supabase.ts, achievements table */
 import {
@@ -426,173 +426,6 @@ function PromotionReadinessPanel({ rows, title, sub, avatarMap }: { rows: Promot
         Internal only — never shown on the verified resume or external passport.
       </TransparencyNote>
     </Card>
-  );
-}
-
-function CompensationIntelligenceView({ userId }: { userId: string }) {
-  const [recs, setRecs] = useState<CompRecommendation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const reload = useCallback(async () => {
-    setError(null);
-    const rows = await fetchCompensationIntelligence(userId);
-    setRecs(rows);
-    return rows;
-  }, [userId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        await reload();
-      } catch (e) {
-        if (!cancelled) setError(errorMessage(e, "Could not load recommendations."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [reload]);
-
-  async function runOrgGeneration() {
-    setGenerating(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("Sign in again to generate recommendations.");
-      const result = await generateOrgInsights(session.access_token);
-      setNotice(
-        result.processed
-          ? `Generated AI insights for ${result.processed} of ${result.total} people. Recommendations below are live from compensation_recommendations.`
-          : `No recommendations saved.${result.failed.length ? ` ${result.failed[0].error}` : ""}`,
-      );
-      await reload();
-    } catch (e) {
-      setError(errorMessage(e, "AI generation failed."));
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  if (loading) return <div className="opacity-60 text-sm">Loading compensation intelligence…</div>;
-
-  const raises = recs.filter((r) => r.type === "raise");
-  const bonuses = recs.filter((r) => r.type === "bonus");
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="serif text-2xl font-semibold">Compensation Intelligence</h2>
-        <p className="text-[14px] opacity-60 mt-1 max-w-3xl">
-          Inference engine for comp review cycles. The system recommends ranges — humans decide every raise and bonus.
-        </p>
-      </div>
-
-      <Card className="p-5 border-2" style={{ borderColor: "var(--inferred-fg)", background: "var(--inferred-bg)" }}>
-        <div className="flex items-start gap-3">
-          <AlertTriangle size={20} className="shrink-0 mt-0.5" style={{ color: "var(--inferred-fg)" }} />
-          <div>
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-semibold">Decision support only</span>
-              <InferredTag />
-            </div>
-            <p className="text-[14px] leading-relaxed opacity-85">
-              Every item below is an <strong>AI INFERENCE</strong> from compensation_recommendations — internal to your org,
-              never on an employee&apos;s verified resume or external passport. Comp committee and managers approve or ignore
-              each recommendation; nothing is applied automatically.
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
-      {notice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{notice}</p>}
-
-      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
-        <SectionHeader icon={Sparkles} title="Generate org-wide AI recommendations" tag={<InferredTag />}
-          sub="Runs Anthropic for every employee and manager in your org, then writes to compensation_recommendations, promotion_readiness, and employee_value_scores." />
-        <p className="text-[13px] opacity-80 mb-4">
-          Requires service role and Anthropic API keys configured on the server.
-          Executive-only; comp committee still decides every outcome.
-        </p>
-        <button
-          type="button"
-          disabled={generating}
-          onClick={runOrgGeneration}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white inline-flex items-center gap-2 disabled:opacity-60"
-          style={{ background: "var(--accent)" }}
-        >
-          <Sparkles size={16} />
-          {generating ? "Generating… (may take several minutes)" : "Generate for entire organization"}
-        </button>
-      </Card>
-
-      <div className="grid sm:grid-cols-3 gap-3">
-        <Stat label="Raise recommendations" value={String(raises.length)} sub="pending review" accent="var(--accent)" />
-        <Stat label="Bonus recommendations" value={String(bonuses.length)} sub="pending review" />
-        <Stat label="High-confidence alerts" value={String(recs.filter((r) => r.confidence >= 0.7 && r.status === "pending").length)} sub="confidence ≥ 70%" accent="var(--warn)" />
-      </div>
-
-      <Card className="p-6">
-        <SectionHeader icon={DollarSign} title="Recommended ranges" tag={<InferredTag />}
-          sub="Each card shows a suggested range, evidence bullets, signal factors, and model confidence." />
-        {recs.length === 0 ? (
-          <p className="text-sm opacity-60">
-            No recommendations yet. Click <strong>Generate for entire organization</strong> above to populate compensation_recommendations from verified team data.
-          </p>
-        ) : (
-        <div className="space-y-4">
-          {recs.map((rec) => (
-            <div key={rec.id} className="p-5 rounded-xl border" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-lg">{rec.who}</span>
-                    <span className="text-[11px] uppercase tracking-widest px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: rec.type === "raise" ? "var(--accent-soft)" : "var(--verified-bg)", color: rec.type === "raise" ? "var(--accent)" : "var(--verified-fg)" }}>
-                      {rec.type}
-                    </span>
-                    <InferredTag />
-                    {rec.status !== "pending" && <span className="text-[11px] opacity-60 capitalize">{rec.status}</span>}
-                  </div>
-                  <div className="text-xl font-semibold serif mt-2" style={{ color: "var(--inferred-fg)" }}>{rec.rangeLabel}</div>
-                </div>
-                <div className="sm:w-48 shrink-0">
-                  <ConfidenceBar value={rec.confidence} />
-                </div>
-              </div>
-              <div className="mb-3">
-                <div className="text-[11px] uppercase tracking-widest opacity-60 mb-1.5">Signal factors</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {rec.factors.map((f) => (
-                    <span key={f} className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{f}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="text-[11px] uppercase tracking-widest opacity-60 mb-1.5">Supporting evidence</div>
-              <ul className="space-y-1.5">
-                {rec.reasoningBullets.map((b, i) => (
-                  <li key={i} className="text-[13px] opacity-80 flex items-start gap-2">
-                    <Check size={14} className="shrink-0 mt-0.5" style={{ color: "var(--verified-fg)" }} />
-                    {b}
-                  </li>
-                ))}
-              </ul>
-              <TransparencyNote>
-                Model output from compensation_recommendations. Weighs KPI achievement, project impact, certifications,
-                market benchmarks, and internal equity signals. Your comp committee makes the final call — this is routing and rationale, not approval.
-              </TransparencyNote>
-            </div>
-          ))}
-        </div>
-        )}
-      </Card>
-    </div>
   );
 }
 
@@ -2858,10 +2691,10 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const roleLabel = ROLE_LABELS[role];
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "verify", label: "Verification History", icon: FileBadge },
-    ...(role !== "admin" && role !== "superadmin" ? [{ id: "vault", label: "Achievement Vault", icon: Award }] : []),
+    ...(role !== "executive" && role !== "hr" ? [{ id: "verify", label: "Verification History", icon: FileBadge }] : []),
+    ...(role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" ? [{ id: "vault", label: "Achievement Vault", icon: Award }] : []),
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
-    ...(role === "executive" ? [{ id: "comp", label: "Comp Intelligence", icon: DollarSign }] : []),
+    ...(role === "executive" || role === "hr" ? [{ id: "verification-oversight", label: "Verification Oversight", icon: ShieldCheck }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
     ...(role === "superadmin" ? [{ id: "platform", label: "Platform Console", icon: Building2 }] : []),
     ...(role === "admin" ? [{ id: "admin", label: "Org Controls", icon: SlidersHorizontal }] : []),
@@ -2983,10 +2816,10 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             </>
           )}
           {tab === "verify" && userId && <VerificationView userId={userId} requireProof={requireProof} />}
-          {tab === "vault" && userId && role !== "admin" && role !== "superadmin" && (
+          {tab === "vault" && userId && role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" && (
             <AchievementVaultView userId={userId} requireProof={requireProof} />
           )}
-          {tab === "comp" && role === "executive" && userId && <CompensationIntelligenceView userId={userId} />}
+          {tab === "verification-oversight" && (role === "executive" || role === "hr") && <ExecutiveVerificationSection />}
           {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}
           {tab === "platform" && role === "superadmin" && <PlatformConsole />}
           {tab === "plan" && userId && isFormer && (
