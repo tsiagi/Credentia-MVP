@@ -8,8 +8,8 @@
 // graph. The verify button only appears for privileged roles; the database
 // trigger is the real gate (a crafted request from an employee is rejected).
 // ─────────────────────────────────────────────────────────────
-import React, { useEffect, useState } from "react";
-import { BookOpen, Plus, ShieldCheck, FileText, Loader2, Lock } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { BookOpen, Plus, ShieldCheck, FileText, Loader2, Lock, Upload } from "lucide-react";
 import { Reveal } from "@/components/ui/motion";
 import {
   fetchDocs, createDoc, verifyDoc, canVerifyDocs,
@@ -32,8 +32,31 @@ export function DocRepository({
   const [draft, setDraft] = useState<{ title: string; body: string; docType: DocType; visibility: DocVisibility }>(
     { title: "", body: "", docType: "guide", visibility: "org" },
   );
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const privileged = canVerifyDocs(role);
+
+  // Import a text-based document from the local computer into the draft.
+  async function importFile(file: File) {
+    setError(null);
+    const tooBig = file.size > 1_000_000; // 1 MB cap for inline text
+    if (tooBig) {
+      setError("File is larger than 1 MB. Paste the relevant section instead.");
+      return;
+    }
+    try {
+      const text = await file.text();
+      const titleFromName = file.name.replace(/\.[^.]+$/, "");
+      setCreating(true);
+      setDraft((d) => ({
+        ...d,
+        title: d.title.trim() || titleFromName,
+        body: d.body.trim() ? `${d.body}\n\n${text}` : text,
+      }));
+    } catch {
+      setError("Could not read that file. Text files (.txt, .md, .csv, …) work best.");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +115,17 @@ export function DocRepository({
       <div className="grid transition-all duration-300" style={{ gridTemplateRows: creating ? "1fr" : "0fr" }}>
         <div className="overflow-hidden">
           <div className="p-4 rounded-xl border mb-4 cairn-pop" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+              <span className="text-[12px]" style={{ color: "var(--ink-3)" }}>Write below, or import a file from your computer.</span>
+              <input ref={fileRef} type="file" className="hidden"
+                accept=".txt,.md,.markdown,.csv,.json,.log,.rtf,text/*"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) importFile(f); e.target.value = ""; }} />
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition active:scale-[0.98]"
+                style={{ background: "var(--surface)", color: "var(--ink-2)", border: "1px solid var(--line)" }}>
+                <Upload size={13} /> Import file
+              </button>
+            </div>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               placeholder="Title"
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none mb-2"
@@ -109,9 +143,9 @@ export function DocRepository({
               <select value={draft.visibility} onChange={(e) => setDraft({ ...draft, visibility: e.target.value as DocVisibility })}
                 className="px-3 py-2 rounded-lg border text-sm outline-none"
                 style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
-                <option value="org">Whole company</option>
-                <option value="managers">Managers only</option>
-                <option value="private">Just me</option>
+                <option value="org">Public</option>
+                <option value="team">Immediate team</option>
+                <option value="private">Just me (private)</option>
               </select>
               <button onClick={addDoc} disabled={!draft.title.trim() || !draft.body.trim()}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white transition active:scale-[0.98] disabled:opacity-40"

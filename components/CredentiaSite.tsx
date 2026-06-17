@@ -29,8 +29,8 @@ import { VerificationDeck } from "@/components/manager/VerificationDeck";
 import { ProjectTaskBoard } from "@/components/projects/ProjectTaskBoard";
 import { ExecutiveOversight } from "@/components/projects/ExecutiveOversight";
 import { DocRepository } from "@/components/docs/DocRepository";
-import { ChatInterface } from "@/components/messaging/ChatInterface";
 import { AgentConfiguration } from "@/components/agent/AgentConfiguration";
+import { FloatingAssistant } from "@/components/assistant/FloatingAssistant";
 import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
 import { fetchOrgSettingsForUser, downloadCsv } from "@/lib/org-settings";
@@ -58,7 +58,7 @@ import {
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
   Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
   Compass, Quote, Play, Clock, Layers, History, Luggage, Inbox, CheckCircle2,
-  KanbanSquare, BookOpen, MessageSquare, Bot,
+  KanbanSquare, BookOpen, LogOut,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════════
@@ -2642,6 +2642,8 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const [sidebar, setSidebar] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userMenu, setUserMenu] = useState(false);
   const [showOutlook, setShowOutlook] = useState(true);
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("active_sso");
@@ -2658,13 +2660,14 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         setUserId(id);
         await ensureUserSettings(id);
         const [{ data: profile }, { data: settings }, org] = await Promise.all([
-          supabase.from("profiles").select("public_slug, account_status, trial_ends_at, theme_color, org_id").eq("id", id).single(),
+          supabase.from("profiles").select("public_slug, account_status, trial_ends_at, theme_color, org_id, full_name").eq("id", id).single(),
           supabase.from("user_settings").select("show_outlook").eq("profile_id", id).single(),
           fetchOrgSettingsForUser(id).catch(() => null),
         ]);
         if (!cancelled) {
           setPublicSlug(profile?.public_slug ?? null);
           setOrgId(profile?.org_id ?? null);
+          setUserName(profile?.full_name ?? null);
           setShowOutlook(settings?.show_outlook ?? true);
           if (profile?.account_status) setAccountStatus(profile.account_status as AccountStatus);
           setTrialEndsAt(profile?.trial_ends_at ?? null);
@@ -2694,14 +2697,11 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     ...(isIndividualContributor ? [{ id: "work", label: role === "manager" ? "Team Work" : "My Work", icon: KanbanSquare }] : []),
     ...(isLeader ? [{ id: "oversight", label: "Work Oversight", icon: Layers }] : []),
     ...(isWorkforce ? [{ id: "knowledge", label: "Knowledge", icon: BookOpen }] : []),
-    ...(isWorkforce ? [{ id: "messages", label: "Messages", icon: MessageSquare }] : []),
-    ...(isWorkforce ? [{ id: "twin", label: "Digital Twin", icon: Bot }] : []),
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" || role === "hr" ? [{ id: "verification-oversight", label: "Verification Oversight", icon: ShieldCheck }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
     ...(role === "superadmin" ? [{ id: "platform", label: "Platform Console", icon: Building2 }] : []),
     ...(role === "admin" ? [{ id: "admin", label: "Org Controls", icon: SlidersHorizontal }] : []),
-    { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
   const requireProof = orgSettings?.require_proof ?? true;
 
@@ -2778,9 +2778,33 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center overflow-x-auto px-2 min-w-0">
               <NavList horizontal />
             </nav>
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <span className="text-[12px] px-2.5 py-1 rounded-full hidden md:inline" style={{ background: "var(--surface-2)", color: "var(--ink-2)" }}>{roleLabel}</span>
-              <button onClick={onSignOut} className="text-[13px] font-medium px-2 py-1" style={{ color: "var(--accent)" }}>Sign out</button>
+            <div className="relative shrink-0">
+              <button onClick={() => setUserMenu((v) => !v)}
+                className="inline-flex items-center gap-2 px-2 py-1.5 rounded-lg transition"
+                style={{ background: userMenu ? "var(--surface-2)" : "transparent", color: "var(--ink-2)" }}>
+                <UserCircle2 size={20} />
+                <span className="text-[13px] font-medium hidden sm:inline max-w-[140px] truncate">{userName ?? roleLabel}</span>
+                <ChevronDown size={14} style={{ transform: userMenu ? "rotate(180deg)" : "none", transition: "transform var(--duration-base)" }} />
+              </button>
+              {userMenu && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setUserMenu(false)} />
+                  <div className="absolute right-0 mt-1 w-52 rounded-xl border shadow-xl z-40 overflow-hidden" style={{ background: "var(--surface)", borderColor: "var(--line)" }}>
+                    <div className="px-3 py-2.5 border-b" style={{ borderColor: "var(--line)" }}>
+                      <p className="text-[13px] font-semibold truncate" style={{ color: "var(--ink)" }}>{userName ?? "Account"}</p>
+                      <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>{roleLabel}</p>
+                    </div>
+                    <button onClick={() => { setUserMenu(false); goToTab("settings"); }}
+                      className="w-full text-left px-3 py-2.5 text-[13px] inline-flex items-center gap-2 transition hover:opacity-80" style={{ color: "var(--ink-2)" }}>
+                      <SettingsIcon size={15} /> Settings
+                    </button>
+                    <button onClick={() => { setUserMenu(false); onSignOut(); }}
+                      className="w-full text-left px-3 py-2.5 text-[13px] inline-flex items-center gap-2 transition hover:opacity-80" style={{ color: "var(--accent)" }}>
+                      <LogOut size={15} /> Sign out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -2840,12 +2864,6 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           {tab === "knowledge" && isWorkforce && userId && (
             orgId ? <DocRepository userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />
           )}
-          {tab === "messages" && isWorkforce && userId && (
-            orgId ? <ChatInterface userId={userId} orgId={orgId} /> : <NoOrgNotice />
-          )}
-          {tab === "twin" && isWorkforce && userId && (
-            orgId ? <AgentConfiguration userId={userId} orgId={orgId} /> : <NoOrgNotice />
-          )}
           {tab === "verification-oversight" && (role === "executive" || role === "hr") && <ExecutiveVerificationSection />}
           {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}
           {tab === "platform" && role === "superadmin" && <PlatformConsole />}
@@ -2861,6 +2879,12 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           {tab === "settings" && userId && (
             <div className="space-y-6">
               {role === "manager" && <RiseIn delay={0}><ShareableLinkCard userId={userId} /></RiseIn>}
+              {/* Cred-Bot setup lives in Settings; the bubble is for day-to-day use. */}
+              {isWorkforce && orgId && (
+                <RiseIn delay={0}>
+                  <AgentConfiguration userId={userId} orgId={orgId} userName={userName ?? undefined} />
+                </RiseIn>
+              )}
               <SettingsView
                 userId={userId}
                 role={role}
@@ -2873,6 +2897,16 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           )}
         </main>
       </div>
+
+      {/* Floating Messages / Cred-Bot bubble — workforce roles only */}
+      {isWorkforce && userId && orgId && (
+        <FloatingAssistant
+          userId={userId}
+          orgId={orgId}
+          userName={userName ?? undefined}
+          onConfigureBot={() => goToTab("settings")}
+        />
+      )}
     </div>
   );
 }

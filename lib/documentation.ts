@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { writeAuditLog } from "@/lib/audit";
 
 export type DocType = "guide" | "task_outcome" | "conversation_summary" | "reference";
-export type DocVisibility = "org" | "managers" | "private";
+export type DocVisibility = "org" | "managers" | "team" | "private";
 export type DocStatus = "draft" | "verified" | "archived";
 
 export type DocRow = {

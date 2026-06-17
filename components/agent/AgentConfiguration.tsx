@@ -13,18 +13,43 @@
 // An employee's agent can only ever learn from what their role can see —
 // enforced by RLS during ingestion, not just hidden in the UI.
 // ─────────────────────────────────────────────────────────────
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  Bot, ShieldCheck, Sparkles, Brain, Trash2, Loader2, Power, GraduationCap,
+  Bot, ShieldCheck, Sparkles, Brain, Trash2, Loader2, Power, GraduationCap, Gauge,
 } from "lucide-react";
-import { Reveal } from "@/components/ui/motion";
+import { Reveal, GrowBar } from "@/components/ui/motion";
 import {
   fetchMyAgent, provisionAgent, updateAgentConfig, fetchAgentMemory, forgetMemory,
   MEMORY_SOURCE_LABEL, type UserAgent, type AgentMemoryItem,
 } from "@/lib/agents";
 
-export function AgentConfiguration({ userId, orgId }: { userId: string; orgId: string }) {
+/**
+ * Deterministic "grounding credibility" — a measure of how much VERIFIED
+ * material the Cred-Bot has learned. This is a fact about training-data volume
+ * (blue), not an AI inference about a person. Diminishing returns on volume,
+ * plus a weighting for source diversity (tasks / docs / messages).
+ */
+function credibility(memory: AgentMemoryItem[]): { pct: number; total: number; types: number; tier: string } {
+  const total = memory.length;
+  const types = new Set(memory.map((m) => m.source_type)).size; // 0..3
+  const volume = 1 - Math.exp(-total / 10); // soft cap — ~23 facts ≈ 90%
+  const diversity = types / 3;
+  const pct = Math.round(100 * (0.75 * volume + 0.25 * diversity));
+  const tier =
+    total === 0 ? "No grounding yet"
+      : pct < 25 ? "Emerging"
+      : pct < 50 ? "Developing"
+      : pct < 80 ? "Well-grounded"
+      : "Highly grounded";
+  return { pct, total, types, tier };
+}
+
+export function AgentConfiguration({
+  userId, orgId, userName,
+}: { userId: string; orgId: string; userName?: string }) {
+  const firstName = (userName ?? "").trim().split(/\s+/)[0] || "My";
+  const botTitle = `${firstName}'s Cred-Bot`;
   const [agent, setAgent] = useState<UserAgent | null>(null);
   const [memory, setMemory] = useState<AgentMemoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +57,7 @@ export function AgentConfiguration({ userId, orgId }: { userId: string; orgId: s
   const [training, setTraining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const cred = useMemo(() => credibility(memory), [memory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,7 +79,7 @@ export function AgentConfiguration({ userId, orgId }: { userId: string; orgId: s
   async function provision() {
     setBusy(true); setError(null);
     try {
-      const a = await provisionAgent(userId, orgId);
+      const a = await provisionAgent(userId, orgId, { name: botTitle });
       setAgent(a);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not provision your agent.");
@@ -105,15 +131,15 @@ export function AgentConfiguration({ userId, orgId }: { userId: string; orgId: s
     return (
       <div className="border rounded-2xl p-8 text-center" style={{ borderColor: "var(--line)", background: "var(--surface)", boxShadow: "var(--shadow-sm)" }}>
         <Bot size={32} style={{ color: "var(--accent)" }} className="mx-auto mb-3" />
-        <h3 className="font-semibold text-lg">Create your Digital Twin</h3>
+        <h3 className="font-semibold text-lg">Create {botTitle}</h3>
         <p className="text-[13px] opacity-65 mt-1 max-w-md mx-auto">
-          A personal agent that learns from your verified work — completed tasks, verified docs, and the
+          A personal Cred-Bot that learns from your verified work — completed tasks, verified docs, and the
           messages you save. Its suggestions are always AI estimates you stay in control of.
         </p>
         <button onClick={provision} disabled={busy}
           className="mt-4 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition active:scale-[0.98] disabled:opacity-40 inline-flex items-center gap-2"
           style={{ background: "var(--accent)" }}>
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <Bot size={15} />} Provision agent
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Bot size={15} />} Provision Cred-Bot
         </button>
       </div>
     );
@@ -138,7 +164,7 @@ export function AgentConfiguration({ userId, orgId }: { userId: string; orgId: s
               onBlur={() => patch({ name: agent.name })}
               className="font-semibold text-lg bg-transparent outline-none border-b border-transparent focus:border-[var(--line)]"
               style={{ color: "var(--ink)" }} />
-            <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>One twin per person · scoped to your org &amp; role</p>
+            <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>One Cred-Bot per person · scoped to your org &amp; role</p>
           </div>
           <button onClick={() => patch({ enabled: !agent.enabled })}
             className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition active:scale-[0.98]"
@@ -173,6 +199,26 @@ export function AgentConfiguration({ userId, orgId }: { userId: string; orgId: s
             {training ? <Loader2 size={14} className="animate-spin" /> : <GraduationCap size={14} />} Train now
           </button>
         </div>
+        {/* Credibility meter — scales with the VOLUME of verified material learned */}
+        <div className="mt-5 rounded-xl border p-4" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <Gauge size={15} style={{ color: "var(--verified-fg)" }} />
+            <span className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>Grounding credibility</span>
+            <span className="ml-auto text-[15px] font-semibold tabular" style={{ color: "var(--verified-fg)" }}>{cred.pct}%</span>
+          </div>
+          <GrowBar pct={cred.pct} color="var(--verified-fg)" />
+          <div className="flex items-center justify-between mt-1.5 gap-2 flex-wrap">
+            <span className="text-[12px] font-medium" style={{ color: "var(--verified-fg)" }}>{cred.tier}</span>
+            <span className="text-[11px]" style={{ color: "var(--ink-3)" }}>
+              {cred.total} verified fact{cred.total === 1 ? "" : "s"} · {cred.types}/3 sources
+            </span>
+          </div>
+          <p className="text-[11px] mt-1.5" style={{ color: "var(--ink-3)" }}>
+            Reflects how much verified material your Cred-Bot has learned — more completed tasks, verified docs,
+            and saved messages raise it. This is a measure of grounding, not an AI estimate.
+          </p>
+        </div>
+
         {note && <p className="text-[12px] mt-2 inline-flex items-center gap-1" style={{ color: "var(--verified-fg)" }}><ShieldCheck size={12} /> {note}</p>}
         {error && <p className="text-[12px] px-3 py-2 rounded-lg mt-2" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       </div>
