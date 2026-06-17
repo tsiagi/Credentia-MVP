@@ -617,6 +617,46 @@ export async function verifyQueueAction(
   });
 }
 
+/**
+ * Reverse the most recent verifyQueueAction for an item. Restores the row to
+ * the values captured on the queue item (its pre-review status / level) and
+ * appends a compensating `verify_undo` audit record — the audit_log is
+ * append-only, so we never delete the original entry, we record the reversal.
+ */
+export async function undoVerifyQueueAction(
+  managerId: string,
+  item: VerifyQueueItem,
+  prevAction: "approve" | "deny" | "clarify",
+) {
+  if (item.sourceTable === "achievements") {
+    // approve was the only path that mutated the row (level → 2)
+    if (prevAction === "approve") {
+      const { error } = await supabase.from("achievements").update({ verification_level: item.level }).eq("id", item.id);
+      if (error) throw error;
+    }
+  } else if (item.sourceTable === "kpis") {
+    const { error } = await supabase.from("kpis")
+      .update({ status: item.status, verification_level: item.level }).eq("id", item.id);
+    if (error) throw error;
+  } else if (item.sourceTable === "projects") {
+    if (prevAction === "approve") {
+      const { error } = await supabase.from("projects").update({ verification_level: item.level }).eq("id", item.id);
+      if (error) throw error;
+    }
+  } else if (item.sourceTable === "process_improvements") {
+    const { error } = await supabase.from("process_improvements").update({ status: item.status }).eq("id", item.id);
+    if (error) throw error;
+  }
+
+  await writeAuditLog({
+    actorId: managerId,
+    action: "verify_undo",
+    targetTable: item.sourceTable,
+    targetId: item.id,
+    changes: { undo: prevAction, restoredStatus: item.status, restoredLevel: item.level },
+  });
+}
+
 export async function fetchTeamHealth(reportIds: string[]) {
   if (!reportIds.length) {
     return { morale: null as number | null, workload: null as number | null, productivity: null as number | null, reportCount: 0 };
