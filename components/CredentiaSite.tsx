@@ -23,14 +23,16 @@ import { FormerTrialBanner, BillingPlanView } from "@/components/FormerEmployeeE
 import { AchievementVaultView } from "@/components/AchievementVaultView";
 import { ExecutiveDashboard } from "@/components/executive/ExecutiveDashboard";
 import { ExecutiveVerificationSection } from "@/components/executive/ExecutiveVerificationSection";
-import { ProofDocumentView, ProofDocumentUpload } from "@/components/ProofDocumentView";
+import { ProofDocumentUpload } from "@/components/ProofDocumentView";
+import { AnimatedNumber, Reveal as RiseIn } from "@/components/ui/motion";
+import { VerificationDeck } from "@/components/manager/VerificationDeck";
 import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
 import { fetchOrgSettingsForUser, downloadCsv } from "@/lib/org-settings";
 import type { AccountStatus } from "@/lib/lifecycle";
 import {
   buildEmployeeTimeline, fetchEmployeeOutlook,
-  fetchVerifyQueue, verifyQueueAction, fetchTeamHealth,
+  fetchVerifyQueue, fetchTeamHealth,
   fetchCoachingInsights, fetchDirectReports, fetchReviewRows,
   fetchEmployeeValueScore, fetchTeamValueScores, fetchPromotionReadinessRows,
   VALUE_INPUT_LABELS, PROMO_CATEGORY_LABELS,
@@ -44,20 +46,20 @@ import {
 } from "@/lib/achievements";
 import {
   ShieldCheck, Sparkles, LayoutDashboard, Users, Award, Settings as SettingsIcon,
-  AlertTriangle, BadgeCheck, Eye, EyeOff, ChevronRight, ChevronDown, Info, Building2, UserCircle2,
-  LineChart, Lock, Zap, Send, FileBadge, ToggleLeft, ToggleRight, Palette,
+  AlertTriangle, BadgeCheck, Eye, EyeOff, ChevronRight, ChevronLeft, ChevronDown, Info, Building2, UserCircle2,
+  LineChart, Lock, Zap, Send, ToggleLeft, ToggleRight, Palette,
   SlidersHorizontal, Globe, Menu, X, ArrowRight, ArrowLeft, Check, GitBranch, Workflow, ScanSearch,
-  Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown, MessageSquareWarning,
+  Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown,
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
   Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
   Compass, Quote, Play, Clock, Layers, History, Luggage, Inbox, CheckCircle2,
 } from "lucide-react";
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+/* ════════════════════════════════════════════════════════════════
    CREDENTIA — full responsive site
    Public marketing site  +  authenticated multi-tier app
    Verified facts vs AI inferences kept as separate, labeled types.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ════════════════════════════════════════════════════════════════ */
 
 type Theme = { accent: string; mode: "light" | "dark" };
 type Role = "employee" | "manager" | "executive" | "admin" | "hr" | "superadmin";
@@ -158,7 +160,7 @@ function DashboardWelcome({ userId, role }: { userId: string; role: Role }) {
   );
 }
 
-// â”€â”€ theme (Cairn design tokens — colors.css; optional accent override) â”€â”€
+// ── theme (Cairn design tokens — colors.css; optional accent override) ──
 function useThemeVars(theme: Theme) {
   return useMemo(() => {
     if (theme.accent === CAIRN_DEFAULT_ACCENT) return {};
@@ -172,7 +174,7 @@ function useThemeVars(theme: Theme) {
   }, [theme.accent]);
 }
 
-// â”€â”€ shared primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── shared primitives ──────────────────────────────────────────
 const VerifiedFactTag = () => (
   <span className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-wide px-2 py-0.5 rounded-full"
     style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
@@ -248,7 +250,7 @@ function MobileNavToggle({ open, onToggle }: { open: boolean; onToggle: () => vo
   );
 }
 
-const Stat = ({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) => (
+const Stat = ({ label, value, sub, accent }: { label: string; value: ReactNode; sub?: string; accent?: string }) => (
   <Card className="p-6">
     <div className="cairn-eyebrow">{label}</div>
     <div className="mt-1 text-[32px] font-semibold serif tabular" style={{ color: accent || "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.05 }}>{value}</div>
@@ -945,7 +947,7 @@ function MktStatsBand() {
   const stats = [
     { v: 2.4, dec: 1, suffix: "M", label: "Verified facts attested", sub: "across customer orgs" },
     { v: 98, suffix: "%", label: "Attestation completion", sub: "within one cycle" },
-    { v: 4.7, dec: 1, suffix: "Ã—", label: "Faster reference checks", sub: "vs. manual outreach" },
+    { v: 4.7, dec: 1, suffix: "×", label: "Faster reference checks", sub: "vs. manual outreach" },
     { fixed: "0", label: "Inferences shown externally", sub: "facts only, always" },
   ] as const;
   return (
@@ -1951,10 +1953,11 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
   const [avatarMap, setAvatarMap] = useState<Record<string, string | null>>({});
   const [health, setHealth] = useState({ morale: null as number | null, workload: null as number | null, productivity: null as number | null, reportCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [acting, setActing] = useState<string | null>(null);
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // presentation-only: coaching carousel index
+  const [coachIdx, setCoachIdx] = useState(0);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -1985,19 +1988,6 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
 
   useEffect(() => { reload(); }, [reload]);
 
-  async function verifyAct(item: VerifyQueueItem, action: "approve" | "reject" | "clarify") {
-    setActing(item.id);
-    setError(null);
-    try {
-      await verifyQueueAction(userId, item, action);
-      await reload();
-    } catch (e) {
-      setError(errorMessage(e, "Verification action failed."));
-    } finally {
-      setActing(null);
-    }
-  }
-
   async function runTeamAiGeneration() {
     setGeneratingAi(true);
     setError(null);
@@ -2025,13 +2015,13 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
 
   return (
     <div className="space-y-6">
-      <ShareableLinkCard userId={userId} />
-      <ManagerAchievementPanel userId={userId} />
+      {/* Shareable verified profile moved to Settings; Add achievements moved to Achievement Vault. */}
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
 
       {aiCoaching && (
-      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+      <RiseIn delay={40}>
+      <Card className="p-6 cairn-lift" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="Generate AI insights" tag={<InferredTag />}
           sub="Calls Anthropic server-side using verified team data, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores. You decide every outcome." />
         <p className="text-[13px] opacity-80 mb-4">
@@ -2049,79 +2039,31 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
           {generatingAi ? "Generating… (may take a minute)" : "Generate insights for my team"}
         </button>
       </Card>
+      </RiseIn>
       )}
 
-      <Card className="p-6">
+      <RiseIn delay={60}>
+      <Card className="p-6 cairn-lift">
         <SectionHeader icon={Activity} title="Team Health Overview" sub={`${health.reportCount} direct reports — from pulse_surveys and employee_value_scores.`} />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <Stat label="Morale" value={health.morale != null ? health.morale.toFixed(2) : "—"} sub="pulse avg" accent="var(--accent)" />
-          <Stat label="Productivity" value={health.productivity != null ? health.productivity.toFixed(2) : "—"} sub="value score index" accent="var(--verified-fg)" />
-          <Stat label="Workload balance" value={health.workload != null ? health.workload.toFixed(2) : "—"} sub="pulse balance" />
+          <Stat label="Morale" value={health.morale != null ? <AnimatedNumber value={health.morale} decimals={2} /> : "—"} sub="pulse avg" accent="var(--accent)" />
+          <Stat label="Productivity" value={health.productivity != null ? <AnimatedNumber value={health.productivity} decimals={2} /> : "—"} sub="value score index" accent="var(--verified-fg)" />
+          <Stat label="Workload balance" value={health.workload != null ? <AnimatedNumber value={health.workload} decimals={2} /> : "—"} sub="pulse balance" />
           <div className="rounded-2xl border p-5" style={{ borderColor: "var(--line)", background: "var(--inferred-bg)" }}>
             <div className="flex items-center gap-1 mb-1"><InferredTag /></div>
             <div className="text-[12px] uppercase tracking-widest opacity-60">Burnout risk</div>
             <div className="mt-1 text-2xl font-semibold serif" style={{ color: burnoutRisk === "Low" ? "var(--verified-fg)" : "var(--warn)" }}>{burnoutRisk}</div>
             <div className="text-[12px] mt-1 opacity-60">inferred from pulse</div>
           </div>
-          <Stat label="Pending verifications" value={String(verifyItems.length)} sub="awaiting you" />
+          <Stat label="Pending verifications" value={<AnimatedNumber value={verifyItems.length} />} sub="awaiting you" />
         </div>
       </Card>
+      </RiseIn>
 
-      <Card className="p-6">
-        <SectionHeader icon={ShieldCheck} title="Employee Verification Center"
-          sub="Approve KPIs, projects, certifications, promotions, and awards. Each action creates a permanent audit record and sets verification level L2 (Manager Verified)." />
-        {verifyItems.length === 0 ? (
-          <p className="text-sm opacity-60">No pending items. Assign direct reports via profiles.manager_id, then they can submit achievements and KPIs.</p>
-        ) : (
-          <div className="space-y-3">
-            {verifyItems.map((it) => {
-              const Icon = KIND_ICON[it.kind] ?? Target;
-              const pending = it.status === "pending" || it.status === "clarify";
-              return (
-                <div key={`${it.sourceTable}-${it.id}`} className="p-4 rounded-xl border" style={{ borderColor: "var(--line)", background: it.status === "rejected" ? "var(--warn-bg)" : "var(--surface-2)" }}>
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg shrink-0" style={{ background: "var(--accent-soft)" }}><Icon size={18} style={{ color: "var(--accent)" }} /></div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{it.title}</span>
-                        <LevelBadge level={it.level} />
-                        <span className="text-[11px] opacity-50">{it.sourceTable}</span>
-                        {!pending && <span className="text-[11px] capitalize opacity-60">{it.status}</span>}
-                      </div>
-                      <div className="text-[13px] opacity-70 mt-0.5">
-                        <ReportIdentity name={it.who} avatarUrl={avatarMap[it.profileId]} size={28} />
-                      </div>
-                      <p className="text-[13px] opacity-60 mt-1">{it.desc}</p>
-                      {it.evidenceUrl && <ProofDocumentView evidenceUrl={it.evidenceUrl} compact />}
-                      <VerificationHistory targetTable={it.sourceTable} targetId={it.id} compact />
-                      {pending && (
-                        <>
-                          <p className="text-[12px] mt-2 px-2 py-1.5 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
-                            Approving writes to audit_log and sets L2 Manager Verified where applicable.
-                          </p>
-                          <div className="flex gap-2 mt-3 flex-wrap">
-                            <button disabled={acting === it.id} onClick={() => verifyAct(it, "approve")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white inline-flex items-center gap-1 disabled:opacity-60" style={{ background: "var(--verified-fg)" }}>
-                              <Check size={14} /> Approve
-                            </button>
-                            <button disabled={acting === it.id} onClick={() => verifyAct(it, "clarify")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium border inline-flex items-center gap-1 disabled:opacity-60" style={{ borderColor: "var(--line)" }}>
-                              <MessageSquareWarning size={14} /> Clarify
-                            </button>
-                            <button disabled={acting === it.id} onClick={() => verifyAct(it, "reject")} className="px-3 py-1.5 rounded-lg text-[13px] font-medium border inline-flex items-center gap-1 disabled:opacity-60" style={{ borderColor: "var(--line)", color: "var(--warn)" }}>
-                              <X size={14} /> Reject
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
+      {/* Employee Verification Center moved to the Verifications tab as an interactive card deck. */}
 
-      <Card className="p-6">
+      <RiseIn delay={180}>
+      <Card className="p-6 cairn-lift">
         <SectionHeader icon={ClipboardList} title="Performance Review Center" sub="Cycle reviews from feedback_cycles — you sign off; AI never completes a review." />
         {reviews.length === 0 ? (
           <p className="text-sm opacity-60">No direct reports found. Ask your admin to assign team members to you.</p>
@@ -2148,8 +2090,10 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
           </div>
         )}
       </Card>
+      </RiseIn>
 
-      <Card className="p-6" style={{ background: "var(--surface-2)" }}>
+      <RiseIn delay={220}>
+      <Card className="p-6 cairn-lift" style={{ background: "var(--surface-2)" }}>
         <SectionHeader icon={Activity} title="Team Value Scores" tag={<SupportingMetricTag />}
           sub="0–1000 supporting index per direct report — compare against team average. Not used alone for decisions." />
         {teamScores.length === 0 ? (
@@ -2206,13 +2150,17 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
           Disputable supporting context — never a verified fact or passport item.
         </TransparencyNote>
       </Card>
+      </RiseIn>
 
       {promoEngine && (
+      <RiseIn delay={260}>
       <PromotionReadinessPanel rows={promoRows} title="Promotion Readiness — your team" avatarMap={avatarMap} />
+      </RiseIn>
       )}
 
       {aiCoaching && (
-      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+      <RiseIn delay={300}>
+      <Card className="p-6 cairn-pulse" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="AI Coaching Insights" tag={<InferredTag />}
           sub="From promotion_readiness — evidence-based guidance only." />
         <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -2221,24 +2169,52 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
         </div>
         {coaching.length === 0 ? (
           <p className="text-sm opacity-70">No coaching insights yet. Rows in promotion_readiness for your reports appear here.</p>
-        ) : (
-          <div className="space-y-3">
-            {coaching.map((c, i) => (
-              <div key={i} className="p-4 rounded-xl" style={{ background: "var(--surface)" }}>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium">{c.who}</span>
-                  <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{c.label}</span>
-                </div>
-                <div className="text-[13px] opacity-70 mt-1.5 flex items-start gap-1.5">
-                  <Info size={14} className="mt-0.5 shrink-0" style={{ color: "var(--inferred-fg)" }} />
-                  <span>{c.evidence}</span>
-                </div>
-                <TransparencyNote>From promotion_readiness table. Advisory signal — not a decision.</TransparencyNote>
+        ) : (() => {
+          const safeIdx = Math.min(coachIdx, coaching.length - 1);
+          const go = (n: number) => setCoachIdx((coaching.length + safeIdx + n) % coaching.length);
+          return (
+          <div>
+            {/* swipeable carousel — one advisory insight at a time */}
+            <div className="relative overflow-hidden rounded-xl">
+              <div className="flex transition-transform duration-400 ease-out" style={{ transform: `translateX(-${safeIdx * 100}%)` }}>
+                {coaching.map((c, i) => (
+                  <div key={i} className="w-full shrink-0">
+                    <div className="p-4 rounded-xl" style={{ background: "var(--surface)" }}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{c.who}</span>
+                        <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{c.label}</span>
+                      </div>
+                      <div className="text-[13px] opacity-70 mt-1.5 flex items-start gap-1.5">
+                        <Info size={14} className="mt-0.5 shrink-0" style={{ color: "var(--inferred-fg)" }} />
+                        <span>{c.evidence}</span>
+                      </div>
+                      <TransparencyNote>From promotion_readiness table. Advisory signal — not a decision.</TransparencyNote>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+            {coaching.length > 1 && (
+              <div className="flex items-center gap-3 mt-4">
+                <button onClick={() => go(-1)} aria-label="Previous insight" className="p-1.5 rounded-lg border transition active:scale-[0.95]" style={{ borderColor: "var(--line)", color: "var(--ink-2)", background: "var(--surface)" }}>
+                  <ChevronLeft size={16} />
+                </button>
+                <div className="flex gap-1.5">
+                  {coaching.map((_, k) => (
+                    <button key={k} onClick={() => setCoachIdx(k)} aria-label={`Insight ${k + 1}`} className="h-2 rounded-full transition-all duration-300" style={{ width: k === safeIdx ? 22 : 8, background: k === safeIdx ? "var(--inferred-fg)" : "var(--line-strong)" }} />
+                  ))}
+                </div>
+                <button onClick={() => go(1)} aria-label="Next insight" className="p-1.5 rounded-lg border transition active:scale-[0.95]" style={{ borderColor: "var(--line)", color: "var(--ink-2)", background: "var(--surface)" }}>
+                  <ChevronRight size={16} />
+                </button>
+                <span className="ml-auto text-[12px] opacity-60 tabular">{safeIdx + 1} / {coaching.length}</span>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
       </Card>
+      </RiseIn>
       )}
     </div>
   );
@@ -2249,7 +2225,7 @@ function AdminView({ userId }: { userId: string }) {
   return <AdminOrgControls userId={userId} />;
 }
 
-function VerificationView({ userId, requireProof = true }: { userId: string; requireProof?: boolean }) {
+function AttestationOutreachPanel({ userId, requireProof = true }: { userId: string; requireProof?: boolean }) {
   const [step, setStep] = useState<"type" | "item" | "contact">("type");
   const [itemType, setItemType] = useState<"role" | "achievement" | null>(null);
   const [attestItems, setAttestItems] = useState<AttestItem[]>([]);
@@ -2338,13 +2314,6 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="serif text-2xl font-semibold">Verification History</h2>
-        <p className="text-[14px] opacity-60 mt-1 max-w-2xl">
-          Request human attestation from past employers for specific roles or achievements. Send new requests anytime as your record grows.
-        </p>
-      </div>
-
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-1"><Send size={18} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold">Route A — Active outreach</h3><VerifiedFactTag /></div>
         <p className="text-[13px] opacity-70 mb-4 max-w-2xl">
@@ -2371,7 +2340,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-[12px] uppercase tracking-widest opacity-60">Step 2 — Select the specific item</div>
-              <button type="button" onClick={() => setStep("type")} className="text-[13px] opacity-60 hover:opacity-100">â† Back</button>
+              <button type="button" onClick={() => setStep("type")} className="text-[13px] opacity-60 hover:opacity-100">← Back</button>
             </div>
             {filteredItems.length === 0 ? (
               <p className="text-sm opacity-60">No {itemType === "role" ? "roles" : "achievements"} on your record yet. Add items to your career vault first.</p>
@@ -2393,7 +2362,7 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-[12px] uppercase tracking-widest opacity-60">Step 3 — Past employer contact</div>
-              <button type="button" onClick={() => setStep("item")} className="text-[13px] opacity-60 hover:opacity-100">â† Back</button>
+              <button type="button" onClick={() => setStep("item")} className="text-[13px] opacity-60 hover:opacity-100">← Back</button>
             </div>
             <div className="p-3 rounded-xl text-[13px]" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>
               Verifying: <strong>{selectedItem.label}</strong> ({selectedItem.type})
@@ -2448,17 +2417,21 @@ function VerificationView({ userId, requireProof = true }: { userId: string; req
           </div>
         )}
       </Card>
+    </div>
+  );
+}
 
+function CompetencyMappingPanel() {
+  return (
       <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
         <div className="flex items-center gap-2 mb-1"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Route B — Competency mapping</h3><InferredTag /></div>
         <p className="text-[13px] mb-3 max-w-2xl">When an employer can&apos;t be reached, the model produces an <strong>internal-only</strong> Likelihood Vector to help HR prioritize outreach. A hint, not a credential.</p>
         <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: "var(--surface)" }}>
-          <div className="text-2xl font-semibold serif" style={{ color: "var(--inferred-fg)" }}>Láµ¥ 0.74</div>
+          <div className="text-2xl font-semibold serif" style={{ color: "var(--inferred-fg)" }}>Lᵥ 0.74</div>
           <div className="text-[13px] opacity-70">&quot;Plausible — recommend outreach to confirm&quot;</div>
         </div>
         <TransparencyNote>A statistical estimate, never shown on the public passport or to outside parties as verification. Career-changers and fast upskillers may score lower despite truthful histories — which is exactly why it only routes attention rather than deciding anything.</TransparencyNote>
       </Card>
-    </div>
   );
 }
 
@@ -2691,8 +2664,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const roleLabel = ROLE_LABELS[role];
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    ...(role !== "executive" && role !== "hr" ? [{ id: "verify", label: "Verification History", icon: FileBadge }] : []),
-    ...(role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" ? [{ id: "vault", label: "Achievement Vault", icon: Award }] : []),
+    ...(role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" ? [{ id: "vault", label: "Verifications", icon: Award }] : []),
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" || role === "hr" ? [{ id: "verification-oversight", label: "Verification Oversight", icon: ShieldCheck }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
@@ -2815,9 +2787,17 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
               {dashboard}
             </>
           )}
-          {tab === "verify" && userId && <VerificationView userId={userId} requireProof={requireProof} />}
           {tab === "vault" && userId && role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" && (
-            <AchievementVaultView userId={userId} requireProof={requireProof} />
+            <div className="space-y-6">
+              {role === "manager" && <RiseIn delay={0}><VerificationDeck userId={userId} /></RiseIn>}
+              {role === "manager" ? (
+                <RiseIn delay={60}><ManagerAchievementPanel userId={userId} /></RiseIn>
+              ) : (
+                <RiseIn delay={0}><AchievementVaultView userId={userId} requireProof={requireProof} /></RiseIn>
+              )}
+              <RiseIn delay={120}><AttestationOutreachPanel userId={userId} requireProof={requireProof} /></RiseIn>
+              <RiseIn delay={180}><CompetencyMappingPanel /></RiseIn>
+            </div>
           )}
           {tab === "verification-oversight" && (role === "executive" || role === "hr") && <ExecutiveVerificationSection />}
           {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}
@@ -2832,14 +2812,17 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           )}
           {tab === "admin" && userId && <AdminView userId={userId} />}
           {tab === "settings" && userId && (
-            <SettingsView
-              userId={userId}
-              role={role}
-              accountStatus={accountStatus}
-              onOutlookChange={setShowOutlook}
-              onThemeChange={(accent) => setTheme({ ...theme, accent })}
-              onSignOut={onSignOut}
-            />
+            <div className="space-y-6">
+              {role === "manager" && <RiseIn delay={0}><ShareableLinkCard userId={userId} /></RiseIn>}
+              <SettingsView
+                userId={userId}
+                role={role}
+                accountStatus={accountStatus}
+                onOutlookChange={setShowOutlook}
+                onThemeChange={(accent) => setTheme({ ...theme, accent })}
+                onSignOut={onSignOut}
+              />
+            </div>
           )}
         </main>
       </div>
