@@ -32,6 +32,8 @@ export type WorkProject = {
   team_lead_id: string | null;
   status: ProjectStatus;
   color: string | null;
+  start_date: string | null;
+  target_date: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -86,7 +88,7 @@ export const BOARD_COLUMNS: { key: TaskBoardStatus; label: string }[] = [
 ];
 
 const PROJECT_SELECT =
-  "id, org_id, name, description, owner_id, team_lead_id, status, color, created_at, updated_at";
+  "id, org_id, name, description, owner_id, team_lead_id, status, color, start_date, target_date, created_at, updated_at";
 const TASK_SELECT =
   "id, org_id, project_id, parent_task_id, title, detail, assignee_id, created_by, status, priority, due_date, origin, source_inference_id, achievement_id, completed_at, frozen_at, created_at, updated_at";
 const INFERENCE_SELECT =
@@ -106,7 +108,14 @@ export async function fetchProjects(): Promise<WorkProject[]> {
 export async function createProject(
   actorId: string,
   orgId: string,
-  input: { name: string; description?: string; teamLeadId?: string | null; color?: string },
+  input: {
+    name: string;
+    description?: string;
+    teamLeadId?: string | null;
+    color?: string;
+    startDate?: string | null;
+    targetDate?: string | null;
+  },
 ): Promise<WorkProject> {
   const { data, error } = await supabase
     .from("work_projects")
@@ -117,6 +126,8 @@ export async function createProject(
       owner_id: actorId,
       team_lead_id: input.teamLeadId ?? null,
       color: input.color ?? null,
+      start_date: input.startDate || null,
+      target_date: input.targetDate || null,
     })
     .select(PROJECT_SELECT)
     .single();
