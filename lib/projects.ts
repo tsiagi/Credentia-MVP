@@ -50,6 +50,7 @@ export type VerifiedTask = {
   due_date: string | null;
   origin: TaskOrigin;
   source_inference_id: string | null;
+  achievement_id: string | null;
   completed_at: string | null;
   frozen_at: string | null;
   created_at: string;
@@ -87,7 +88,7 @@ export const BOARD_COLUMNS: { key: TaskBoardStatus; label: string }[] = [
 const PROJECT_SELECT =
   "id, org_id, name, description, owner_id, team_lead_id, status, color, created_at, updated_at";
 const TASK_SELECT =
-  "id, org_id, project_id, parent_task_id, title, detail, assignee_id, created_by, status, priority, due_date, origin, source_inference_id, completed_at, frozen_at, created_at, updated_at";
+  "id, org_id, project_id, parent_task_id, title, detail, assignee_id, created_by, status, priority, due_date, origin, source_inference_id, achievement_id, completed_at, frozen_at, created_at, updated_at";
 const INFERENCE_SELECT =
   "id, org_id, project_id, parent_task_id, suggested_for, title, detail, rationale, sequence, confidence, model, status, reviewed_by, reviewed_at, approved_task_id, generated_by, created_at";
 
@@ -137,6 +138,18 @@ export async function fetchTasks(opts: { projectId?: string; assigneeId?: string
   if (opts.projectId) q = q.eq("project_id", opts.projectId);
   if (opts.assigneeId) q = q.eq("assignee_id", opts.assigneeId);
   const { data, error } = await q.order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as VerifiedTask[];
+}
+
+/** A manager's view of their reports' tasks (RLS "vt: manager manage" allows the read). */
+export async function fetchTeamTasks(reportIds: string[]): Promise<VerifiedTask[]> {
+  if (!reportIds.length) return [];
+  const { data, error } = await supabase
+    .from("verified_tasks")
+    .select(TASK_SELECT)
+    .in("assignee_id", reportIds)
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []) as VerifiedTask[];
 }
@@ -267,6 +280,58 @@ export async function approveInferenceTask(actorId: string, inf: InferenceTask):
     changes: { promoted_to: task.id, parent_task_id: inf.parent_task_id },
   });
   return task as VerifiedTask;
+}
+
+/**
+ * BRIDGE to the 5-level verification chain — a manager promotes a COMPLETED
+ * verified_task into an L2 Manager-Verified achievement for the assignee, and
+ * links it back. Relies on the "ach: manager insert from task" RLS policy
+ * (manager-of, own org, L2, not pending_executive). Mirrors lib/tasks.ts.
+ * No-op if the task isn't done or was already promoted.
+ */
+export async function promoteTaskToVerifiedAchievement(
+  managerId: string,
+  task: VerifiedTask,
+): Promise<string> {
+  if (task.status !== "done") throw new Error("Only completed tasks can be verified as achievements.");
+  if (task.achievement_id) return task.achievement_id;
+  if (!task.assignee_id) throw new Error("This task has no assignee to credit.");
+
+  const description = task.detail ? `${task.title}: ${task.detail}` : task.title;
+
+  const { data: ach, error: achErr } = await supabase
+    .from("achievements")
+    .insert({
+      profile_id: task.assignee_id,
+      org_id: task.org_id,
+      kind: "achievement",
+      description,
+      achievement_date: (task.completed_at ?? task.created_at).slice(0, 10),
+      verification_level: 2, // Manager Verified
+      pending_executive: false,
+    })
+    .select("id")
+    .single();
+  if (achErr) throw achErr;
+
+  const { data: linked, error: linkErr } = await supabase
+    .from("verified_tasks")
+    .update({ achievement_id: ach.id, updated_at: new Date().toISOString() })
+    .eq("id", task.id)
+    .select(TASK_SELECT)
+    .single();
+  if (linkErr) throw linkErr;
+
+  await writeAuditLog({
+    actorId: managerId,
+    action: "task_promoted_to_achievement",
+    targetTable: "verified_tasks",
+    targetId: task.id,
+    changes: { achievement_id: ach.id, profile_id: task.assignee_id, verification_level: 2 },
+  });
+
+  void linked;
+  return ach.id as string;
 }
 
 /** Reject a suggestion — it stays in the amber table, never crosses to verified. */

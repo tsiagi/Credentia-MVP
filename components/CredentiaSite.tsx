@@ -26,6 +26,11 @@ import { ExecutiveVerificationSection } from "@/components/executive/ExecutiveVe
 import { ProofDocumentUpload } from "@/components/ProofDocumentView";
 import { AnimatedNumber, Reveal as RiseIn } from "@/components/ui/motion";
 import { VerificationDeck } from "@/components/manager/VerificationDeck";
+import { ProjectTaskBoard } from "@/components/projects/ProjectTaskBoard";
+import { ExecutiveOversight } from "@/components/projects/ExecutiveOversight";
+import { DocRepository } from "@/components/docs/DocRepository";
+import { ChatInterface } from "@/components/messaging/ChatInterface";
+import { AgentConfiguration } from "@/components/agent/AgentConfiguration";
 import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
 import { fetchOrgSettingsForUser, downloadCsv } from "@/lib/org-settings";
@@ -53,6 +58,7 @@ import {
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
   Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
   Compass, Quote, Play, Clock, Layers, History, Luggage, Inbox, CheckCircle2,
+  KanbanSquare, BookOpen, MessageSquare, Bot,
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════════
@@ -2617,11 +2623,25 @@ function SettingsView({ userId, role, onOutlookChange, onThemeChange, accountSta
   );
 }
 
+/** Shown on the workspace tabs when the signed-in profile has no org_id yet. */
+function NoOrgNotice() {
+  return (
+    <Card className="p-8 text-center">
+      <Building2 size={28} className="mx-auto mb-2" style={{ color: "var(--ink-3)" }} />
+      <h3 className="font-semibold">No organization assigned</h3>
+      <p className="text-[13px] opacity-65 mt-1 max-w-md mx-auto">
+        These workspace features are scoped to your company. Ask an admin to set your org membership, then refresh.
+      </p>
+    </Card>
+  );
+}
+
 /* ═══════════════════ AUTHENTICATED APP SHELL ═══════════════════ */
 function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: Theme; setTheme: (theme: Theme) => void; onSignOut: () => void }) {
   const [tab, setTab] = useState("dashboard");
   const [sidebar, setSidebar] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
   const [showOutlook, setShowOutlook] = useState(true);
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<AccountStatus>("active_sso");
@@ -2638,12 +2658,13 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         setUserId(id);
         await ensureUserSettings(id);
         const [{ data: profile }, { data: settings }, org] = await Promise.all([
-          supabase.from("profiles").select("public_slug, account_status, trial_ends_at, theme_color").eq("id", id).single(),
+          supabase.from("profiles").select("public_slug, account_status, trial_ends_at, theme_color, org_id").eq("id", id).single(),
           supabase.from("user_settings").select("show_outlook").eq("profile_id", id).single(),
           fetchOrgSettingsForUser(id).catch(() => null),
         ]);
         if (!cancelled) {
           setPublicSlug(profile?.public_slug ?? null);
+          setOrgId(profile?.org_id ?? null);
           setShowOutlook(settings?.show_outlook ?? true);
           if (profile?.account_status) setAccountStatus(profile.account_status as AccountStatus);
           setTrialEndsAt(profile?.trial_ends_at ?? null);
@@ -2662,9 +2683,19 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
 
   const isFormer = accountStatus.startsWith("former_");
   const roleLabel = ROLE_LABELS[role];
+  // Workforce roles get the task/knowledge/messaging/twin layer; individuals
+  // (employee/manager) get a work board, leaders (executive/hr) get oversight.
+  const isIndividualContributor = role === "employee" || role === "manager";
+  const isLeader = role === "executive" || role === "hr";
+  const isWorkforce = isIndividualContributor || isLeader;
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     ...(role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" ? [{ id: "vault", label: "Verifications", icon: Award }] : []),
+    ...(isIndividualContributor ? [{ id: "work", label: role === "manager" ? "Team Work" : "My Work", icon: KanbanSquare }] : []),
+    ...(isLeader ? [{ id: "oversight", label: "Work Oversight", icon: Layers }] : []),
+    ...(isWorkforce ? [{ id: "knowledge", label: "Knowledge", icon: BookOpen }] : []),
+    ...(isWorkforce ? [{ id: "messages", label: "Messages", icon: MessageSquare }] : []),
+    ...(isWorkforce ? [{ id: "twin", label: "Digital Twin", icon: Bot }] : []),
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" || role === "hr" ? [{ id: "verification-oversight", label: "Verification Oversight", icon: ShieldCheck }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
@@ -2798,6 +2829,22 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
               <RiseIn delay={120}><AttestationOutreachPanel userId={userId} requireProof={requireProof} /></RiseIn>
               <RiseIn delay={180}><CompetencyMappingPanel /></RiseIn>
             </div>
+          )}
+          {/* ── Task / Knowledge / Messaging / Digital-Twin layer ── */}
+          {tab === "work" && isIndividualContributor && userId && (
+            orgId
+              ? <ProjectTaskBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} />
+              : <NoOrgNotice />
+          )}
+          {tab === "oversight" && isLeader && <ExecutiveOversight />}
+          {tab === "knowledge" && isWorkforce && userId && (
+            orgId ? <DocRepository userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />
+          )}
+          {tab === "messages" && isWorkforce && userId && (
+            orgId ? <ChatInterface userId={userId} orgId={orgId} /> : <NoOrgNotice />
+          )}
+          {tab === "twin" && isWorkforce && userId && (
+            orgId ? <AgentConfiguration userId={userId} orgId={orgId} /> : <NoOrgNotice />
           )}
           {tab === "verification-oversight" && (role === "executive" || role === "hr") && <ExecutiveVerificationSection />}
           {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}

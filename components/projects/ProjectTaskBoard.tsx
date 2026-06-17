@@ -13,33 +13,61 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  KanbanSquare, Plus, Sparkles, ShieldCheck, Loader2, ChevronDown, FolderKanban,
+  KanbanSquare, Plus, Sparkles, ShieldCheck, Loader2, ChevronDown, FolderKanban, BadgeCheck,
 } from "lucide-react";
 import { Reveal } from "@/components/ui/motion";
 import { AiSubtaskReview } from "./AiSubtaskReview";
 import {
-  fetchProjects, fetchTasks, createTask, createProject, updateTaskBoardStatus,
+  fetchProjects, fetchTasks, fetchTeamTasks, createTask, createProject, updateTaskBoardStatus,
+  promoteTaskToVerifiedAchievement,
   BOARD_COLUMNS, type WorkProject, type VerifiedTask, type TaskBoardStatus, type TaskPriority,
 } from "@/lib/projects";
+import { fetchDirectReports, displayName, type ProfileLite } from "@/lib/workforce";
 
 const PRIORITY_COLOR: Record<TaskPriority, string> = {
   low: "var(--ink-3)", medium: "var(--accent)", high: "var(--warn-fg)", urgent: "var(--danger-fg)",
 };
 
-export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: string }) {
+/**
+ * variant "personal" — an IC's own board (assignee = self).
+ * variant "team" — a manager's board: delegate to direct reports, and
+ * "Verify → L2" a completed task into a Manager-Verified achievement
+ * (continues the existing verification chain).
+ */
+export function ProjectTaskBoard({
+  userId, orgId, variant = "personal",
+}: { userId: string; orgId: string; variant?: "personal" | "team" }) {
+  const isTeam = variant === "team";
   const [projects, setProjects] = useState<WorkProject[]>([]);
   const [projectId, setProjectId] = useState<string | "all">("all");
   const [tasks, setTasks] = useState<VerifiedTask[]>([]);
+  const [reports, setReports] = useState<ProfileLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState<{ title: string; detail: string; priority: TaskPriority }>(
-    { title: "", detail: "", priority: "medium" },
+  const [draft, setDraft] = useState<{ title: string; detail: string; priority: TaskPriority; assigneeId: string }>(
+    { title: "", detail: "", priority: "medium", assigneeId: userId },
   );
   const [newProject, setNewProject] = useState("");
   const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState<string | null>(null);
   const [openReview, setOpenReview] = useState<string | null>(null);
+
+  // Manager board: load direct reports for delegation + team task scope.
+  useEffect(() => {
+    if (!isTeam) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rs = await fetchDirectReports(userId);
+        if (!cancelled) setReports(rs);
+      } catch {
+        /* non-fatal — board still works for the manager's own tasks */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isTeam, userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +87,14 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
     (async () => {
       setLoading(true);
       try {
-        const rows = await fetchTasks(projectId === "all" ? { assigneeId: userId } : { projectId });
+        let rows: VerifiedTask[];
+        if (projectId !== "all") {
+          rows = await fetchTasks({ projectId });
+        } else if (isTeam) {
+          rows = await fetchTeamTasks([userId, ...reports.map((r) => r.id)]);
+        } else {
+          rows = await fetchTasks({ assigneeId: userId });
+        }
         if (!cancelled) setTasks(rows);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Could not load tasks.");
@@ -68,7 +103,7 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
       }
     })();
     return () => { cancelled = true; };
-  }, [projectId, userId]);
+  }, [projectId, userId, isTeam, reports]);
 
   const columns = useMemo(() => {
     const by: Record<TaskBoardStatus, VerifiedTask[]> = { todo: [], in_progress: [], blocked: [], done: [] };
@@ -83,12 +118,26 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
       const created = await createTask(userId, orgId, {
         title: draft.title, detail: draft.detail || undefined,
         projectId: projectId === "all" ? null : projectId, priority: draft.priority,
+        // Team board delegates to the chosen report; personal board defaults to self.
+        assigneeId: isTeam ? draft.assigneeId : userId,
       });
       setTasks((prev) => [...prev, created]);
-      setDraft({ title: "", detail: "", priority: "medium" });
+      setDraft({ title: "", detail: "", priority: "medium", assigneeId: userId });
       setCreating(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create the task.");
+    }
+  }
+
+  async function verifyTask(task: VerifiedTask) {
+    setVerifyBusy(task.id); setError(null);
+    try {
+      const achievementId = await promoteTaskToVerifiedAchievement(userId, task);
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, achievement_id: achievementId } : t)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not verify this task.");
+    } finally {
+      setVerifyBusy(null);
     }
   }
 
@@ -137,7 +186,7 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
     <div className="border rounded-2xl p-6" style={{ borderColor: "var(--line)", background: "var(--surface)", boxShadow: "var(--shadow-sm)" }}>
       <div className="flex items-center gap-2 mb-1 flex-wrap">
         <KanbanSquare size={18} style={{ color: "var(--accent)" }} />
-        <h3 className="font-semibold">Project Board</h3>
+        <h3 className="font-semibold">{isTeam ? "Team Board" : "My Work"}</h3>
 
         {/* project selector */}
         <div className="relative ml-2">
@@ -147,7 +196,7 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
             className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border text-[13px] outline-none"
             style={{ borderColor: "var(--line)", background: "var(--surface-2)", color: "var(--ink)" }}
           >
-            <option value="all">My tasks (all)</option>
+            <option value="all">{isTeam ? "All team tasks" : "My tasks (all)"}</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--ink-3)" }} />
@@ -162,7 +211,9 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
         </button>
       </div>
       <p className="text-[13px] opacity-60 mb-4">
-        Every card here is a verified task. AI can suggest a breakdown — you approve what becomes real work.
+        {isTeam
+          ? "Delegate work to your team and review AI suggestions. Verify a completed task to promote it to a Manager-Verified (L2) achievement."
+          : "Every card here is a verified task. AI can suggest a breakdown — you approve what becomes real work."}
       </p>
 
       {/* create project inline */}
@@ -202,6 +253,14 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
                 <option value="low">Low</option><option value="medium">Medium</option>
                 <option value="high">High</option><option value="urgent">Urgent</option>
               </select>
+              {isTeam && (
+                <select value={draft.assigneeId} onChange={(e) => setDraft({ ...draft, assigneeId: e.target.value })}
+                  className="px-3 py-2 rounded-lg border text-sm outline-none"
+                  style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
+                  <option value={userId}>Assign to me</option>
+                  {reports.map((r) => <option key={r.id} value={r.id}>{displayName(r)}</option>)}
+                </select>
+              )}
               <button onClick={addTask} disabled={!draft.title.trim()}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white transition active:scale-[0.98] disabled:opacity-40"
                 style={{ background: "var(--accent)" }}>Add task</button>
@@ -249,6 +308,12 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
                               <ShieldCheck size={10} /> Verified
                             </span>
                           )}
+                          {t.achievement_id && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full"
+                              style={{ background: "var(--accent-soft)", color: "var(--accent-text)" }}>
+                              <BadgeCheck size={10} /> L2 achievement
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -271,6 +336,15 @@ export function ProjectTaskBoard({ userId, orgId }: { userId: string; orgId: str
                         style={{ background: "var(--surface-2)", color: "var(--ink-3)" }}>
                         {openReview === t.id ? "Hide" : "Review"}
                       </button>
+                      {/* Manager verification bridge: promote a done task into an L2 achievement */}
+                      {isTeam && t.status === "done" && !t.achievement_id && (
+                        <button onClick={() => verifyTask(t)} disabled={verifyBusy === t.id}
+                          title="Verify → Manager-Verified (L2) achievement"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-white transition active:scale-[0.98] disabled:opacity-50"
+                          style={{ background: "var(--verified-fg)" }}>
+                          {verifyBusy === t.id ? <Loader2 size={11} className="animate-spin" /> : <BadgeCheck size={11} />} Verify → L2
+                        </button>
+                      )}
                     </div>
 
                     {openReview === t.id && (
