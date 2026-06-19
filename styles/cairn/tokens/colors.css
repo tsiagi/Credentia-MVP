@@ -86,11 +86,13 @@
   --gold:      var(--ochre-500);
   --gold-soft: var(--ochre-100);
 
-  --verified-fg: var(--olive-600);
-  --verified-bg: var(--olive-100);
+  /* Trust language (per CLAUDE.md non-negotiable): verified = blue, AI-inferred = amber.
+     fg shades are deepened from the #3B82F6 / #F59E0B brand hues for AA-legible text/icons. */
+  --verified-fg: #2563EB; /* blue-600 */
+  --verified-bg: #EFF6FF; /* blue-50  */
 
-  --inferred-fg: var(--plum-600);
-  --inferred-bg: var(--plum-100);
+  --inferred-fg: #B45309; /* amber-700 */
+  --inferred-bg: #FFFBEB; /* amber-50  */
 
   --warn-fg: var(--ochre-600);
   --warn-bg: var(--ochre-100);
@@ -137,11 +139,11 @@
   --gold:      var(--ochre-300);
   --gold-soft: #3A2E16;
 
-  --verified-fg: var(--olive-300);
-  --verified-bg: #2A2F1C;
+  --verified-fg: #60A5FA; /* blue-400 */
+  --verified-bg: #17233A;
 
-  --inferred-fg: var(--plum-300);
-  --inferred-bg: #2E2738;
+  --inferred-fg: #FBBF24; /* amber-400 */
+  --inferred-bg: #2E2410;
 
   --warn-fg: var(--ochre-300);
   --warn-bg: #3A2E16;
