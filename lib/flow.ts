@@ -242,6 +242,89 @@ export async function promoteInference(inferenceId: string, reason?: string): Pr
   return data as string;
 }
 
+// ── Board / item creation ───────────────────────────────────
+
+/** Default provenance column set for a new board: a Backlog → … → two terminal
+ *  columns, one ASSERTED-friendly ("Done · Self-reported") and one evidence-gated
+ *  ATTESTED-only ("Shipped · Verified"). This is what makes the burndown gap real. */
+export const DEFAULT_COLUMNS: { name: string; sort_order: number; is_terminal: boolean; required_tier: "ASSERTED" | "ATTESTED" | null }[] = [
+  { name: "Backlog", sort_order: 0, is_terminal: false, required_tier: null },
+  { name: "In Progress", sort_order: 1, is_terminal: false, required_tier: null },
+  { name: "In Review", sort_order: 2, is_terminal: false, required_tier: "ASSERTED" },
+  { name: "Done · Self-reported", sort_order: 3, is_terminal: true, required_tier: null },
+  { name: "Shipped · Verified", sort_order: 4, is_terminal: true, required_tier: "ATTESTED" },
+];
+
+export async function createBoard(input: {
+  orgId: string;
+  name: string;
+  description?: string | null;
+  createdBy: string;
+  sprintStart?: string | null;
+  sprintEnd?: string | null;
+  committed?: number | null;
+}): Promise<{ board: FlowBoard; columns: FlowColumn[] }> {
+  const { data: board, error } = await supabase
+    .from("flow_boards")
+    .insert({
+      org_id: input.orgId,
+      name: input.name,
+      description: input.description ?? null,
+      created_by: input.createdBy,
+      sprint_start: input.sprintStart ?? null,
+      sprint_end: input.sprintEnd ?? null,
+      sprint_points_committed: input.committed ?? null,
+    })
+    .select("id, org_id, name, description, sprint_start, sprint_end, sprint_points_committed")
+    .single();
+  if (error) throw error;
+
+  const { data: cols, error: cErr } = await supabase
+    .from("flow_columns")
+    .insert(DEFAULT_COLUMNS.map((c) => ({ ...c, board_id: board.id, org_id: input.orgId })))
+    .select("id, board_id, name, sort_order, is_terminal, required_tier");
+  if (cErr) throw cErr;
+
+  return { board: board as FlowBoard, columns: (cols ?? []) as FlowColumn[] };
+}
+
+/** Create a work item and open its ledger with a 'create' event in the backlog
+ *  (ASSERTED — no evidence needed to exist). Returns the new item. */
+export async function createItem(input: {
+  orgId: string;
+  boardId: string;
+  backlogColumnId: string;
+  title: string;
+  description?: string | null;
+  pointEstimate?: number;
+  ownerId: string;
+  createdBy: string;
+}): Promise<FlowItem> {
+  const { data: item, error } = await supabase
+    .from("flow_items")
+    .insert({
+      org_id: input.orgId,
+      board_id: input.boardId,
+      title: input.title,
+      description: input.description ?? null,
+      point_estimate: input.pointEstimate ?? 1,
+      owner_id: input.ownerId,
+      created_by: input.createdBy,
+    })
+    .select("id, org_id, board_id, title, description, point_estimate, owner_id, created_by, created_at")
+    .single();
+  if (error) throw error;
+
+  await recordTransition({
+    itemId: (item as FlowItem).id,
+    toColumnId: input.backlogColumnId,
+    tier: "ASSERTED",
+    eventType: "create",
+    reason: "Created",
+  });
+  return item as FlowItem;
+}
+
 // ── Burndown (server-computed; see app/api/flow/burndown) ────
 export type BurndownPoint = { date: string; attested_remaining: number; asserted_remaining: number };
 export type Burndown = {

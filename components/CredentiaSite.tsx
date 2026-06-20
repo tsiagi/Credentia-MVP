@@ -26,7 +26,7 @@ import { ExecutiveVerificationSection } from "@/components/executive/ExecutiveVe
 import { ProofDocumentUpload } from "@/components/ProofDocumentView";
 import { AnimatedNumber, Reveal as RiseIn } from "@/components/ui/motion";
 import { VerificationDeck } from "@/components/manager/VerificationDeck";
-import { ProjectTaskBoard } from "@/components/projects/ProjectTaskBoard";
+import { FlowBoard } from "@/components/flow/FlowBoard";
 import { ExecutiveOversight } from "@/components/projects/ExecutiveOversight";
 import { DocRepository } from "@/components/docs/DocRepository";
 import { AgentConfiguration } from "@/components/agent/AgentConfiguration";
@@ -2913,7 +2913,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           {/* ── Task / Knowledge / Messaging / Digital-Twin layer ── */}
           {tab === "work" && isIndividualContributor && userId && (
             orgId
-              ? <ProjectTaskBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} />
+              ? <FlowBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} />
               : <NoOrgNotice />
           )}
           {tab === "oversight" && isLeader && <ExecutiveOversight />}
