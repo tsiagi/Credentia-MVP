@@ -216,6 +216,26 @@ export async function rejectCandidate(
   void reportHumanOutcome(candidateId, "reject");
 }
 
+/**
+ * Resolve subject_id → display name for candidate cards (reviewer scope shows
+ * WHO a claim is about). Browser client + RLS — only returns profiles the caller
+ * may already see (same org). Missing/blank names fall back to "Unknown member".
+ */
+export async function fetchSubjectNames(ids: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return {};
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", unique);
+  if (error) return {};
+  const out: Record<string, string> = {};
+  for (const p of (data ?? []) as { id: string; full_name: string | null }[]) {
+    out[p.id] = (p.full_name ?? "").trim() || "Unknown member";
+  }
+  return out;
+}
+
 /** Human-readable label for a candidate's target kind (UI).
  * NOTE: these label CANDIDATES (amber, not-yet-verified), so the label must
  * never contain the word "Verified" — a `verified_fact` candidate is a

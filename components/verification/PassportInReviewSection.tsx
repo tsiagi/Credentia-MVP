@@ -49,7 +49,7 @@ function BandChip({ band }: { band: ConfidenceBand | null }) {
   if (!band) return null;
   return (
     <Badge tone="inferred" icon={<Sparkles size={11} />}>
-      {band} confidence
+      AI confidence: {band}
     </Badge>
   );
 }

@@ -30,6 +30,7 @@ import {
   Inbox,
   AlertTriangle,
   EyeOff,
+  UserRound,
 } from "lucide-react";
 import {
   Card,
@@ -48,6 +49,7 @@ import {
   listCandidatesForSubject,
   getCandidateEvidence,
   rejectCandidate,
+  fetchSubjectNames,
   targetKindLabel,
   sourceTypeLabel,
   type CandidateRow,
@@ -65,12 +67,13 @@ export interface VerificationCandidatesPanelProps {
   scope?: Scope;
 }
 
-// Amber band chip. Coarse only — never a numeric probability (Q6).
+// Amber band chip. Coarse only — never a numeric probability (Q6). Labeled
+// "AI confidence" so the band reads as the model's certainty, not approval odds.
 function BandChip({ band }: { band: ConfidenceBand | null }) {
   if (!band) return <span style={{ color: "var(--ink-3)" }}>—</span>;
   return (
     <Badge tone="inferred" icon={<Sparkles size={11} />}>
-      {band} confidence
+      AI confidence: {band}
     </Badge>
   );
 }
@@ -154,11 +157,14 @@ function EvidenceList({ candidateId }: { candidateId: string }) {
 
 function CandidateCard({
   row,
+  subjectName,
   onReject,
   onAttest,
   canAttest,
 }: {
   row: CandidateRow;
+  /** Who the claim is about (reviewer scope only; undefined on a self-view). */
+  subjectName?: string;
   onReject: (row: CandidateRow) => void;
   onAttest: (row: CandidateRow) => void;
   /** Manager+ reviewer scope — the only context the amber→blue mint is offered. */
@@ -186,6 +192,11 @@ function CandidateCard({
           <p className="text-[14px] font-medium leading-snug" style={{ color: "var(--ink)" }}>
             {row.claim}
           </p>
+          {subjectName && (
+            <p className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color: "var(--ink-2)" }}>
+              <UserRound size={12} aria-hidden /> About {subjectName}
+            </p>
+          )}
           <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>
             Staged {new Date(row.created_at).toLocaleDateString()} · not yet verified
           </p>
@@ -239,6 +250,8 @@ export function VerificationCandidatesPanel({
   const toast = useToast();
   const [rows, setRows] = useState<CandidateRow[] | null>(null);
   const [error, setError] = useState(false);
+  // subject_id → display name, for reviewer-scope cards ("About <name>").
+  const [subjectNames, setSubjectNames] = useState<Record<string, string>>({});
   // Bumping this re-runs the load effect (retry / refresh) without a
   // synchronous setState in the effect body.
   const [reloadKey, setReloadKey] = useState(0);
@@ -270,6 +283,12 @@ export function VerificationCandidatesPanel({
         if (!cancelled) {
           setRows(data);
           setError(false);
+        }
+        // Reviewer scope: resolve WHO each candidate is about (subject scope is
+        // the viewer themselves, so no lookup needed there).
+        if (!cancelled && scope.mode === "reviewer" && data.length) {
+          const names = await fetchSubjectNames(data.map((r) => r.subject_id));
+          if (!cancelled) setSubjectNames(names);
         }
       } catch {
         if (!cancelled) {
@@ -383,6 +402,7 @@ export function VerificationCandidatesPanel({
               <CandidateCard
                 key={row.id}
                 row={row}
+                subjectName={canAttest ? subjectNames[row.subject_id] : undefined}
                 onReject={setRejectTarget}
                 onAttest={setAttestTarget}
                 canAttest={canAttest}

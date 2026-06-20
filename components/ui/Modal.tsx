@@ -46,13 +46,36 @@ export function Modal({
 
   useEffect(() => {
     if (!open) return;
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") { onClose(); return; }
+      // Focus trap: keep Tab / Shift+Tab cycling within the dialog.
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) { e.preventDefault(); panel.focus(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey) {
+        if (active === first || active === panel || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (active === last || !panel.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    // Initial focus: the first interactive control, else the panel itself.
+    const panel = panelRef.current;
+    const firstFocusable = panel?.querySelector<HTMLElement>(FOCUSABLE);
+    (firstFocusable ?? panel)?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;

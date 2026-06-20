@@ -98,10 +98,18 @@ async function postRuleAction(body: {
   return { ok: true };
 }
 
+// Days since the oldest human-decided shadow decision (plain helper, not a
+// component, so the Date.now() read isn't a render-purity violation).
+function ageInDays(firstDecidedAt: string | null | undefined): number | null {
+  if (firstDecidedAt == null) return null;
+  return Math.floor((Date.now() - new Date(firstDecidedAt).getTime()) / 86_400_000);
+}
+
 function AgreementSummary({ item }: { item: RuleWithMetrics }) {
   const m = item.agreement;
   const rate = m?.agreement_rate ?? null;
   const pct = rate == null ? null : Math.round(rate * 100);
+  const ageDays = ageInDays(m?.first_decided_at);
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]" style={{ color: "var(--ink-2)" }}>
       <span>
@@ -117,6 +125,10 @@ function AgreementSummary({ item }: { item: RuleWithMetrics }) {
       <span>
         Attestors:{" "}
         <span className="font-mono">{m?.distinct_attestors ?? 0}/{Q4_GATE.minDistinctAttestors}</span>
+      </span>
+      <span>
+        Age:{" "}
+        <span className="font-mono">{ageDays == null ? 0 : ageDays}/{Q4_GATE.minAgeDays}d</span>
       </span>
     </div>
   );
@@ -190,6 +202,8 @@ function ProofRow({ d }: { d: ShadowDecisionRow }) {
                 <span
                   className="mt-0.5 font-mono text-[11px]"
                   style={{ color: p.passed ? "var(--olive-600)" : "var(--danger-fg)" }}
+                  role="img"
+                  aria-label={p.passed ? "passed" : "failed"}
                 >
                   {p.passed ? "✓" : "✕"}
                 </span>
@@ -274,7 +288,7 @@ function RuleCard({
     setBusy(true);
     const res = await postRuleAction({ ruleId: rule.id, action: "pause" });
     setBusy(false);
-    if (res.ok) { toast.success("Rule paused. Auto-attestation stopped."); onChanged(); }
+    if (res.ok) { toast.success("Rule paused — auto-attestation stopped. You can re-enable it once it re-meets the gate."); onChanged(); }
     else toast.error(res.error ?? "Couldn't pause.");
   };
 
