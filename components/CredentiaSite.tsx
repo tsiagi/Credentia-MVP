@@ -27,7 +27,7 @@ import { ProofDocumentUpload } from "@/components/ProofDocumentView";
 import { AnimatedNumber, Reveal as RiseIn } from "@/components/ui/motion";
 import { VerificationDeck } from "@/components/manager/VerificationDeck";
 import { FlowBoard } from "@/components/flow/FlowBoard";
-import { ExecutiveOversight } from "@/components/projects/ExecutiveOversight";
+import { FlowOversight } from "@/components/flow/FlowOversight";
 import { DocRepository } from "@/components/docs/DocRepository";
 import { AgentConfiguration } from "@/components/agent/AgentConfiguration";
 import { VerificationCandidatesPanel } from "@/components/verification/VerificationCandidatesPanel";
@@ -2916,7 +2916,9 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
               ? <FlowBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} />
               : <NoOrgNotice />
           )}
-          {tab === "oversight" && isLeader && <ExecutiveOversight />}
+          {tab === "oversight" && isLeader && (
+            orgId && userId ? <FlowOversight userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />
+          )}
           {tab === "knowledge" && isWorkforce && userId && (
             orgId ? <DocRepository userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />
           )}
