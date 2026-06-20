@@ -2869,6 +2869,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
       <div className={`flex-1 flex flex-col min-h-0 ${isCommandCenter ? "w-full" : "max-w-7xl mx-auto px-6 py-8 w-full"}`}>
         {/* Key on `tab` so each tab switch re-triggers the entrance (reduced-motion gated in CSS). */}
         <main key={tab} className={cn("min-w-0 flex-1 flex flex-col cairn-reveal", isCommandCenter && "min-h-0")}>
+          <FlowErrorBoundary label="This page">
           {tab !== "dashboard" && !isCommandCenter && (
             <PageHeader
               className="mb-6"
@@ -2965,6 +2966,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
               />
             </div>
           )}
+          </FlowErrorBoundary>
         </main>
       </div>
 
