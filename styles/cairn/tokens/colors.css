@@ -63,6 +63,9 @@
   --ink-2:      #4A4F63;
   --ink-3:      #7C8197;
   --on-accent:  #F6F7FD;
+  /* Text/icon color that sits ON the solid accent fill (e.g. active nav pill).
+     Aliased to on-accent so contrast is controlled here, never hardcoded #fff. */
+  --accent-ink: var(--on-accent);
 
   --accent:       var(--terracotta-500);
   --accent-hover: var(--terracotta-600);
@@ -100,6 +103,11 @@
 
   --danger-fg: var(--brick-600);
   --danger-bg: var(--brick-100);
+
+  /* Presence (identity, NOT trust): online green / offline muted. Theme-aware
+     so the "Online" text + dot stay AA-legible on both surfaces. */
+  --presence-online: var(--olive-600);
+  --presence-offline: var(--ink-3);
 
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
@@ -144,6 +152,10 @@
 
   --inferred-fg: #FBBF24; /* amber-400 */
   --inferred-bg: #2E2410;
+
+  /* Lighter olive so online green reads on dark surfaces (olive-600 is too dark). */
+  --presence-online: var(--olive-300);
+  --presence-offline: var(--ink-3);
 
   --warn-fg: var(--ochre-300);
   --warn-bg: #3A2E16;

@@ -30,7 +30,11 @@ import { ProjectTaskBoard } from "@/components/projects/ProjectTaskBoard";
 import { ExecutiveOversight } from "@/components/projects/ExecutiveOversight";
 import { DocRepository } from "@/components/docs/DocRepository";
 import { AgentConfiguration } from "@/components/agent/AgentConfiguration";
+import { VerificationCandidatesPanel } from "@/components/verification/VerificationCandidatesPanel";
+import { PassportInReviewSection } from "@/components/verification/PassportInReviewSection";
+import { OverseerOversightPanel } from "@/components/verification/OverseerOversightPanel";
 import { FloatingAssistant } from "@/components/assistant/FloatingAssistant";
+import { ToastProvider, PageHeader, Button, Badge, Skeleton, cn } from "@/components/ui";
 import { usePrefersColorScheme } from "@/lib/use-prefers-color-scheme";
 import type { OrgSettings } from "@/lib/org-settings";
 import { fetchOrgSettingsForUser, downloadCsv } from "@/lib/org-settings";
@@ -229,24 +233,11 @@ const Card = ({ children, className = "", style = {} }: { children: ReactNode; c
   </div>
 );
 
-function BackButton({ onClick, label = "Back" }: { onClick: () => void; label?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mb-4 text-[13px] font-medium inline-flex items-center gap-1.5 opacity-70 hover:opacity-100 transition"
-      style={{ color: "var(--ink-2)" }}
-    >
-      <ArrowLeft size={16} aria-hidden /> {label}
-    </button>
-  );
-}
-
 function MobileNavToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
-      className="md:hidden shrink-0 p-1.5 rounded-lg hover:opacity-80 transition"
+      className="lg:hidden shrink-0 p-1.5 rounded-lg hover:opacity-80 transition"
       onClick={onToggle}
       aria-expanded={open}
       aria-label={open ? "Close navigation menu" : "Open navigation menu"}
@@ -1926,6 +1917,13 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: {
         )}
       </Card>
 
+      {/* VP-7: amber "In review" candidates — in-app self-view ONLY. Gated by
+          !external so the in-app public-passport preview (and, by construction,
+          the public slug) stays candidate-blind. Sourced from a SEPARATE read
+          (listCandidatesForSubject) — never merged into vault/timeline, so it
+          can't touch maxLevel/verified counts above. Renders nothing if empty. */}
+      {!external && <PassportInReviewSection subjectId={userId} />}
+
       {!external && (
         <FeedbackCycleCard userId={userId} field="employee_responses" title="This cycle — your responses"
           subtitle="Your responses are saved each cycle. Your manager adds their side separately." />
@@ -2691,12 +2689,17 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const isIndividualContributor = role === "employee" || role === "manager";
   const isLeader = role === "executive" || role === "hr";
   const isWorkforce = isIndividualContributor || isLeader;
+  // "In Review" (candidate queue + Overseer oversight) — managers and leaders
+  // review/pause; admins also reach it (they hold Overseer Enable authority).
+  const canReviewQueue = role === "manager" || isLeader || role === "admin";
   const nav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     ...(role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" ? [{ id: "vault", label: "Verifications", icon: Award }] : []),
     ...(isIndividualContributor ? [{ id: "work", label: role === "manager" ? "Team Work" : "My Work", icon: KanbanSquare }] : []),
     ...(isLeader ? [{ id: "oversight", label: "Work Oversight", icon: Layers }] : []),
     ...(isWorkforce ? [{ id: "knowledge", label: "Knowledge", icon: BookOpen }] : []),
+    // VP-1: read-only "in review" candidate queue for reviewers (manager + leaders).
+    ...(canReviewQueue ? [{ id: "review-queue", label: "In Review", icon: Inbox }] : []),
     ...(isFormer ? [{ id: "plan", label: "Plan & billing", icon: CreditCard }] : []),
     ...(role === "executive" || role === "hr" ? [{ id: "verification-oversight", label: "Verification Oversight", icon: ShieldCheck }] : []),
     ...(role === "admin" ? [{ id: "people-org", label: "People & Org", icon: Users }] : []),
@@ -2704,6 +2707,26 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     ...(role === "admin" ? [{ id: "admin", label: "Org Controls", icon: SlidersHorizontal }] : []),
   ];
   const requireProof = orgSettings?.require_proof ?? true;
+
+  // First-paint placeholder while the session/profile resolves (userId === null).
+  // Skeleton shell, never a blank screen or spinner (presentation-only).
+  const dashboardSkeleton = (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading dashboard">
+      <div className="space-y-3">
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="h-4 w-80" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-[var(--radius-md)] border p-5 space-y-3" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const dashboard = userId ? {
     employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} />,
@@ -2720,7 +2743,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         </p>
       </Card>
     ),
-  }[role] : <div className="opacity-60 text-sm">Loading…</div>;
+  }[role] : dashboardSkeleton;
 
   const passportLabel = publicSlug ? `/p/verify/${publicSlug.slice(0, 4)}…` : "/p/verify/… (not published yet)";
 
@@ -2735,13 +2758,32 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
       <button
         type="button"
         onClick={() => goToTab(n.id)}
-        className={horizontal
-          ? "px-3 py-2 rounded-lg text-[13px] font-medium inline-flex items-center gap-1.5 whitespace-nowrap transition shrink-0"
-          : "w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 transition"}
-        style={{
-          background: active ? "var(--accent)" : horizontal ? "transparent" : "transparent",
-          color: active ? "#fff" : "var(--ink-2)",
-        }}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "inline-flex items-center font-medium transition-colors duration-150",
+          horizontal
+            ? "px-3 py-2 rounded-lg text-[13px] gap-1.5 whitespace-nowrap shrink-0"
+            : "w-full text-left px-3 py-2.5 rounded-xl text-sm gap-2 border-l-2",
+          // resting hover for inactive items (token-driven, both layouts)
+          !active && "cairn-nav-item",
+          // vertical drawer keeps a 2px left rail; transparent when inactive
+          !horizontal && !active && "border-transparent",
+        )}
+        style={
+          horizontal
+            ? {
+                // horizontal top-nav: soft-fill active idiom (AA-legible;
+                // matches the drawer so "active" reads the same everywhere).
+                background: active ? "var(--accent-soft)" : "transparent",
+                color: active ? "var(--accent-text)" : "var(--ink-2)",
+              }
+            : {
+                // vertical drawer: left-accent bar + soft fill active idiom
+                background: active ? "var(--accent-soft)" : "transparent",
+                color: active ? "var(--accent-text)" : "var(--ink-2)",
+                ...(active ? { borderColor: "var(--accent)" } : {}),
+              }
+        }
       >
         <Icon size={horizontal ? 15 : 16} /> {n.label}
       </button>
@@ -2763,7 +2805,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   return (
     <div style={{ background: "var(--bg)", color: "var(--ink)" }} className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 border-b backdrop-blur" style={{ borderColor: "var(--line)", background: "color-mix(in srgb, var(--bg) 92%, transparent)" }}>
-        <div className={`${isCommandCenter ? "w-full" : "max-w-6xl"} mx-auto px-4 sm:px-5`}>
+        <div className={`${isCommandCenter ? "w-full" : "max-w-7xl"} mx-auto px-6`}>
           <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0 shrink-0">
               <MobileNavToggle open={sidebar} onToggle={() => setSidebar(!sidebar)} />
@@ -2791,17 +2833,22 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
                   <div className="fixed inset-0 z-30" onClick={() => setUserMenu(false)} />
                   <div className="absolute right-0 mt-1 w-52 rounded-xl border shadow-xl z-40 overflow-hidden" style={{ background: "var(--surface)", borderColor: "var(--line)" }}>
                     <div className="px-3 py-2.5 border-b" style={{ borderColor: "var(--line)" }}>
-                      <p className="text-[13px] font-semibold truncate" style={{ color: "var(--ink)" }}>{userName ?? "Account"}</p>
-                      <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>{roleLabel}</p>
+                      <p className="text-[13px] font-semibold truncate mb-1.5" style={{ color: "var(--ink)" }}>{userName ?? "Account"}</p>
+                      {/* Role is identity — neutral badge, never a trust (verified/AI) signal. */}
+                      <Badge tone="neutral">{roleLabel}</Badge>
                     </div>
-                    <button onClick={() => { setUserMenu(false); goToTab("settings"); }}
-                      className="w-full text-left px-3 py-2.5 text-[13px] inline-flex items-center gap-2 transition hover:opacity-80" style={{ color: "var(--ink-2)" }}>
-                      <SettingsIcon size={15} /> Settings
-                    </button>
-                    <button onClick={() => { setUserMenu(false); onSignOut(); }}
-                      className="w-full text-left px-3 py-2.5 text-[13px] inline-flex items-center gap-2 transition hover:opacity-80" style={{ color: "var(--accent)" }}>
-                      <LogOut size={15} /> Sign out
-                    </button>
+                    <div className="p-1">
+                      <Button variant="ghost" size="sm" fullWidth className="justify-start"
+                        leadingIcon={<SettingsIcon size={15} />}
+                        onClick={() => { setUserMenu(false); goToTab("settings"); }}>
+                        Settings
+                      </Button>
+                      <Button variant="ghost" size="sm" fullWidth className="justify-start"
+                        leadingIcon={<LogOut size={15} />}
+                        onClick={() => { setUserMenu(false); onSignOut(); }}>
+                        Sign out
+                      </Button>
+                    </div>
                   </div>
                 </>
               )}
@@ -2818,10 +2865,19 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         </div>
       )}
 
-      <div className={`flex-1 flex flex-col min-h-0 ${isCommandCenter ? "w-full" : "max-w-6xl mx-auto px-5 py-6 w-full"}`}>
-        <main className={`min-w-0 flex-1 flex flex-col ${isCommandCenter ? "min-h-0" : ""}`}>
+      <div className={`flex-1 flex flex-col min-h-0 ${isCommandCenter ? "w-full" : "max-w-7xl mx-auto px-6 py-8 w-full"}`}>
+        {/* Key on `tab` so each tab switch re-triggers the entrance (reduced-motion gated in CSS). */}
+        <main key={tab} className={cn("min-w-0 flex-1 flex flex-col cairn-reveal", isCommandCenter && "min-h-0")}>
           {tab !== "dashboard" && !isCommandCenter && (
-            <BackButton onClick={() => setTab("dashboard")} label="Back to Dashboard" />
+            <PageHeader
+              className="mb-6"
+              title={nav.find((n) => n.id === tab)?.label ?? (tab === "settings" ? "Settings" : "")}
+              actions={
+                <Button variant="ghost" size="sm" leadingIcon={<ArrowLeft size={15} />} onClick={() => setTab("dashboard")}>
+                  Back to Dashboard
+                </Button>
+              }
+            />
           )}
           {tab === "dashboard" && (
             <>
@@ -2865,6 +2921,15 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             orgId ? <DocRepository userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />
           )}
           {tab === "verification-oversight" && (role === "executive" || role === "hr") && <ExecutiveVerificationSection />}
+          {/* VP-1 — read-only amber review queue (manager + leaders). RLS scopes rows. */}
+          {tab === "review-queue" && canReviewQueue && userId && (
+            <div className="space-y-6">
+              <VerificationCandidatesPanel userId={userId} scope={{ mode: "reviewer" }} />
+              {/* VP-6: Overseer automation oversight. Read for manager+/leader;
+                  Enable/Pause gated to exec/admin inside the panel + server-side. */}
+              <OverseerOversightPanel role={role} />
+            </div>
+          )}
           {tab === "people-org" && role === "admin" && userId && <PeopleOrgConsole userId={userId} />}
           {tab === "platform" && role === "superadmin" && <PlatformConsole />}
           {tab === "plan" && userId && isFormer && (
@@ -2986,7 +3051,11 @@ export default function CredentiaSite() {
     <div data-theme={theme.mode} style={{ ...vars, background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
       {screen === "public" && <PublicSite onEnter={() => setScreen("auth")} />}
       {screen === "auth" && <AuthScreen onBack={() => setScreen("public")} onLogin={enterApp} />}
-      {screen === "app" && <AppShell role={role} theme={theme} setTheme={setTheme} onSignOut={handleSignOut} />}
+      {screen === "app" && (
+        <ToastProvider>
+          <AppShell role={role} theme={theme} setTheme={setTheme} onSignOut={handleSignOut} />
+        </ToastProvider>
+      )}
     </div>
   );
 }
