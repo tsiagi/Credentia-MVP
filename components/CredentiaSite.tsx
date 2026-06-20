@@ -28,6 +28,7 @@ import { AnimatedNumber, Reveal as RiseIn } from "@/components/ui/motion";
 import { VerificationDeck } from "@/components/manager/VerificationDeck";
 import { FlowBoard } from "@/components/flow/FlowBoard";
 import { FlowOversight } from "@/components/flow/FlowOversight";
+import { FlowErrorBoundary } from "@/components/flow/FlowErrorBoundary";
 import { DocRepository } from "@/components/docs/DocRepository";
 import { AgentConfiguration } from "@/components/agent/AgentConfiguration";
 import { VerificationCandidatesPanel } from "@/components/verification/VerificationCandidatesPanel";
@@ -2913,11 +2914,13 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           {/* ── Task / Knowledge / Messaging / Digital-Twin layer ── */}
           {tab === "work" && isIndividualContributor && userId && (
             orgId
-              ? <FlowBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} />
+              ? <FlowErrorBoundary label="Your work board"><FlowBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} /></FlowErrorBoundary>
               : <NoOrgNotice />
           )}
           {tab === "oversight" && isLeader && (
-            orgId && userId ? <FlowOversight userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />
+            orgId && userId
+              ? <FlowErrorBoundary label="Work oversight"><FlowOversight userId={userId} orgId={orgId} role={role} /></FlowErrorBoundary>
+              : <NoOrgNotice />
           )}
           {tab === "knowledge" && isWorkforce && userId && (
             orgId ? <DocRepository userId={userId} orgId={orgId} role={role} /> : <NoOrgNotice />

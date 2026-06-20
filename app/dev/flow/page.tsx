@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ShieldCheck, CircleDashed, Sparkles } from "lucide-react";
 import { FlowBoard } from "@/components/flow/FlowBoard";
+import { FlowErrorBoundary } from "@/components/flow/FlowErrorBoundary";
 
 type Me = { id: string; orgId: string };
 
@@ -61,7 +62,9 @@ export default function FlowPreview() {
 
         {status === "ready" && me && (
           <div className="animate-in fade-in duration-200">
-            <FlowBoard userId={me.id} orgId={me.orgId} />
+            <FlowErrorBoundary label="Flow board">
+              <FlowBoard userId={me.id} orgId={me.orgId} />
+            </FlowErrorBoundary>
           </div>
         )}
       </div>
