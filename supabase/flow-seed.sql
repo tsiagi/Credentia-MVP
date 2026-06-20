@@ -17,10 +17,12 @@ declare
   v_maya  uuid := '72f30183-e6ff-4230-8042-03b9aa3e0157';  -- Maya Chen
   v_devin uuid := '37235c54-eb43-4c07-99dc-cb1f87be1ce3';  -- Devin Park
   v_sasha uuid := 'c85d79da-1537-47c6-846e-256b31922718';  -- Sasha Romano
+  v_exec  uuid := 'fdb03267-0f75-4f73-a11d-f2eaaa99dba6';  -- Alex Morgan (executive)
   v_board uuid;
   c_back uuid; c_prog uuid; c_rev uuid; c_done uuid; c_ship uuid;
   i1 uuid; i2 uuid; i3 uuid; i4 uuid; i5 uuid; i6 uuid; i7 uuid; i8 uuid;
   a1 uuid; a2 uuid; a5 uuid;
+  am1 uuid; am2 uuid; am3 uuid; ae1 uuid;
 begin
   -- ── teardown prior demo (disable append-only guard for the teardown only) ──
   alter table flow_transition_events disable trigger flow_ledger_no_update;
@@ -137,6 +139,27 @@ begin
       'FLOW-7 looks ready for review — suggest moving to In Review',
       'Owner pushed a PR-shaped branch; recent activity matches items that moved to review.',
       jsonb_build_object('to_column_id', c_rev::text), 0.61, 'flow-forecaster-v0');
+
+  -- ── Leader / manager VERIFICATION ACTIVITY ──
+  -- Co-sign approvals on already-shipped (already-ATTESTED) items. These are
+  -- ATTESTED transitions to the same terminal column, so they DO NOT change the
+  -- burndown gap (the first terminal-entry per item is still the original ship);
+  -- they exist to populate the executive's "Verification activity" stats:
+  --   Manager approvals = 3 (Jordan Lee), Executive approvals = 1 (Alex Morgan).
+  insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by) values
+    (v_org, i1, 'approval', 'signoff://flow/' || i1 || '?by=mgr',  'Manager review — Jordan Lee',  v_mgr)  returning id into am1;
+  insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by) values
+    (v_org, i2, 'approval', 'signoff://flow/' || i2 || '?by=mgr',  'Manager review — Jordan Lee',  v_mgr)  returning id into am2;
+  insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by) values
+    (v_org, i5, 'approval', 'signoff://flow/' || i5 || '?by=mgr',  'Manager review — Jordan Lee',  v_mgr)  returning id into am3;
+  insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by) values
+    (v_org, i2, 'approval', 'signoff://flow/' || i2 || '?by=exec', 'Executive sign-off — Alex Morgan', v_exec) returning id into ae1;
+
+  insert into flow_transition_events (org_id,item_id,board_id,event_type,provenance_tier,to_column_id,artifact_id,actor_id,reason,created_at) values
+    (v_org,i1,v_board,'status','ATTESTED',c_ship,am1,v_mgr, 'Manager co-sign',       timestamptz '2026-06-20 09:00-04'),
+    (v_org,i2,v_board,'status','ATTESTED',c_ship,am2,v_mgr, 'Manager co-sign',       timestamptz '2026-06-20 09:05-04'),
+    (v_org,i5,v_board,'status','ATTESTED',c_ship,am3,v_mgr, 'Manager co-sign',       timestamptz '2026-06-20 09:10-04'),
+    (v_org,i2,v_board,'status','ATTESTED',c_ship,ae1,v_exec,'Executive sign-off',    timestamptz '2026-06-20 10:00-04');
 
   raise notice 'FLOW demo seeded on board %', v_board;
 end $$;

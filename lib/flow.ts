@@ -174,6 +174,38 @@ export async function getInferences(boardId: string): Promise<Inference[]> {
   return (data ?? []) as Inference[];
 }
 
+export type ApprovalStat = { actor_id: string; name: string; role: string; count: number };
+
+/**
+ * Org-wide verification counts grouped by approver. An "approval" is any
+ * ATTESTED transition in the ledger; the actor's role tells whether it was an
+ * executive sign-off, a manager verification, or team evidence-backed work.
+ * RLS scopes the ledger to the caller's org.
+ */
+export async function getAttestationStats(): Promise<ApprovalStat[]> {
+  const { data: ev, error } = await supabase
+    .from("flow_transition_events")
+    .select("actor_id")
+    .eq("provenance_tier", "ATTESTED");
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const e of ev ?? []) {
+    const id = (e as { actor_id: string | null }).actor_id;
+    if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  const ids = Array.from(counts.keys());
+  if (ids.length === 0) return [];
+
+  const { data: profs } = await supabase.from("profiles").select("id, full_name, role").in("id", ids);
+  const meta = new Map(
+    (profs ?? []).map((p) => [p.id as string, { name: (p.full_name as string) ?? "—", role: (p.role as string) ?? "" }]),
+  );
+  return ids
+    .map((id) => ({ actor_id: id, name: meta.get(id)?.name ?? "—", role: meta.get(id)?.role ?? "", count: counts.get(id) ?? 0 }))
+    .sort((a, b) => b.count - a.count);
+}
+
 // ── Writes (all via gated RPCs / RLS-checked inserts) ────────
 
 /** Attach an evidence artifact to an item (prerequisite for an ATTESTED move). */

@@ -15,18 +15,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ShieldCheck, ChevronDown, Loader2, CircleDashed, BadgeCheck, Calendar, Target } from "lucide-react";
+import { ShieldCheck, ChevronDown, Loader2, CircleDashed, BadgeCheck, Calendar, Target, Users } from "lucide-react";
 import {
   type FlowBoard as Board,
   type FlowColumn,
   type FlowItem,
   type FlowItemState,
   type Burndown,
+  type ApprovalStat,
   listBoards,
   getColumns,
   getItems,
   getItemStates,
   getBurndown,
+  getAttestationStats,
   addArtifact,
   recordTransition,
 } from "@/lib/flow";
@@ -40,6 +42,7 @@ export function FlowOversight({ userId, orgId, role }: { userId: string; orgId: 
   const [items, setItems] = useState<FlowItem[]>([]);
   const [states, setStates] = useState<FlowItemState[]>([]);
   const [burndown, setBurndown] = useState<Burndown | null>(null);
+  const [stats, setStats] = useState<ApprovalStat[]>([]);
   const [ownerName, setOwnerName] = useState<Map<string, string>>(new Map());
   const [leaderName, setLeaderName] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,7 @@ export function FlowOversight({ userId, orgId, role }: { userId: string; orgId: 
       setOwnerName(new Map((data ?? []).map((p) => [p.id as string, (p.full_name as string) ?? "—"])));
     }
     getBurndown(boardId).then(setBurndown).catch(() => setBurndown(null));
+    setStats(await getAttestationStats());
   }, []);
 
   const selectBoard = useCallback((id: string) => {
@@ -169,6 +173,13 @@ export function FlowOversight({ userId, orgId, role }: { userId: string; orgId: 
     );
   }
 
+  // Approvals (ATTESTED transitions) grouped by approver role, org-wide.
+  const execApprovers = stats.filter((s) => s.role === "executive");
+  const mgrApprovers = stats.filter((s) => s.role === "manager");
+  const execTotal = execApprovers.reduce((a, b) => a + b.count, 0);
+  const mgrTotal = mgrApprovers.reduce((a, b) => a + b.count, 0);
+  const approvers = [...execApprovers, ...mgrApprovers].sort((a, b) => b.count - a.count);
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -264,6 +275,62 @@ export function FlowOversight({ userId, orgId, role }: { userId: string; orgId: 
         Signing off attaches an <span className="font-medium">approval</span> artifact and records an ATTESTED transition —
         the solid burndown line drops as the gap closes. {role === "hr" ? "HR" : "Executive"} sign-off is itself the evidence.
       </p>
+
+      {/* ── Verification stats (executives) ── org-wide approval throughput ── */}
+      {role === "executive" && (
+        <div className="rounded-2xl border" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+          <div className="px-5 py-3.5 border-b flex items-center justify-between" style={{ borderColor: "var(--line)" }}>
+            <h3 className="text-[14px] font-semibold inline-flex items-center gap-2" style={{ color: "var(--ink)" }}>
+              <BadgeCheck size={15} style={{ color: "var(--verified-fg)" }} /> Verification activity
+            </h3>
+            <span className="text-[12px]" style={{ color: "var(--ink-3)" }}>approvals across all boards</span>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* Tiles */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--verified-fg)", background: "var(--verified-bg)" }}>
+                <div className="inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--verified-fg)" }}>
+                  <ShieldCheck size={13} /> Executive approvals
+                </div>
+                <div className="text-[28px] font-semibold tabular-nums mt-1" style={{ color: "var(--ink)" }}>{execTotal}</div>
+              </div>
+              <div className="rounded-xl border p-4" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+                <div className="inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--ink-2)" }}>
+                  <Users size={13} /> Manager approvals
+                </div>
+                <div className="text-[28px] font-semibold tabular-nums mt-1" style={{ color: "var(--ink)" }}>{mgrTotal}</div>
+              </div>
+            </div>
+
+            {/* Per-approver breakdown */}
+            {approvers.length === 0 ? (
+              <p className="text-[12.5px] text-center py-3" style={{ color: "var(--ink-3)" }}>
+                No executive or manager approvals recorded yet. Sign off items above to start the record.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {approvers.map((a) => (
+                  <li key={a.actor_id} className="flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--surface-2)" }}>
+                    <span className="inline-flex items-center gap-2 min-w-0">
+                      <span className="text-[12.5px] font-medium truncate" style={{ color: "var(--ink)" }}>{a.name}</span>
+                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full"
+                        style={a.role === "executive"
+                          ? { color: "var(--verified-fg)", background: "var(--verified-bg)" }
+                          : { color: "var(--ink-3)", background: "var(--surface)" }}>
+                        {a.role}
+                      </span>
+                    </span>
+                    <span className="text-[12.5px] font-mono tabular-nums" style={{ color: "var(--ink-2)" }}>
+                      {a.count} approval{a.count === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
