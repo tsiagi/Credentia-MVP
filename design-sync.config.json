@@ -1,0 +1,28 @@
+{
+  "pkg": "credentia",
+  "globalName": "CairnUI",
+  "projectId": "cc1694e5-0160-41f6-8830-ad8188a8d189",
+  "shape": "package",
+  "srcDir": "components/ui",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/.cache/cairn-flat.css",
+  "runtimeFontPrefixes": ["--font-", "Hanken", "Newsreader", "IBM Plex"],
+  "overrides": {
+    "Modal": { "cardMode": "single", "viewport": "640x440" },
+    "ToastProvider": { "cardMode": "single", "viewport": "440x280" }
+  },
+  "componentSrcMap": {
+    "Button": "components/ui/Button.tsx",
+    "Card": "components/ui/Card.tsx",
+    "Badge": "components/ui/Badge.tsx",
+    "VerifiedBadge": "components/ui/Badge.tsx",
+    "AIEstimateBadge": "components/ui/Badge.tsx",
+    "StatusPill": "components/ui/StatusPill.tsx",
+    "PageHeader": "components/ui/PageHeader.tsx",
+    "DataTable": "components/ui/DataTable.tsx",
+    "Modal": "components/ui/Modal.tsx",
+    "ToastProvider": "components/ui/Toast.tsx",
+    "Skeleton": "components/ui/Skeleton.tsx",
+    "EmptyState": "components/ui/EmptyState.tsx"
+  }
+}
