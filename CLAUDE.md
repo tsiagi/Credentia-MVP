@@ -82,12 +82,17 @@ Every authenticated app page (dashboards, settings, profiles, admin panels, veri
 
 ### Design Direction
 
-**Visual style:** Modern/bold enterprise — dark sidebar, crisp white content area, deep indigo/violet as the primary accent color. Think Rippling or Linear, not a generic Tailwind template.
+> **DECISION (2026-06-19): "Blend" — Cairn is the authoritative design system; trust colors are blue/amber.**
+> The implemented system is **Cairn** (`styles/cairn/`, imported via `app/globals.css`): a warm palette (sand/clay/terracotta/coral/plum/ochre/olive) with `--accent` = terracotta. Keep it as the source of truth for shell, accent, surfaces, and typography. The indigo/violet "Rippling/Linear" direction below is **superseded** for shell/accent — do not retokenize the app to indigo.
+> The ONE override: the **trust language** must be blue (verified) + amber (AI), per the non-negotiable. This is implemented centrally in `styles/cairn/tokens/colors.css` via `--verified-fg`/`--verified-bg` (blue) and `--inferred-fg`/`--inferred-bg` (amber). All ~40 components already consume these tokens, so trust color is controlled in that one file — never hardcode trust colors in a component.
+
+**Visual style:** Warm enterprise (Cairn) — terracotta accent on a sand/clay neutral base, light + dark themes. (The original indigo/violet brief is retained below for historical context only.)
 
 **Verified vs AI-inferred visual language:**
-- Verified facts → `shield` icon (Lucide) + blue (`#3B82F6` / `blue-500`)
-- AI inferences → `sparkle` icon (Lucide) + amber (`#F59E0B` / `amber-500`)
+- Verified facts → `ShieldCheck` icon (Lucide) + blue (`--verified-fg` / `--verified-bg`)
+- AI inferences → `Sparkles` icon (Lucide) + amber (`--inferred-fg` / `--inferred-bg`)
 - Both must appear together (icon + color-coded badge) wherever these data types are displayed
+- Always reference the tokens — never the raw hex — so the boundary stays controlled in one place
 
 ### Design Token System
 

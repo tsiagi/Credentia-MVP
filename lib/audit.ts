@@ -106,6 +106,16 @@ export function formatAuditAction(action: string): string {
     billing_plan_set: "Billing plan updated",
     billing_charge_mocked: "Mock charge recorded",
     billing_canceled: "Subscription canceled",
+    // Continuous verification pipeline (VP-1+).
+    evidence_ingested: "Evidence ingested",
+    verification_candidate_staged: "Candidate staged (in review)",
+    candidate_rejected: "Candidate rejected",
+    candidate_attested: "Candidate attested (verified)",
+    candidate_auto_promoted: "Candidate auto-attested by rule",
+    overseer_rule_proposed: "Overseer rule proposed",
+    overseer_shadow_decision: "Overseer shadow decision",
+    overseer_rule_enabled: "Overseer rule enabled",
+    overseer_rule_paused: "Overseer rule paused",
   };
   return labels[action] ?? action.replace(/_/g, " ");
 }

@@ -33,26 +33,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "profileId and extraDays required" }, { status: 400 });
   }
 
-  const { data: target } = await client
-    .from("profiles")
-    .select("former_org_id, account_status")
-    .eq("id", body.profileId)
-    .single();
-
-  if (target?.former_org_id !== me.org_id && !["former_trial", "former_free", "former_paid"].includes(target?.account_status ?? "")) {
-    const { data: active } = await client.from("profiles").select("org_id").eq("id", body.profileId).single();
-    if (active?.org_id !== me.org_id) {
-      return NextResponse.json({ error: "Employee not associated with your org" }, { status: 403 });
-    }
-  }
-
+  let admin: ReturnType<typeof getSupabaseAdmin>;
   try {
-    getSupabaseAdmin();
+    admin = getSupabaseAdmin();
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Server misconfigured" }, { status: 503 });
   }
 
-  const { data, error } = await getSupabaseAdmin().rpc("extend_employee_trial", {
+  // Authorize against the target's ACTUAL org linkage. Former employees have
+  // org_id cleared on departure, so the caller's RLS client can't see them —
+  // read with the service role, then explicitly require that the target belongs
+  // to the caller's org as a current OR former member. The extend_employee_trial
+  // RPC is SECURITY DEFINER and performs no org check, so this is the only
+  // tenant boundary (replaces a buggy AND-condition that let an admin act on a
+  // former employee of a different org).
+  const { data: target, error: targetErr } = await admin
+    .from("profiles")
+    .select("org_id, former_org_id")
+    .eq("id", body.profileId)
+    .maybeSingle();
+  if (targetErr) return NextResponse.json({ error: targetErr.message }, { status: 500 });
+  if (!target) return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+
+  const belongsToOrg = target.org_id === me.org_id || target.former_org_id === me.org_id;
+  if (!belongsToOrg) {
+    return NextResponse.json({ error: "Employee not associated with your org" }, { status: 403 });
+  }
+
+  const { data, error } = await admin.rpc("extend_employee_trial", {
     p_profile_id: body.profileId,
     p_extra_days: body.extraDays,
     p_actor_id: auth.user.id,

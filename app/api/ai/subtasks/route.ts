@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
 import { callAnthropicSubtasks, persistInferenceSubtasks, type ParentTask } from "@/lib/ai/subtasks";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
   }
   const callerId = authData.user.id;
+
+  // #5 — per-user rate limit (each call is an Anthropic generation).
+  const rl = await checkRateLimit("ai-single", callerId);
+  if (!rl.success) return tooManyRequests(rl);
 
   let body: { taskId?: string } = {};
   try { body = await req.json(); } catch { /* */ }

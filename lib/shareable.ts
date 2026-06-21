@@ -1,9 +1,39 @@
 import { supabase } from "@/lib/supabase";
 
+export type ShareableRole = {
+  title: string;
+  manager: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  level: number;
+  current: boolean;
+};
+
+export type ShareableAchievement = {
+  label: string;
+  kind: string;
+  date: string | null;
+  contribution: string | null;
+  role: string | null;
+};
+
+export type ShareableProject = {
+  label: string;
+  outcome: string | null;
+  impact: string | null;
+  role: string | null;
+};
+
+export type ShareableMetric = { label: string; value: string };
+
 export type ShareableProfile = {
   name: string;
   title: string;
-  achievements: { label: string; kind: string; date: string | null }[];
+  currentManager: string | null;
+  roles: ShareableRole[];
+  achievements: ShareableAchievement[];
+  projects: ShareableProject[];
+  metrics: ShareableMetric[];
 };
 
 export function shareablePath(token: string) {

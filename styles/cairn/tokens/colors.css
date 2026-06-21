@@ -63,6 +63,9 @@
   --ink-2:      #4A4F63;
   --ink-3:      #7C8197;
   --on-accent:  #F6F7FD;
+  /* Text/icon color that sits ON the solid accent fill (e.g. active nav pill).
+     Aliased to on-accent so contrast is controlled here, never hardcoded #fff. */
+  --accent-ink: var(--on-accent);
 
   --accent:       var(--terracotta-500);
   --accent-hover: var(--terracotta-600);
@@ -86,11 +89,13 @@
   --gold:      var(--ochre-500);
   --gold-soft: var(--ochre-100);
 
-  --verified-fg: var(--olive-600);
-  --verified-bg: var(--olive-100);
+  /* Trust language (per CLAUDE.md non-negotiable): verified = blue, AI-inferred = amber.
+     fg shades are deepened from the #3B82F6 / #F59E0B brand hues for AA-legible text/icons. */
+  --verified-fg: #2563EB; /* blue-600 */
+  --verified-bg: #EFF6FF; /* blue-50  */
 
-  --inferred-fg: var(--plum-600);
-  --inferred-bg: var(--plum-100);
+  --inferred-fg: #B45309; /* amber-700 */
+  --inferred-bg: #FFFBEB; /* amber-50  */
 
   --warn-fg: var(--ochre-600);
   --warn-bg: var(--ochre-100);
@@ -98,6 +103,11 @@
 
   --danger-fg: var(--brick-600);
   --danger-bg: var(--brick-100);
+
+  /* Presence (identity, NOT trust): online green / offline muted. Theme-aware
+     so the "Online" text + dot stay AA-legible on both surfaces. */
+  --presence-online: var(--olive-600);
+  --presence-offline: var(--ink-3);
 
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
@@ -137,11 +147,15 @@
   --gold:      var(--ochre-300);
   --gold-soft: #3A2E16;
 
-  --verified-fg: var(--olive-300);
-  --verified-bg: #2A2F1C;
+  --verified-fg: #60A5FA; /* blue-400 */
+  --verified-bg: #17233A;
 
-  --inferred-fg: var(--plum-300);
-  --inferred-bg: #2E2738;
+  --inferred-fg: #FBBF24; /* amber-400 */
+  --inferred-bg: #2E2410;
+
+  /* Lighter olive so online green reads on dark surfaces (olive-600 is too dark). */
+  --presence-online: var(--olive-300);
+  --presence-offline: var(--ink-3);
 
   --warn-fg: var(--ochre-300);
   --warn-bg: #3A2E16;

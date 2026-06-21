@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
 import { upsertFromIdp, resolveOrgFromSsoDomain } from "@/lib/provisioning/server";
+import { resolveSsoClaims } from "@/lib/provisioning/sso-claims";
 
 export const runtime = "nodejs";
 
@@ -31,18 +33,27 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
+  // A request is a TRUSTED IdP webhook ONLY when it presents the shared secret.
+  // Anything else is a self-service browser sync (the caller's own Supabase
+  // session). Self-service callers must never be trusted to assert their own
+  // role, org, or reporting line — those fields in the body are attacker
+  // controlled and the underlying RPC overwrites profiles.role/org_id
+  // unconditionally. See security audit finding #1.
+  const isTrustedIdp = Boolean(secret && expected && secret === expected);
+
   let userId: string;
   let email: string;
+  let userClient: SupabaseClient | null = null;
 
-  if (secret && expected && secret === expected) {
+  if (isTrustedIdp) {
     if (!body.userId || !body.email) {
       return NextResponse.json({ error: "userId and email required" }, { status: 400 });
     }
     userId = body.userId;
     email = body.email;
   } else if (authHeader?.startsWith("Bearer ")) {
-    const client = getSupabaseAsUser(authHeader.slice(7));
-    const { data: auth, error } = await client.auth.getUser();
+    userClient = getSupabaseAsUser(authHeader.slice(7));
+    const { data: auth, error } = await userClient.auth.getUser();
     if (error || !auth.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -53,7 +64,24 @@ export async function POST(req: NextRequest) {
   }
 
   const domain = email.split("@")[1]?.toLowerCase();
-  const orgId = body.orgId ?? (domain ? await resolveOrgFromSsoDomain(domain) : null);
+  const resolvedDomainOrgId = domain ? await resolveOrgFromSsoDomain(domain) : null;
+
+  // Self-service callers can read only their own profile (RLS), which is exactly
+  // what we need to preserve their current role/org rather than trust the body.
+  const { data: existingProfile } = isTrustedIdp
+    ? { data: null }
+    : await userClient!.from("profiles").select("org_id, role").eq("id", userId).maybeSingle();
+
+  // Trust boundary lives in resolveSsoClaims: the body's role/org/manager are
+  // honoured ONLY for a secret-authenticated IdP webhook (see audit #1).
+  const { orgId, role, managerExternalId, externalId } = resolveSsoClaims({
+    isTrustedIdp,
+    userId,
+    resolvedDomainOrgId,
+    existingProfile: (existingProfile as { org_id: string | null; role: string | null } | null) ?? null,
+    body,
+  });
+
   if (!orgId) {
     return NextResponse.json({ error: "No org mapped for this SSO domain" }, { status: 400 });
   }
@@ -70,9 +98,9 @@ export async function POST(req: NextRequest) {
     email,
     fullName: body.fullName,
     title: body.title,
-    role: body.role,
-    managerExternalId: body.managerExternalId,
-    externalId: body.externalId ?? userId,
+    role,
+    managerExternalId,
+    externalId,
     source: "sso",
   });
 

@@ -1,6 +1,9 @@
 -- Workforce Verify — sample data for dashboard testing
 -- Run in Supabase → SQL Editor (postgres role bypasses RLS).
 --
+-- PREREQ: apply supabase/shareable-comprehensive.sql first (adds the
+--         employment_roles table + role_id columns this seed populates).
+--
 -- BEFORE RUNNING
 -- 1. Create 1–4 test users in Authentication (or sign up through the app).
 -- 2. Edit the four emails below to match those accounts.
@@ -31,6 +34,11 @@ declare
   v_dept_eng      uuid := 'a2222222-2222-4222-8222-222222222222';
   v_dept_ops      uuid := 'a3333333-3333-4333-8333-333333333333';
   v_dept_hr       uuid := 'a4444444-4444-4444-8444-444444444444';
+
+  -- Verified role history (manager-at-the-time) for the shareable profile
+  v_role_maya1    uuid;
+  v_role_maya2    uuid;
+  v_role_james    uuid;
 begin
   -- Resolve auth users (must exist in auth.users)
   select id into v_exec_id from auth.users where email = v_exec_email;
@@ -102,6 +110,7 @@ begin
   delete from kpis where employee_id in (select id from profiles where org_id = v_org_id);
   delete from projects where profile_id in (select id from profiles where org_id = v_org_id);
   delete from process_improvements where profile_id in (select id from profiles where org_id = v_org_id);
+  delete from employment_roles where profile_id in (select id from profiles where org_id = v_org_id);
   delete from departments where org_id = v_org_id;
 
   insert into user_settings (profile_id)
@@ -143,6 +152,37 @@ begin
   insert into verified_facts (profile_id, kind, label, attested_at, verification_level) values
     (v_emp1_id, 'employment', 'Senior Analyst — Demo Corp', '2024-06-01', 3),
     (v_emp2_id, 'employment', 'Equity Specialist — Demo Corp', '2023-03-15', 3);
+
+  -- ── Verified role history (manager-at-the-time) for shareable profile ────
+  insert into employment_roles
+    (profile_id, org_id, title, manager_id, manager_name, start_date, end_date, verification_level, attested_at)
+  values
+    (v_emp1_id, v_org_id, 'Analyst — Demo Corp', v_exec_id, 'Alex Morgan',
+     '2023-01-09', '2024-05-31', 3, '2023-01-09')
+  returning id into v_role_maya1;
+
+  insert into employment_roles
+    (profile_id, org_id, title, manager_id, manager_name, start_date, end_date, verification_level, attested_at)
+  values
+    (v_emp1_id, v_org_id, 'Senior Analyst — Demo Corp', v_mgr_id, 'Jordan Lee',
+     '2024-06-01', null, 3, '2024-06-01')
+  returning id into v_role_maya2;
+
+  insert into employment_roles
+    (profile_id, org_id, title, manager_id, manager_name, start_date, end_date, verification_level, attested_at)
+  values
+    (v_emp2_id, v_org_id, 'Equity Specialist — Demo Corp', v_mgr_id, 'Jordan Lee',
+     '2023-03-15', null, 3, '2023-03-15')
+  returning id into v_role_james;
+
+  -- Link achievements to the role held at the time (current role for each).
+  update achievements set role_id = v_role_maya2 where org_id = v_org_id and profile_id = v_emp1_id;
+  update achievements set role_id = v_role_james where org_id = v_org_id and profile_id = v_emp2_id;
+
+  -- A verified (L2) project so the shareable profile shows project impact.
+  insert into projects (profile_id, description, outcome, business_impact, cost_savings, verification_level, role_id) values
+    (v_emp1_id, 'Equity platform automation: Streamlined multi-country reconciliations.',
+     'Cut reconciliation effort by 60%.', 'Reduced close-cycle risk', 180000, 2, v_role_maya2);
 
   -- Feedback cycles (manager Performance Review Center)
   insert into feedback_cycles (profile_id, employee_responses, manager_responses) values

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev --webpack",
@@ -11,17 +11,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --test \"lib/**/*.test.ts\"",
     "seed:test-users": "node scripts/seed-test-users.mjs",
     "seed:demo-company": "node scripts/seed-demo-company.mjs",
     "seed:maya-queue": "node scripts/seed-maya-queue.mjs",
     "seed:team-reports": "node scripts/seed-team-reports.mjs",
     "db:patch": "node scripts/apply-schema-patch.mjs",
     "db:migrate:pulse-tasks": "node scripts/apply-daily-pulse-tasks.mjs",
-    "db:migrate:tka": "node scripts/apply-task-knowledge-agent.mjs"
+    "db:migrate:tka": "node scripts/apply-task-knowledge-agent.mjs",
+    "db:migrate:flow": "node scripts/apply-flow.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",

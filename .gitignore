@@ -41,3 +41,15 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# stale nested working copy — do not commit
+/credentia/
+
+# office temp / lock files
+~$*
+
+# design-sync converter scratch (regenerated)
+/.ds-sync/
+/ds-bundle/
+/.design-sync/.cache/
+/.design-sync/learnings/

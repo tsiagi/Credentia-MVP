@@ -85,12 +85,16 @@ export function generateOrgInsights(accessToken: string): Promise<AiGenerateResu
 }
 
 export async function fetchAiGuidance(
+  accessToken: string,
   mode: AiInsightMode,
   employeeData: VerifiedEmployeePayload,
 ): Promise<AiGuidanceResponse> {
   const res = await fetch("/api/ai", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify({ mode, employeeData }),
   });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAsUser } from "@/lib/supabase-admin";
 import { canExportOwnVerifiedRecord, EXPORT_DISCLAIMER } from "@/lib/lifecycle";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,10 @@ export async function GET(req: NextRequest) {
   if (authErr || !auth.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = auth.user.id;
+
+  // #5 — per-user rate limit (guard against bulk export scraping).
+  const rl = await checkRateLimit("export", userId);
+  if (!rl.success) return tooManyRequests(rl);
 
   const { data: profile, error: profErr } = await client
     .from("profiles")

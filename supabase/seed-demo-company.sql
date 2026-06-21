@@ -14,6 +14,7 @@
 --    d. supabase/migrate-batch-cd.sql
 --    e. supabase/migrate-batch-ef.sql   ← billing columns + billing_events
 --    f. supabase/rls-policies.sql
+--    g. supabase/shareable-comprehensive.sql ← role history + rich shareable profile
 --
 -- 1. CREATE AUTH USERS (Dashboard — do NOT skip)
 --    Supabase → Authentication → Users → Add user → Create new user
@@ -64,6 +65,11 @@ declare
 
   v_dept_eng      uuid := 'd0000002-0002-4002-8002-000000000002';
   v_dept_ops      uuid := 'd0000003-0003-4003-8003-000000000003';
+
+  -- Verified role history (manager-at-the-time) for the shareable profile
+  v_role_taylor1  uuid;
+  v_role_taylor2  uuid;
+  v_role_jordan   uuid;
 
   v_trial_start   timestamptz := date_trunc('day', now());
   v_trial_end     timestamptz := date_trunc('day', now()) + interval '30 days';
@@ -164,6 +170,7 @@ begin
   delete from achievements where org_id = v_org_id;
   delete from kpis where employee_id in (select id from profiles where org_id = v_org_id);
   delete from projects where profile_id in (select id from profiles where org_id = v_org_id);
+  delete from employment_roles where profile_id in (select id from profiles where org_id = v_org_id);
   delete from departments where org_id = v_org_id;
 
   -- ── Departments (2) ─────────────────────────────────────────────────────
@@ -223,6 +230,48 @@ begin
     (v_emp1_id, 'employment', 'Operations Analyst — Demo Co', '2025-01-10', 3),
     (v_emp2_id, 'employment', 'Operations Specialist — Demo Co', '2025-04-20', 3);
 
+  -- ── Verified role history (manager-at-the-time) for shareable profile ────
+  -- Taylor held two roles: an earlier one under the executive, then the
+  -- current Analyst role under the manager — demonstrates per-role managers.
+  insert into employment_roles
+    (profile_id, org_id, title, manager_id, manager_name, start_date, end_date, verification_level, attested_at)
+  values
+    (v_emp1_id, v_org_id, 'Operations Associate — Demo Co', v_exec_id, 'Riley Executive',
+     '2024-06-01', '2024-12-31', 3, '2024-06-01')
+  returning id into v_role_taylor1;
+
+  insert into employment_roles
+    (profile_id, org_id, title, manager_id, manager_name, start_date, end_date, verification_level, attested_at)
+  values
+    (v_emp1_id, v_org_id, 'Operations Analyst — Demo Co', v_mgr_id, 'Morgan Manager',
+     '2025-01-10', null, 3, '2025-01-10')
+  returning id into v_role_taylor2;
+
+  insert into employment_roles
+    (profile_id, org_id, title, manager_id, manager_name, start_date, end_date, verification_level, attested_at)
+  values
+    (v_emp2_id, v_org_id, 'Operations Specialist — Demo Co', v_mgr_id, 'Morgan Manager',
+     '2025-04-20', null, 3, '2025-04-20')
+  returning id into v_role_jordan;
+
+  -- Link achievements to the role held at the time (current role for each).
+  update achievements set role_id = v_role_taylor2 where org_id = v_org_id and profile_id = v_emp1_id;
+  update achievements set role_id = v_role_jordan  where org_id = v_org_id and profile_id = v_emp2_id;
+
+  -- ── Verified projects (with measurable impact), linked to roles ──────────
+  insert into projects
+    (profile_id, description, outcome, business_impact, revenue_impact, cost_savings, verification_level, role_id)
+  values
+    (v_emp1_id, 'Customer portal data migration',
+     'Migrated 3 legacy systems with zero downtime.',
+     'Cut average page load time by 35%.', null, 48000, 2, v_role_taylor2),
+    (v_emp1_id, 'Reconciliation automation pipeline',
+     'Automated month-end reconciliation across two teams.',
+     null, null, 32000, 2, v_role_taylor1),
+    (v_emp2_id, 'Cross-team rollout playbook',
+     'Standardized onboarding for three operations pods.',
+     'Reduced ramp time from 6 to 4 weeks.', null, null, 2, v_role_jordan);
+
   -- ── Light inference rows (optional dashboard richness) ──────────────────
   insert into promotion_readiness (employee_id, category, evidence) values
     (v_emp1_id, '6mo', '[QA] Strong L2 cert; one pending achievement awaiting manager.'),
@@ -272,11 +321,20 @@ from kpis k
 join profiles p on p.id = k.employee_id
 where p.org_id = 'd0000001-0001-4001-8001-000000000001';
 
+-- ── Verify role history + manager-at-the-time ────────────────────────────────
+select p.full_name, er.title, er.manager_name, er.start_date, er.end_date, er.verification_level
+from employment_roles er
+join profiles p on p.id = er.profile_id
+where p.org_id = 'd0000001-0001-4001-8001-000000000001'
+order by p.full_name, er.start_date;
+
 /*
 -- ── TEARDOWN: uncomment to remove [QA] Demo Co (auth users stay in Dashboard)
 delete from billing_events where org_id = 'd0000001-0001-4001-8001-000000000001';
 delete from achievements where org_id = 'd0000001-0001-4001-8001-000000000001';
+delete from projects where profile_id in (select id from profiles where org_id = 'd0000001-0001-4001-8001-000000000001');
 delete from kpis where employee_id in (select id from profiles where org_id = 'd0000001-0001-4001-8001-000000000001');
+delete from employment_roles where profile_id in (select id from profiles where org_id = 'd0000001-0001-4001-8001-000000000001');
 delete from verified_facts where profile_id in (select id from profiles where org_id = 'd0000001-0001-4001-8001-000000000001');
 delete from promotion_readiness where employee_id in (select id from profiles where org_id = 'd0000001-0001-4001-8001-000000000001');
 delete from employee_value_scores where employee_id in (select id from profiles where org_id = 'd0000001-0001-4001-8001-000000000001');

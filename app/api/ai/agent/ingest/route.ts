@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
+import { eligibleDocsQuery, assertDocCleared } from "@/lib/verification/doc-eligibility";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -43,6 +45,10 @@ export async function POST(req: NextRequest) {
   }
   const ownerId = authData.user.id;
 
+  // #5 — per-user rate limit (memory ingestion scans + writes).
+  const rl = await checkRateLimit("ai-ingest", ownerId);
+  if (!rl.success) return tooManyRequests(rl);
+
   const { data: agent, error: agentErr } = await userClient
     .from("user_agents")
     .select("id, org_id, enabled, learn_from_tasks, learn_from_docs, learn_from_messages")
@@ -76,18 +82,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 2. Verified documentation the owner may see (RLS enforces visibility) ──
+  // ── 2. AI-CLEARED documentation the owner may see ──
+  // VP-4 gate: a doc may enter agent_memory ONLY when status='verified' AND
+  // ai_ingest_state='cleared'. eligibleDocsQuery applies that filter on top of
+  // the user-scoped RLS (which enforces visibility 'org'/'managers'/'private'),
+  // so an employee's agent can never absorb a manager-only OR an un-cleared doc.
+  // assertDocCleared is belt-and-suspenders: if a row ever slips the filter, the
+  // ingestion refuses it rather than silently learning unvetted content.
   if (agent.learn_from_docs) {
-    const { data } = await userClient
-      .from("documentation")
-      .select("id, title, body")
-      .eq("status", "verified");
-    for (const d of data ?? []) {
-      const body = (d.body as string) ?? "";
+    const { data } = await eligibleDocsQuery(userClient, "id, title, body, status, ai_ingest_state");
+    const docs = (data ?? []) as unknown as Array<{
+      id: string;
+      title: string;
+      body: string | null;
+      status: string;
+      ai_ingest_state: string;
+    }>;
+    for (const d of docs) {
+      assertDocCleared(d, d.id); // hard guard: verified AND cleared, or throw.
+      const body = d.body ?? "";
       rows.push({
         ...base,
         source_type: "documentation",
-        source_id: d.id as string,
+        source_id: d.id,
         content: `${d.title}: ${body.slice(0, 600)}`,
       });
     }

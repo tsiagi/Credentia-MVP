@@ -37,6 +37,7 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
   const [reports, setReports] = useState<{ id: string; full_name: string | null; title: string | null }[]>([]);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [requireProof, setRequireProof] = useState(true);
+  const [scope, setScope] = useState<"self" | "team">("self");
   const [target, setTarget] = useState<"self" | string>("self");
   const [contributionType, setContributionType] = useState<ContributionType>("individual");
   const [draft, setDraft] = useState({ title: "", desc: "", date: "", evidence: "", kind: "achievement" });
@@ -78,7 +79,11 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
       return;
     }
 
-    const profileId = target === "self" ? userId : target;
+    if (scope === "team" && (target === "self" || !target)) {
+      setError("Select a direct report for a team achievement, or switch the scope to You.");
+      return;
+    }
+    const profileId = scope === "self" ? userId : target;
     setSubmitting(true);
     setError(null);
     setNotice(null);
@@ -102,7 +107,8 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
         <h3 className="font-semibold">Add achievements — you &amp; your team</h3>
       </div>
       <p className="text-[13px] opacity-60 mb-4 max-w-2xl">
-        Submit achievements for yourself or direct reports. They remain self-reported (L1) until an executive approves,
+        Choose a scope — <strong>You</strong> for your own record, or <strong>Your Team</strong> for a direct report.
+        Team submissions appear on that employee&apos;s own view and stay self-reported (L1) until an executive approves,
         then they can move through the normal verification path.
       </p>
 
@@ -112,14 +118,37 @@ export function ManagerAchievementPanel({ userId }: { userId: string }) {
       <form onSubmit={submit} className="p-4 rounded-xl border space-y-3 mb-5" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[12px] uppercase tracking-widest opacity-60 block mb-1">For whom</label>
-            <select value={target} onChange={(e) => setTarget(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
-              <option value="self">Myself</option>
-              {reports.map((r) => (
-                <option key={r.id} value={r.id}>{r.full_name ?? r.title ?? r.id.slice(0, 8)} (direct report)</option>
+            <label className="text-[12px] uppercase tracking-widest opacity-60 block mb-1">Scope</label>
+            <div className="flex gap-2 flex-wrap">
+              {(["self", "team"] as const).map((s) => (
+                <button key={s} type="button"
+                  onClick={() => {
+                    setScope(s);
+                    setTarget(s === "team" ? (reports[0]?.id ?? "self") : "self");
+                  }}
+                  className="px-3 py-2 rounded-lg text-[13px] font-medium border inline-flex items-center gap-1.5"
+                  style={{
+                    borderColor: scope === s ? "var(--accent)" : "var(--line)",
+                    background: scope === s ? "var(--accent-soft)" : "var(--surface)",
+                    color: scope === s ? "var(--accent)" : "var(--ink-2)",
+                  }}>
+                  {s === "self" ? <User size={14} /> : <Users size={14} />}
+                  {s === "self" ? "You" : "Your Team"}
+                </button>
               ))}
-            </select>
+            </div>
+            {scope === "team" && (
+              reports.length === 0 ? (
+                <p className="text-[12px] opacity-60 mt-2">No direct reports assigned yet — ask your admin to assign team members.</p>
+              ) : (
+                <select value={target === "self" ? (reports[0]?.id ?? "") : target} onChange={(e) => setTarget(e.target.value)}
+                  className="w-full mt-2 px-3 py-2 rounded-lg border text-sm" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+                  {reports.map((r) => (
+                    <option key={r.id} value={r.id}>{r.full_name ?? r.title ?? r.id.slice(0, 8)} (direct report)</option>
+                  ))}
+                </select>
+              )
+            )}
           </div>
           <div>
             <label className="text-[12px] uppercase tracking-widest opacity-60 block mb-1">Contribution type</label>
