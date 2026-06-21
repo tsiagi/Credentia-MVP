@@ -342,6 +342,18 @@ create policy "wp: member read" on work_projects for select
   ));
 
 -- ── VERIFIED TASKS ──────────────────────────────────────────────
+-- SECURITY REVIEW NOTE (audit #11): an assignee may freely create/complete
+-- their own verified_tasks. This is intentional and NOT a self-attestation
+-- hole: "verified_tasks" is the canonical TASK LEDGER (the real-work counterpart
+-- to ai_inference_tasks), with operational status (todo/in_progress/blocked/
+-- done) — it has NO verification_level and is never rendered as a verified
+-- CREDENTIAL. Self-completed tasks only (a) appear on the task board, and
+-- (b) feed the owner's PRIVATE digital twin (agent_memory, owner-only read),
+-- whose output is always labeled AI inference. A task becomes a blue verified
+-- credential ONLY via manager promotion into an L2 achievement
+-- ("ach: manager insert from task" / lib/projects.ts promoteTaskToAchievement),
+-- which is the human attestation. So no client write here can masquerade as a
+-- verified fact to anyone else.
 drop policy if exists "vt: assignee all" on verified_tasks;
 create policy "vt: assignee all" on verified_tasks for all
   using (assignee_id = auth.uid())
