@@ -3161,6 +3161,12 @@ export default function CredentiaSite() {
   const vars = useThemeVars(theme);
 
   const enterApp = useCallback((r: Role) => {
+    // Superadmin and company admin live in their own route trees (/superadmin,
+    // /admin) guarded by middleware — not the SPA shell. Hand them off there.
+    if (typeof window !== "undefined") {
+      if (r === "superadmin") { window.location.assign("/superadmin/dashboard"); return; }
+      if (r === "admin") { window.location.assign("/admin/dashboard"); return; }
+    }
     setRole(r);
     setScreen("app");
   }, []);
