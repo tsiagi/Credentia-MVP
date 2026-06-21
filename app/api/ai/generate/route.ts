@@ -3,6 +3,7 @@ import { callAnthropicGuidance } from "@/lib/ai/anthropic";
 import { loadEmployeePayload } from "@/lib/ai/employee-data";
 import { persistAiGuidance } from "@/lib/ai/persist";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,10 @@ export async function POST(req: NextRequest) {
   }
 
   const managerId = authData.user.id;
+
+  // #5 — per-user rate limit (batch AI generation is expensive).
+  const rl = await checkRateLimit("ai-batch", managerId);
+  if (!rl.success) return tooManyRequests(rl);
 
   let body: GenerateBody = {};
   try {

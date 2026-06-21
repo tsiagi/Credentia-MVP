@@ -13,6 +13,7 @@
 // ─────────────────────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -101,6 +102,10 @@ export async function POST(req: NextRequest) {
   const userClient = getSupabaseAsUser(token);
   const { data: auth } = await userClient.auth.getUser();
   if (!auth?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // #5 — per-user rate limit (inference generation reads the ledger + writes).
+  const rl = await checkRateLimit("ai-batch", auth.user.id);
+  if (!rl.success) return tooManyRequests(rl);
 
   let body: { boardId?: string } = {};
   try {

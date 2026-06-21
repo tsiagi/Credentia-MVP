@@ -1,10 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { AiInsightMode, VerifiedEmployeePayload } from "@/lib/ai-client";
 import { callAnthropicGuidance } from "@/lib/ai/anthropic";
+import { getSupabaseAsUser } from "@/lib/supabase-admin";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
+function bearerToken(req: NextRequest) {
+  const h = req.headers.get("authorization");
+  return h?.startsWith("Bearer ") ? h.slice(7) : null;
+}
+
 export async function POST(req: NextRequest) {
+  // #4 — require an authenticated session. This route triggers paid Anthropic
+  // calls; it must never be reachable anonymously.
+  const token = bearerToken(req);
+  if (!token) {
+    return NextResponse.json({ error: "Authorization: Bearer <access_token> required" }, { status: 401 });
+  }
+  const { data: authData, error: authErr } = await getSupabaseAsUser(token).auth.getUser();
+  if (authErr || !authData.user) {
+    return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
+  }
+
+  // #5 — per-user rate limit (cost protection).
+  const rl = await checkRateLimit("ai-single", authData.user.id);
+  if (!rl.success) return tooManyRequests(rl);
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
       { error: "ANTHROPIC_API_KEY is not set. Add it to .env.local (never commit it)." },

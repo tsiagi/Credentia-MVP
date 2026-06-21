@@ -4,6 +4,7 @@ import {
   loadReportPayload, callAnthropicReport, persistReport,
   type ReportScope, type PeriodType,
 } from "@/lib/ai/reports";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -65,6 +66,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
   }
   const callerId = authData.user.id;
+
+  // #5 — per-user rate limit (report generation fans out across a team/org).
+  const rl = await checkRateLimit("ai-batch", callerId);
+  if (!rl.success) return tooManyRequests(rl);
 
   let body: ReportBody = {};
   try { body = await req.json(); } catch { /* defaults */ }

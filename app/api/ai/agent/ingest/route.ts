@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
 import { eligibleDocsQuery, assertDocCleared } from "@/lib/verification/doc-eligibility";
+import { checkRateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
   }
   const ownerId = authData.user.id;
+
+  // #5 — per-user rate limit (memory ingestion scans + writes).
+  const rl = await checkRateLimit("ai-ingest", ownerId);
+  if (!rl.success) return tooManyRequests(rl);
 
   const { data: agent, error: agentErr } = await userClient
     .from("user_agents")
