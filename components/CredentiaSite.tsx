@@ -44,10 +44,10 @@ import {
   buildEmployeeTimeline, fetchEmployeeOutlook,
   fetchVerifyQueue, fetchTeamHealth,
   fetchCoachingInsights, fetchDirectReports, fetchReviewRows,
-  fetchEmployeeValueScore, fetchTeamValueScores, fetchPromotionReadinessRows,
+  fetchTeamValueScores, fetchPromotionReadinessRows,
   VALUE_INPUT_LABELS, PROMO_CATEGORY_LABELS,
   type TimelineEvent, type VerifyQueueItem,
-  type ValueScoreDetail, type TeamValueScoreRow, type PromotionReadinessRow,
+  type TeamValueScoreRow, type PromotionReadinessRow,
 } from "@/lib/workforce";
 /* Achievement Vault — load/save via lib/supabase.ts, achievements table */
 import {
@@ -61,7 +61,7 @@ import {
   SlidersHorizontal, Globe, Menu, X, ArrowRight, ArrowLeft, Check, GitBranch, Workflow, ScanSearch,
   Target, FolderGit2, GraduationCap, TrendingUp, Lightbulb, Crown,
   ClipboardList, Heart, Activity, DollarSign, ArrowUp, ArrowDown, Minus, Plus, CreditCard,
-  Handshake, Link2, Camera, Printer, Download, UserMinus, Briefcase,
+  Handshake, Camera, Printer, Download, UserMinus, Briefcase,
   Compass, Quote, Play, Clock, Layers, History, Luggage, Inbox, CheckCircle2,
   KanbanSquare, BookOpen, LogOut,
 } from "lucide-react";
@@ -295,6 +295,38 @@ function SectionHeader({ icon: Icon, title, tag, sub }: { icon: typeof ShieldChe
   );
 }
 
+/* Reusable segmented sub-tab control (mirrors the executive segmented control).
+   Presentation-only — used for in-page tab switching within a dashboard area. */
+function SubTabs<T extends string>({ tabs, active, onChange }: {
+  tabs: { id: T; label: string; icon?: typeof ShieldCheck; badge?: ReactNode }[];
+  active: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div role="tablist" className="inline-flex items-center gap-1 p-1 rounded-xl border max-w-full overflow-x-auto"
+      style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+      {tabs.map((t) => {
+        const Icon = t.icon;
+        const isActive = active === t.id;
+        return (
+          <button key={t.id} type="button" role="tab" aria-selected={isActive}
+            onClick={() => onChange(t.id)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold transition whitespace-nowrap shrink-0"
+            style={{
+              background: isActive ? "var(--surface)" : "transparent",
+              color: isActive ? "var(--ink)" : "var(--ink-2)",
+              boxShadow: isActive ? "var(--shadow-sm)" : "none",
+            }}>
+            {Icon && <Icon size={15} style={{ color: isActive ? "var(--accent)" : "var(--ink-3)" }} />}
+            {t.label}
+            {t.badge}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   return (
@@ -304,75 +336,6 @@ function ConfidenceBar({ value }: { value: number }) {
       </div>
       <span className="text-[12px] font-medium tabular-nums opacity-70">{pct}% confidence</span>
     </div>
-  );
-}
-
-function ValueScoreBar({ value }: { value: number }) {
-  const pct = Math.round(value * 100);
-  return (
-    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
-      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--accent)" }} />
-    </div>
-  );
-}
-
-function EmployeeValueScoreCard({ detail, compact }: { detail: ValueScoreDetail | null; compact?: boolean }) {
-  if (!detail) {
-    return (
-      <Card className="p-6" style={{ background: "var(--surface-2)" }}>
-        <SectionHeader icon={Activity} title="Employee Value Score" tag={<SupportingMetricTag />}
-          sub="Composite 0–1000 index from verified inputs. Internal only — never on your passport." />
-        <p className="text-sm opacity-60">No value score computed yet. When employee_value_scores rows exist for your profile, the breakdown appears here.</p>
-      </Card>
-    );
-  }
-
-  const benchRows = [
-    { label: "Your team", value: detail.benchmarks.team },
-    { label: "Department", value: detail.benchmarks.department },
-    { label: "Company", value: detail.benchmarks.company },
-  ];
-
-  return (
-    <Card className="p-6" style={{ background: "var(--surface-2)" }}>
-      <SectionHeader icon={Activity} title="Employee Value Score" tag={<SupportingMetricTag />}
-        sub="Composite supporting metric (0–1000). Never the sole basis for pay, promotion, or termination." />
-      <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-5">
-        <div>
-          <div className="text-[12px] uppercase tracking-widest opacity-60">Current index</div>
-          <div className="text-4xl font-semibold serif mt-1" style={{ color: "var(--accent)" }}>{detail.score}</div>
-          {detail.computedAt && <div className="text-[11px] opacity-50 mt-1">Updated {new Date(detail.computedAt).toLocaleDateString()}</div>}
-        </div>
-        {!compact && (
-          <div className="flex gap-4 flex-wrap flex-1 sm:justify-end">
-            {benchRows.map((b) => (
-              <div key={b.label} className="text-center min-w-[72px]">
-                <div className="text-[11px] opacity-60">{b.label}</div>
-                <div className="text-lg font-semibold serif">{b.value ?? "—"}</div>
-                <div className="text-[10px] opacity-50">avg</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      {!compact && (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {VALUE_INPUT_LABELS.map(({ key, label }) => (
-            <div key={key}>
-              <div className="flex justify-between text-[12px] mb-1">
-                <span className="opacity-70">{label}</span>
-                <span className="font-medium tabular-nums">{Math.round(detail.inputs[key] * 100)}%</span>
-              </div>
-              <ValueScoreBar value={detail.inputs[key]} />
-            </div>
-          ))}
-        </div>
-      )}
-      <TransparencyNote>
-        Derived from verified KPIs, reviews, projects, certifications, and pulse signals stored in employee_value_scores.inputs.
-        You can dispute this metric with HR — it is advisory context, not a verified fact, and is never published externally.
-      </TransparencyNote>
-    </Card>
   );
 }
 
@@ -1806,54 +1769,251 @@ function FeedbackCycleCard({ userId, field, title, subtitle }: { userId: string;
   );
 }
 
-function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: {
+/* Dashboard profile summary — a condensed, verified-first snapshot of the
+   employee's own record (current role + manager-at-the-time, key counts,
+   recent verified items) with a jump into the full Verifications tab. */
+function EmployeeProfileSummary({ userId, onViewProfile }: { userId: string; onViewProfile?: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [d, setD] = useState<{
+    fullName: string | null; title: string | null; avatarUrl: string | null;
+    manager: string | null; currentRole: string | null; rolesCount: number;
+    vaultCount: number; verifiedAch: number; verifiedFacts: number; maxLevel: number;
+    recent: { id: string; label: string; kind: string; level: number; year: string }[];
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ data: profile }, ach, events, { data: roles }] = await Promise.all([
+          supabase.from("profiles").select("full_name, title, avatar_url, manager_id").eq("id", userId).single(),
+          fetchAchievements(userId),
+          buildEmployeeTimeline(userId),
+          supabase.from("employment_roles").select("title, manager_name, end_date, start_date")
+            .eq("profile_id", userId).order("start_date", { ascending: false }),
+        ]);
+        const rolesList = (roles ?? []) as { title: string; manager_name: string | null; end_date: string | null }[];
+        const current = rolesList.find((r) => r.end_date == null) ?? rolesList[0] ?? null;
+        let manager: string | null = current?.manager_name ?? null;
+        if (!manager && profile?.manager_id) {
+          const { data: mgr } = await supabase.from("profiles").select("full_name").eq("id", profile.manager_id).single();
+          manager = mgr?.full_name ?? null;
+        }
+        const maxLevel = Math.max(0, ...ach.map((a) => a.verification_level), ...events.map((e) => e.level));
+        const recent = [...events]
+          .filter((e) => e.level >= 2)
+          .sort((a, b) => (b.year ?? "").localeCompare(a.year ?? ""))
+          .slice(0, 3);
+        if (!cancelled) setD({
+          fullName: profile?.full_name ?? null, title: profile?.title ?? null, avatarUrl: profile?.avatar_url ?? null,
+          manager, currentRole: current?.title ?? null, rolesCount: rolesList.length,
+          vaultCount: ach.length, verifiedAch: ach.filter((a) => a.verification_level >= 2).length,
+          verifiedFacts: events.filter((e) => e.level >= 2).length, maxLevel, recent,
+        });
+      } catch {
+        if (!cancelled) setD(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center gap-4"><Skeleton className="h-14 w-14 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-5 w-48" /><Skeleton className="h-4 w-64" /></div></div>
+      </Card>
+    );
+  }
+  if (!d) return null;
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-start gap-4 flex-wrap">
+        <ProfileAvatar name={d.fullName} url={d.avatarUrl} size={56} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="serif text-xl font-semibold truncate">{d.fullName ?? "Your profile"}</h2>
+            <VerifiedFactTag />
+          </div>
+          {d.title && <p className="text-[14px] opacity-70 mt-0.5">{d.title}</p>}
+          {(d.currentRole || d.manager) && (
+            <p className="text-[13px] opacity-60 mt-1 inline-flex items-center gap-1.5 flex-wrap">
+              <Briefcase size={13} />
+              <span>{d.currentRole ?? d.title}</span>
+              {d.manager && <span className="opacity-80">· Manager: {d.manager}</span>}
+            </p>
+          )}
+        </div>
+        {onViewProfile && (
+          <Button variant="secondary" size="sm" onClick={onViewProfile} trailingIcon={<ArrowRight size={15} />}>
+            View full record
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+        <Stat label="Verified facts" value={String(d.verifiedFacts)} sub="L2+ entries" accent="var(--verified-fg)" />
+        <Stat label="Achievements" value={String(d.vaultCount)} sub={`${d.verifiedAch} verified`} />
+        <Stat label="Highest level" value={d.maxLevel ? `L${d.maxLevel}` : "—"} sub={d.maxLevel >= 4 ? "company verified" : "on record"} accent="var(--accent)" />
+        <Stat label="Roles held" value={String(d.rolesCount)} sub="verified history" />
+      </div>
+
+      {d.recent.length > 0 && (
+        <div className="mt-5">
+          <div className="text-[12px] uppercase tracking-widest opacity-60 mb-2">Recent verified records</div>
+          <ul className="space-y-2">
+            {d.recent.map((e) => {
+              const Icon = KIND_ICON[e.kind] ?? Award;
+              return (
+                <li key={e.id} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "var(--surface-2)" }}>
+                  <div className="p-1.5 rounded-lg shrink-0" style={{ background: "var(--verified-bg)" }}>
+                    <Icon size={15} style={{ color: "var(--verified-fg)" }} />
+                  </div>
+                  <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{e.label}</span>
+                  <span className="text-[12px] opacity-50 shrink-0 tabular">{e.year}</span>
+                  <LevelBadge level={e.level} />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt, onNavigate }: {
   userId: string; showOutlook: boolean; accountStatus?: AccountStatus; trialEndsAt?: string | null;
+  onNavigate?: (tab: string) => void;
 }) {
-  const [external, setExternal] = useState(false);
-  const [vault, setVault] = useState<AchievementRow[]>([]);
-  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [outlook, setOutlook] = useState<{ text: string; evidence: string } | null>(null);
-  const [valueScore, setValueScore] = useState<ValueScoreDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setError(null);
     try {
-      const [ach, events, ol, vs] = await Promise.all([
-        fetchAchievements(userId),
-        buildEmployeeTimeline(userId),
-        showOutlook ? fetchEmployeeOutlook(userId) : Promise.resolve(null),
-        fetchEmployeeValueScore(userId),
-      ]);
-      setVault(ach);
-      setTimeline(events);
-      setOutlook(ol);
-      setValueScore(vs);
+      setOutlook(showOutlook ? await fetchEmployeeOutlook(userId) : null);
     } catch (e) {
-      setError(errorMessage(e, "Could not load career record."));
+      setError(errorMessage(e, "Could not load your dashboard."));
     } finally {
       setLoading(false);
     }
   }, [userId, showOutlook]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  useEffect(() => { reload(); }, [reload]);
 
-  const visibleTimeline = external ? timeline.filter((e) => e.level >= 2) : timeline;
-  const maxLevel = vault.reduce((m, a) => Math.max(m, a.verification_level), timeline.reduce((m, e) => Math.max(m, e.level), 0));
-
-  if (loading) return <div className="opacity-60 text-sm">Loading career record…</div>;
+  if (loading) return <div className="opacity-60 text-sm">Loading…</div>;
 
   return (
     <div className="space-y-6">
       {accountStatus === "former_trial" && (
         <FormerTrialBanner accountStatus={accountStatus} trialEndsAt={trialEndsAt ?? null} />
       )}
-      <PassportLinkCard userId={userId} />
+      <EmployeeProfileSummary userId={userId} onViewProfile={onNavigate ? () => onNavigate("vault") : undefined} />
       <EmployeeDataRightsCard userId={userId} />
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
+      {showOutlook && (
+        <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
+          <div className="flex items-center gap-2 mb-2"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Professional Outlook</h3><InferredTag /></div>
+          {outlook ? (
+            <>
+              <p className="text-[14px] leading-relaxed">{outlook.text}</p>
+              <TransparencyNote>{outlook.evidence} — model-generated prediction from promotion_readiness, not a fact. Visible only to you, never on your external passport.</TransparencyNote>
+            </>
+          ) : (
+            <p className="text-[14px] opacity-70">No AI outlook yet for your profile. When promotion_readiness rows exist, they appear here as guidance only.</p>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* Employee "Verifications" tab — Internal Career View wrapper (with public-passport
+   preview toggle) framing three sub-tabs: Career Timeline · Your Vault · Active Outreach.
+   Verified facts (L2+, shield/blue) and self-reported items (L1) stay visually distinct. */
+function EmployeeVerificationsView({ userId, requireProof }: { userId: string; requireProof: boolean }) {
+  const [external, setExternal] = useState(false);
+  const [vault, setVault] = useState<AchievementRow[]>([]);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [subtab, setSubtab] = useState<"timeline" | "vault" | "outreach">("timeline");
+
+  const reload = useCallback(async () => {
+    setError(null);
+    try {
+      const [ach, events] = await Promise.all([
+        fetchAchievements(userId),
+        buildEmployeeTimeline(userId),
+      ]);
+      setVault(ach);
+      setTimeline(events);
+    } catch (e) {
+      setError(errorMessage(e, "Could not load career record."));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const visibleTimeline = external ? timeline.filter((e) => e.level >= 2) : timeline;
+  const maxLevel = vault.reduce((m, a) => Math.max(m, a.verification_level), timeline.reduce((m, e) => Math.max(m, e.level), 0));
+
+  if (loading) return <div className="opacity-60 text-sm">Loading career record…</div>;
+
+  const timelineCard = (
+    <Card className="p-6">
+      <SectionHeader icon={GitBranch} title="Career Timeline" sub="Chronological record from verified_facts, achievements, projects, and approved KPIs." />
+      {visibleTimeline.length === 0 ? (
+        <p className="text-sm opacity-60">No timeline events yet. Submit achievements or add verified facts.</p>
+      ) : (
+        <div className="relative pl-6">
+          <div className="absolute left-[7px] top-1 bottom-1 w-px" style={{ background: "var(--line)" }} />
+          {visibleTimeline.map((ev) => {
+            const Icon = KIND_ICON[ev.kind] ?? Award;
+            return (
+              <div key={ev.id} className="relative mb-5 last:mb-0">
+                <div className="absolute -left-[22px] top-1 w-3.5 h-3.5 rounded-full border-2"
+                  style={{ borderColor: ev.level >= 2 ? "var(--verified-fg)" : "var(--line)", background: ev.level >= 2 ? "var(--verified-fg)" : "var(--surface)" }} />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
+                  <span className="text-[12px] font-mono opacity-50 w-12 shrink-0">{ev.year}</span>
+                  <Icon size={16} className="opacity-50 hidden sm:block" />
+                  <span className="font-medium text-[15px] flex-1">{ev.label}</span>
+                  {ev.level >= 2 ? <LevelBadge level={ev.level} /> : <SelfReportedTag />}
+                </div>
+                {(() => {
+                  const m = ev.id.match(/^(fact|ach|proj|kpi)-(.+)$/);
+                  if (!m) return null;
+                  const tables: Record<string, string> = {
+                    fact: "verified_facts", ach: "achievements", proj: "projects", kpi: "kpis",
+                  };
+                  const table = tables[m[1]];
+                  if (!table) return null;
+                  return <VerificationHistory targetTable={table} targetId={m[2]} compact />;
+                })()}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {external && (
+        <p className="text-[12px] mt-4 pt-3 border-t opacity-60" style={{ borderColor: "var(--line)" }}>
+          External view: only manager-verified or higher (L2+). Self-reported entries are never shown outside the org.
+        </p>
+      )}
+    </Card>
+  );
+
+  return (
+    <div className="space-y-6">
+      {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
+
+      {/* Internal Career View — wrapper with public-passport preview toggle */}
       <Card className="p-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="text-[12px] uppercase tracking-widest opacity-60">Living career record</div>
@@ -1861,7 +2021,7 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: {
           <p className="text-[13px] opacity-60 mt-1 max-w-lg">
             {external
               ? "Shareable view only — verified records (L2+). Self-reported items are hidden. Not downloadable."
-              : "Full timeline, achievement vault, feedback, and private AI guidance."}
+              : "Your full timeline, achievement vault, and past-employer outreach in one place."}
           </p>
         </div>
         <button onClick={() => setExternal(!external)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm text-white" style={{ background: "var(--accent)" }}>
@@ -1877,71 +2037,57 @@ function EmployeeView({ userId, showOutlook, accountStatus, trialEndsAt }: {
         <Stat label="Verified facts" value={String(timeline.filter((e) => e.level >= 2).length)} sub="L2+ entries" accent="var(--verified-fg)" />
       </div>
 
-      <Card className="p-6">
-        <SectionHeader icon={GitBranch} title="Career Timeline" sub="Chronological record from verified_facts, achievements, projects, and approved KPIs." />
-        {visibleTimeline.length === 0 ? (
-          <p className="text-sm opacity-60">No timeline events yet. Submit achievements or add verified facts.</p>
-        ) : (
-          <div className="relative pl-6">
-            <div className="absolute left-[7px] top-1 bottom-1 w-px" style={{ background: "var(--line)" }} />
-            {visibleTimeline.map((ev) => {
-              const Icon = KIND_ICON[ev.kind] ?? Award;
-              return (
-                <div key={ev.id} className="relative mb-5 last:mb-0">
-                  <div className="absolute -left-[22px] top-1 w-3.5 h-3.5 rounded-full border-2"
-                    style={{ borderColor: ev.level >= 2 ? "var(--verified-fg)" : "var(--line)", background: ev.level >= 2 ? "var(--verified-fg)" : "var(--surface)" }} />
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
-                    <span className="text-[12px] font-mono opacity-50 w-12 shrink-0">{ev.year}</span>
-                    <Icon size={16} className="opacity-50 hidden sm:block" />
-                    <span className="font-medium text-[15px] flex-1">{ev.label}</span>
-                    {ev.level >= 2 ? <LevelBadge level={ev.level} /> : <SelfReportedTag />}
-                  </div>
-                  {(() => {
-                    const m = ev.id.match(/^(fact|ach|proj|kpi)-(.+)$/);
-                    if (!m) return null;
-                    const tables: Record<string, string> = {
-                      fact: "verified_facts", ach: "achievements", proj: "projects", kpi: "kpis",
-                    };
-                    const table = tables[m[1]];
-                    if (!table) return null;
-                    return <VerificationHistory targetTable={table} targetId={m[2]} compact />;
-                  })()}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {external && (
-          <p className="text-[12px] mt-4 pt-3 border-t opacity-60" style={{ borderColor: "var(--line)" }}>
-            External view: only manager-verified or higher (L2+). Self-reported entries are never shown outside the org.
-          </p>
-        )}
-      </Card>
-
-      {/* VP-7: amber "In review" candidates — in-app self-view ONLY. Gated by
-          !external so the in-app public-passport preview (and, by construction,
-          the public slug) stays candidate-blind. Sourced from a SEPARATE read
-          (listCandidatesForSubject) — never merged into vault/timeline, so it
-          can't touch maxLevel/verified counts above. Renders nothing if empty. */}
-      {!external && <PassportInReviewSection subjectId={userId} />}
-
-      {!external && (
-        <FeedbackCycleCard userId={userId} field="employee_responses" title="This cycle — your responses"
-          subtitle="Your responses are saved each cycle. Your manager adds their side separately." />
-      )}
-      {!external && <EmployeeValueScoreCard detail={valueScore} />}
-      {!external && showOutlook && (
-        <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
-          <div className="flex items-center gap-2 mb-2"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Professional Outlook</h3><InferredTag /></div>
-          {outlook ? (
-            <>
-              <p className="text-[14px] leading-relaxed">{outlook.text}</p>
-              <TransparencyNote>{outlook.evidence} — model-generated prediction from promotion_readiness, not a fact. Visible only to you, never on your external passport.</TransparencyNote>
-            </>
-          ) : (
-            <p className="text-[14px] opacity-70">No AI outlook yet for your profile. When promotion_readiness rows exist, they appear here as guidance only.</p>
+      {external ? (
+        timelineCard
+      ) : (
+        <>
+          <SubTabs
+            tabs={[
+              { id: "timeline", label: "Career Timeline", icon: GitBranch },
+              { id: "vault", label: "Your Vault", icon: Award },
+              { id: "outreach", label: "Active Outreach", icon: Send },
+            ]}
+            active={subtab}
+            onChange={setSubtab}
+          />
+          {subtab === "timeline" && (
+            <div className="space-y-6">
+              {timelineCard}
+              {/* VP-7: amber "In review" candidates — in-app self-view ONLY. Sourced from a
+                  SEPARATE read (listCandidatesForSubject), never merged into vault/timeline. */}
+              <PassportInReviewSection subjectId={userId} />
+            </div>
           )}
-        </Card>
+          {subtab === "vault" && <AchievementVaultView userId={userId} requireProof={requireProof} />}
+          {subtab === "outreach" && <AttestationOutreachPanel userId={userId} requireProof={requireProof} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* Employee "My Work" tab — Work Board plus a Performance Reviews sub-tab
+   (the per-cycle response form, moved off the dashboard). */
+function EmployeeWorkTabs({ userId, orgId }: { userId: string; orgId: string }) {
+  const [wtab, setWtab] = useState<"board" | "reviews">("board");
+  return (
+    <div className="space-y-6">
+      <SubTabs
+        tabs={[
+          { id: "board", label: "Work Board", icon: KanbanSquare },
+          { id: "reviews", label: "Performance Reviews", icon: ClipboardList },
+        ]}
+        active={wtab}
+        onChange={setWtab}
+      />
+      {wtab === "board" && (
+        <FlowErrorBoundary label="Your work board">
+          <FlowBoard userId={userId} orgId={orgId} variant="personal" />
+        </FlowErrorBoundary>
+      )}
+      {wtab === "reviews" && (
+        <FeedbackCycleCard userId={userId} field="employee_responses" title="Performance Reviews"
+          subtitle="Your responses are saved each cycle. Your manager adds their side separately." />
       )}
     </div>
   );
@@ -1963,6 +2109,8 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
   const [error, setError] = useState<string | null>(null);
   // presentation-only: coaching carousel index
   const [coachIdx, setCoachIdx] = useState(0);
+  // presentation-only: dashboard sub-tab ("Promo + Coaching" | "Team")
+  const [mgrTab, setMgrTab] = useState<"promo" | "team">("promo");
 
   const reload = useCallback(async () => {
     setError(null);
@@ -2020,10 +2168,22 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
 
   return (
     <div className="space-y-6">
-      {/* Shareable verified profile moved to Settings; Add achievements moved to Achievement Vault. */}
+      {/* Shareable verified profile lives in Settings; Add achievements lives in the Verifications tab. */}
       {error && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{error}</p>}
       {aiNotice && <p className="text-[13px] px-3 py-2 rounded-lg" style={{ background: "var(--verified-bg)", color: "var(--verified-fg)" }}>{aiNotice}</p>}
 
+      <SubTabs
+        tabs={[
+          { id: "promo", label: "Promo + Coaching", icon: TrendingUp },
+          { id: "team", label: "Team", icon: Users },
+        ]}
+        active={mgrTab}
+        onChange={setMgrTab}
+      />
+
+      {/* ── Promo + Coaching: AI generation, promotion readiness, coaching ── */}
+      {mgrTab === "promo" && (
+      <div className="space-y-6">
       {aiCoaching && (
       <RiseIn delay={40}>
       <Card className="p-6 cairn-lift" style={{ background: "var(--inferred-bg)" }}>
@@ -2047,7 +2207,83 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
       </RiseIn>
       )}
 
-      <RiseIn delay={60}>
+      {promoEngine && (
+      <RiseIn delay={120}>
+      <PromotionReadinessPanel rows={promoRows} title="Promotion Readiness — your team" avatarMap={avatarMap} />
+      </RiseIn>
+      )}
+
+      {aiCoaching && (
+      <RiseIn delay={180}>
+      <Card className="p-6 cairn-pulse" style={{ background: "var(--inferred-bg)" }}>
+        <SectionHeader icon={Sparkles} title="AI Coaching Insights" tag={<InferredTag />}
+          sub="From promotion_readiness — evidence-based guidance only." />
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <InferredTag />
+          <span className="text-[13px] font-medium opacity-80">AI never makes the final call on promotions, ratings, or terminations.</span>
+        </div>
+        {coaching.length === 0 ? (
+          <p className="text-sm opacity-70">No coaching insights yet. Rows in promotion_readiness for your reports appear here.</p>
+        ) : (() => {
+          const safeIdx = Math.min(coachIdx, coaching.length - 1);
+          const go = (n: number) => setCoachIdx((coaching.length + safeIdx + n) % coaching.length);
+          return (
+          <div>
+            {/* swipeable carousel — one advisory insight at a time */}
+            <div className="relative overflow-hidden rounded-xl">
+              <div className="flex transition-transform duration-400 ease-out" style={{ transform: `translateX(-${safeIdx * 100}%)` }}>
+                {coaching.map((c, i) => (
+                  <div key={i} className="w-full shrink-0">
+                    <div className="p-4 rounded-xl" style={{ background: "var(--surface)" }}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{c.who}</span>
+                        <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{c.label}</span>
+                      </div>
+                      <div className="text-[13px] opacity-70 mt-1.5 flex items-start gap-1.5">
+                        <Info size={14} className="mt-0.5 shrink-0" style={{ color: "var(--inferred-fg)" }} />
+                        <span>{c.evidence}</span>
+                      </div>
+                      <TransparencyNote>From promotion_readiness table. Advisory signal — not a decision.</TransparencyNote>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {coaching.length > 1 && (
+              <div className="flex items-center gap-3 mt-4">
+                <button onClick={() => go(-1)} aria-label="Previous insight" className="p-1.5 rounded-lg border transition active:scale-[0.95]" style={{ borderColor: "var(--line)", color: "var(--ink-2)", background: "var(--surface)" }}>
+                  <ChevronLeft size={16} />
+                </button>
+                <div className="flex gap-1.5">
+                  {coaching.map((_, k) => (
+                    <button key={k} onClick={() => setCoachIdx(k)} aria-label={`Insight ${k + 1}`} className="h-2 rounded-full transition-all duration-300" style={{ width: k === safeIdx ? 22 : 8, background: k === safeIdx ? "var(--inferred-fg)" : "var(--line-strong)" }} />
+                  ))}
+                </div>
+                <button onClick={() => go(1)} aria-label="Next insight" className="p-1.5 rounded-lg border transition active:scale-[0.95]" style={{ borderColor: "var(--line)", color: "var(--ink-2)", background: "var(--surface)" }}>
+                  <ChevronRight size={16} />
+                </button>
+                <span className="ml-auto text-[12px] opacity-60 tabular">{safeIdx + 1} / {coaching.length}</span>
+              </div>
+            )}
+          </div>
+          );
+        })()}
+      </Card>
+      </RiseIn>
+      )}
+
+      {!aiCoaching && !promoEngine && (
+        <Card className="p-6">
+          <p className="text-sm opacity-60">AI coaching and the promotion engine are turned off for your organization. Enable them in Org Controls to see promotion and coaching guidance here.</p>
+        </Card>
+      )}
+      </div>
+      )}
+
+      {/* ── Team: health, performance reviews, value scores ── */}
+      {mgrTab === "team" && (
+      <div className="space-y-6">
+      <RiseIn delay={40}>
       <Card className="p-6 cairn-lift">
         <SectionHeader icon={Activity} title="Team Health Overview" sub={`${health.reportCount} direct reports — from pulse_surveys and employee_value_scores.`} />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -2156,70 +2392,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
         </TransparencyNote>
       </Card>
       </RiseIn>
-
-      {promoEngine && (
-      <RiseIn delay={260}>
-      <PromotionReadinessPanel rows={promoRows} title="Promotion Readiness — your team" avatarMap={avatarMap} />
-      </RiseIn>
-      )}
-
-      {aiCoaching && (
-      <RiseIn delay={300}>
-      <Card className="p-6 cairn-pulse" style={{ background: "var(--inferred-bg)" }}>
-        <SectionHeader icon={Sparkles} title="AI Coaching Insights" tag={<InferredTag />}
-          sub="From promotion_readiness — evidence-based guidance only." />
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <InferredTag />
-          <span className="text-[13px] font-medium opacity-80">AI never makes the final call on promotions, ratings, or terminations.</span>
-        </div>
-        {coaching.length === 0 ? (
-          <p className="text-sm opacity-70">No coaching insights yet. Rows in promotion_readiness for your reports appear here.</p>
-        ) : (() => {
-          const safeIdx = Math.min(coachIdx, coaching.length - 1);
-          const go = (n: number) => setCoachIdx((coaching.length + safeIdx + n) % coaching.length);
-          return (
-          <div>
-            {/* swipeable carousel — one advisory insight at a time */}
-            <div className="relative overflow-hidden rounded-xl">
-              <div className="flex transition-transform duration-400 ease-out" style={{ transform: `translateX(-${safeIdx * 100}%)` }}>
-                {coaching.map((c, i) => (
-                  <div key={i} className="w-full shrink-0">
-                    <div className="p-4 rounded-xl" style={{ background: "var(--surface)" }}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{c.who}</span>
-                        <span className="text-[12px] px-2 py-0.5 rounded-full" style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}>{c.label}</span>
-                      </div>
-                      <div className="text-[13px] opacity-70 mt-1.5 flex items-start gap-1.5">
-                        <Info size={14} className="mt-0.5 shrink-0" style={{ color: "var(--inferred-fg)" }} />
-                        <span>{c.evidence}</span>
-                      </div>
-                      <TransparencyNote>From promotion_readiness table. Advisory signal — not a decision.</TransparencyNote>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {coaching.length > 1 && (
-              <div className="flex items-center gap-3 mt-4">
-                <button onClick={() => go(-1)} aria-label="Previous insight" className="p-1.5 rounded-lg border transition active:scale-[0.95]" style={{ borderColor: "var(--line)", color: "var(--ink-2)", background: "var(--surface)" }}>
-                  <ChevronLeft size={16} />
-                </button>
-                <div className="flex gap-1.5">
-                  {coaching.map((_, k) => (
-                    <button key={k} onClick={() => setCoachIdx(k)} aria-label={`Insight ${k + 1}`} className="h-2 rounded-full transition-all duration-300" style={{ width: k === safeIdx ? 22 : 8, background: k === safeIdx ? "var(--inferred-fg)" : "var(--line-strong)" }} />
-                  ))}
-                </div>
-                <button onClick={() => go(1)} aria-label="Next insight" className="p-1.5 rounded-lg border transition active:scale-[0.95]" style={{ borderColor: "var(--line)", color: "var(--ink-2)", background: "var(--surface)" }}>
-                  <ChevronRight size={16} />
-                </button>
-                <span className="ml-auto text-[12px] opacity-60 tabular">{safeIdx + 1} / {coaching.length}</span>
-              </div>
-            )}
-          </div>
-          );
-        })()}
-      </Card>
-      </RiseIn>
+      </div>
       )}
     </div>
   );
@@ -2320,9 +2493,9 @@ function AttestationOutreachPanel({ userId, requireProof = true }: { userId: str
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <div className="flex items-center gap-2 mb-1"><Send size={18} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold">Route A — Active outreach</h3><VerifiedFactTag /></div>
+        <div className="flex items-center gap-2 mb-1"><Send size={18} style={{ color: "var(--verified-fg)" }} /><h3 className="font-semibold">Request past-employer verification</h3><VerifiedFactTag /></div>
         <p className="text-[13px] opacity-70 mb-4 max-w-2xl">
-          Choose what to verify, then send a secure attestation link to a past employer contact. Only a confirmed human response creates a verified record.
+          Pick a role or achievement from your record and reach out to a past employer for attestation. Sending creates a tracked verification request linked to that item — you can follow its status below. Only a confirmed human response creates a verified record.
         </p>
 
         {step === "type" && (
@@ -2423,20 +2596,6 @@ function AttestationOutreachPanel({ userId, requireProof = true }: { userId: str
         )}
       </Card>
     </div>
-  );
-}
-
-function CompetencyMappingPanel() {
-  return (
-      <Card className="p-6" style={{ background: "var(--inferred-bg)" }}>
-        <div className="flex items-center gap-2 mb-1"><Sparkles size={18} style={{ color: "var(--inferred-fg)" }} /><h3 className="font-semibold">Route B — Competency mapping</h3><InferredTag /></div>
-        <p className="text-[13px] mb-3 max-w-2xl">When an employer can&apos;t be reached, the model produces an <strong>internal-only</strong> Likelihood Vector to help HR prioritize outreach. A hint, not a credential.</p>
-        <div className="flex items-center gap-4 p-4 rounded-xl" style={{ background: "var(--surface)" }}>
-          <div className="text-2xl font-semibold serif" style={{ color: "var(--inferred-fg)" }}>Lᵥ 0.74</div>
-          <div className="text-[13px] opacity-70">&quot;Plausible — recommend outreach to confirm&quot;</div>
-        </div>
-        <TransparencyNote>A statistical estimate, never shown on the public passport or to outside parties as verification. Career-changers and fast upskillers may score lower despite truthful histories — which is exactly why it only routes attention rather than deciding anything.</TransparencyNote>
-      </Card>
   );
 }
 
@@ -2729,8 +2888,10 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
     </div>
   );
 
+  const goToTab = (id: string) => { setTab(id); setSidebar(false); };
+
   const dashboard = userId ? {
-    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} />,
+    employee: <EmployeeView userId={userId} showOutlook={showOutlook} accountStatus={accountStatus} trialEndsAt={trialEndsAt} onNavigate={goToTab} />,
     manager: <ManagerView userId={userId} orgSettings={orgSettings} />,
     executive: <ExecutiveDashboard />,
     admin: <AdminView userId={userId} />,
@@ -2749,8 +2910,6 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
   const passportLabel = publicSlug ? `/p/verify/${publicSlug.slice(0, 4)}…` : "/p/verify/… (not published yet)";
 
   const isCommandCenter = (role === "executive" || role === "hr") && tab === "dashboard";
-
-  const goToTab = (id: string) => { setTab(id); setSidebar(false); };
 
   const NavButton = ({ n, horizontal = false }: { n: (typeof nav)[0]; horizontal?: boolean }) => {
     const Icon = n.icon;
@@ -2901,21 +3060,21 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             </>
           )}
           {tab === "vault" && userId && role !== "admin" && role !== "superadmin" && role !== "executive" && role !== "hr" && (
-            <div className="space-y-6">
-              {role === "manager" && <RiseIn delay={0}><VerificationDeck userId={userId} /></RiseIn>}
-              {role === "manager" ? (
-                <RiseIn delay={60}><ManagerAchievementPanel userId={userId} /></RiseIn>
-              ) : (
-                <RiseIn delay={0}><AchievementVaultView userId={userId} requireProof={requireProof} /></RiseIn>
-              )}
-              <RiseIn delay={120}><AttestationOutreachPanel userId={userId} requireProof={requireProof} /></RiseIn>
-              <RiseIn delay={180}><CompetencyMappingPanel /></RiseIn>
-            </div>
+            role === "manager" ? (
+              <div className="space-y-6">
+                <RiseIn delay={0}><ManagerAchievementPanel userId={userId} /></RiseIn>
+                <RiseIn delay={60}><AttestationOutreachPanel userId={userId} requireProof={requireProof} /></RiseIn>
+              </div>
+            ) : (
+              <EmployeeVerificationsView userId={userId} requireProof={requireProof} />
+            )
           )}
           {/* ── Task / Knowledge / Messaging / Digital-Twin layer ── */}
           {tab === "work" && isIndividualContributor && userId && (
             orgId
-              ? <FlowErrorBoundary label="Your work board"><FlowBoard userId={userId} orgId={orgId} variant={role === "manager" ? "team" : "personal"} /></FlowErrorBoundary>
+              ? (role === "manager"
+                  ? <FlowErrorBoundary label="Your work board"><FlowBoard userId={userId} orgId={orgId} variant="team" /></FlowErrorBoundary>
+                  : <EmployeeWorkTabs userId={userId} orgId={orgId} />)
               : <NoOrgNotice />
           )}
           {tab === "oversight" && isLeader && (
@@ -2930,6 +3089,8 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           {/* VP-1 — read-only amber review queue (manager + leaders). RLS scopes rows. */}
           {tab === "review-queue" && canReviewQueue && userId && (
             <div className="space-y-6">
+              {/* Employee Verification Center — manager swipe deck for direct reports' submissions. */}
+              {role === "manager" && <RiseIn delay={0}><VerificationDeck userId={userId} /></RiseIn>}
               <VerificationCandidatesPanel userId={userId} scope={{ mode: "reviewer" }} />
               {/* VP-6: Overseer automation oversight. Read for manager+/leader;
                   Enable/Pause gated to exec/admin inside the panel + server-side. */}
@@ -2949,7 +3110,10 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
           {tab === "admin" && userId && <AdminView userId={userId} />}
           {tab === "settings" && userId && (
             <div className="space-y-6">
-              {role === "manager" && <RiseIn delay={0}><ShareableLinkCard userId={userId} /></RiseIn>}
+              {/* Shareable verified profile + Verified Resume Network live in Settings.
+                  Employees get both; managers keep the shareable profile card. */}
+              {(role === "employee" || role === "manager") && <RiseIn delay={0}><ShareableLinkCard userId={userId} /></RiseIn>}
+              {role === "employee" && <RiseIn delay={40}><PassportLinkCard userId={userId} /></RiseIn>}
               {/* Cred-Bot setup lives in Settings; the bubble is for day-to-day use. */}
               {isWorkforce && orgId && (
                 <RiseIn delay={0}>
