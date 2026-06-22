@@ -210,7 +210,7 @@ export function computeRetentionCandidates(pulse: PulseLite[]): RetentionCandida
 }
 
 // ════════════════ LLM SYNTHESIS (clustering + narrative only) ════════════════
-export const REPORT_SYSTEM_PROMPT = `You are Credentia's internal workforce analytics model.
+export const REPORT_SYSTEM_PROMPT = `You are Core-Roborate's internal workforce analytics model.
 
 STRICT RULES (never break these):
 1. Output is AI INFERENCE / decision SUPPORT only — never a final decision or judgement about an individual.

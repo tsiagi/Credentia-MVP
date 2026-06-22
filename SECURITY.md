@@ -1,9 +1,9 @@
-# Security at Credentia
+# Security at Core-Roborate
 
-Credentia is a multi-tenant workforce-verification platform. This document summarizes our security posture and how to report issues. It also serves as evidence for security reviews and the SOC 2 program (see [`compliance/`](compliance/)).
+Core-Roborate is a multi-tenant workforce-verification platform. This document summarizes our security posture and how to report issues. It also serves as evidence for security reviews and the SOC 2 program (see [`compliance/`](compliance/)).
 
 ## Reporting a vulnerability
-Email **security@credentia.example** (replace with the real alias) with details and reproduction steps. Please do not open public issues for security reports. We aim to acknowledge within 2 business days.
+Email **security@core-roborate.example** (replace with the real alias) with details and reproduction steps. Please do not open public issues for security reports. We aim to acknowledge within 2 business days.
 
 ## Architecture controls (implemented)
 - **Multi-tenant isolation** — Postgres Row Level Security on every table, scoped by `org_id`; cross-tenant reads/writes are denied by policy, not by application code alone.

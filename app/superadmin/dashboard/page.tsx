@@ -27,7 +27,7 @@ export default function SuperadminDashboard() {
       <PageHeader
         eyebrow="Platform"
         title="Platform Dashboard"
-        subtitle="Usage across every company on Credentia — administrative aggregates and AI-insight volume."
+        subtitle="Usage across every company on Core-Roborate — administrative aggregates and AI-insight volume."
       />
 
       {error && (

@@ -135,8 +135,8 @@ end $$;
 create extension if not exists pg_cron;
 do $$
 begin
-  perform cron.unschedule('credentia-retention-purge');
+  perform cron.unschedule('core-roborate-retention-purge');
 exception when others then null;  -- not yet scheduled
 end $$;
-select cron.schedule('credentia-retention-purge', '17 3 * * *',
+select cron.schedule('core-roborate-retention-purge', '17 3 * * *',
                      $$select public.purge_expired_data()$$);

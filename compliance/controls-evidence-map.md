@@ -1,6 +1,6 @@
 # SOC 2 controls → evidence map
 
-Maps SOC 2 Trust Services Criteria (Security/Common Criteria, the default scope) to the Credentia control that satisfies it and where the auditor's evidence lives. "Status" reflects engineering reality today; "gap" items are the work to close before a Type II window.
+Maps SOC 2 Trust Services Criteria (Security/Common Criteria, the default scope) to the Core-Roborate control that satisfies it and where the auditor's evidence lives. "Status" reflects engineering reality today; "gap" items are the work to close before a Type II window.
 
 > Use this as the seed for your compliance platform (Vanta/Drata/Secureframe). Most CC items below are partially auto-collected from GitHub/Vercel/Supabase/Workspace once connected.
 

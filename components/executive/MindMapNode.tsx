@@ -26,7 +26,7 @@ import { MetricBadge } from "./MetricBadge";
      · "compact"  — a small department / team node card
      · "expanded" — a focused node opened into a detail card (the manager view)
 
-   Cairn idiom throughout: soft surface, hairline cool border, radius-lg,
+   Core-Roborate idiom throughout: soft surface, hairline cool border, radius-lg,
    serif numerals, earthen risk tints. Whole card is the click target; the
    compare / print affordances stop propagation.
    ───────────────────────────────────────────────────────────────────────── */

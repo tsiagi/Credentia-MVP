@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Task & Project Engine · Verified Documentation ·
---             Messaging · Digital-Twin Agents
+-- Core-Roborate — Task & Project Engine · Verified Documentation ·
+--             Messaging · Scout Agents
 -- Additive migration. Run AFTER schema.sql + rls-policies.sql +
 -- provisioning-lifecycle.sql + daily-pulse-tasks.sql.
 --
@@ -184,7 +184,7 @@ create table if not exists messages (
 create index if not exists idx_messages_conversation on messages (conversation_id, created_at);
 
 comment on column messages.save_to_agent_memory is
-  'true = eligible for the sender''s Digital-Twin memory; false = Off the Record, never learned.';
+  'true = eligible for the sender''s Scout memory; false = Off the Record, never learned.';
 
 -- Participant check — declared after the table exists so it can read it.
 create or replace function is_conversation_participant(cid uuid)
@@ -206,7 +206,7 @@ create table if not exists user_agents (
   id                  uuid primary key default gen_random_uuid(),
   owner_id            uuid not null references profiles on delete cascade,
   org_id              uuid not null references organizations on delete cascade,
-  name                text not null default 'My Digital Twin',
+  name                text not null default 'My Scout',
   persona             text,
   enabled             boolean not null default true,
   learn_from_tasks    boolean not null default true,
@@ -233,7 +233,7 @@ create table if not exists agent_memory (
 create index if not exists idx_agent_memory_owner on agent_memory (owner_id, source_type);
 
 comment on table agent_memory is
-  'Digital-Twin TRAINING data — VERIFIED facts only (blue). Server-written; owner-only read. Agent outputs (amber) are never stored here.';
+  'Scout TRAINING data — VERIFIED facts only (blue). Server-written; owner-only read. Agent outputs (amber) are never stored here.';
 
 -- ════════════════════════════════════════════════════════════════
 -- TRIGGERS
@@ -348,7 +348,7 @@ create policy "wp: member read" on work_projects for select
 -- to ai_inference_tasks), with operational status (todo/in_progress/blocked/
 -- done) — it has NO verification_level and is never rendered as a verified
 -- CREDENTIAL. Self-completed tasks only (a) appear on the task board, and
--- (b) feed the owner's PRIVATE digital twin (agent_memory, owner-only read),
+-- (b) feed the owner's PRIVATE Scout (agent_memory, owner-only read),
 -- whose output is always labeled AI inference. A task becomes a blue verified
 -- credential ONLY via manager promotion into an L2 achievement
 -- ("ach: manager insert from task" / lib/projects.ts promoteTaskToAchievement),

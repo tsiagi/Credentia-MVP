@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Verification Pipeline VP-6: Overseer AI
+-- Core-Roborate — Verification Pipeline VP-6: Overseer AI
 --   shadow → active learning loop + auto-promotion + race-free kill-switch
 --
 -- Additive, idempotent migration. Run AFTER:

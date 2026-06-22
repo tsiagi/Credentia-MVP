@@ -1,4 +1,4 @@
-import { Badge } from 'credentia';
+import { Badge } from 'core-roborate';
 import { ShieldCheck, Sparkles, Star, AlertTriangle } from 'lucide-react';
 
 const row: React.CSSProperties = {

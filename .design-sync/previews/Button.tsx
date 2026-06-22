@@ -1,4 +1,4 @@
-import { Button } from 'credentia';
+import { Button } from 'core-roborate';
 import { Plus, ArrowRight, ShieldCheck, Trash2 } from 'lucide-react';
 
 const row: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 };

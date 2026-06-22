@@ -1,6 +1,6 @@
 // lib/agents.ts
 // ─────────────────────────────────────────────────────────────
-// Personalized Digital-Twin Agent.
+// Personalized Scout Agent.
 //
 // One agent per user. Its TRAINING DATA (agent_memory) is composed ONLY of
 // VERIFIED facts (blue): completed verified_tasks, verified documentation the
@@ -59,7 +59,7 @@ export async function fetchMyAgent(ownerId: string): Promise<UserAgent | null> {
   return (data as UserAgent) ?? null;
 }
 
-/** Provision a Digital-Twin for the user (idempotent on owner_id). */
+/** Provision a Scout for the user (idempotent on owner_id). */
 export async function provisionAgent(
   ownerId: string,
   orgId: string,
@@ -71,7 +71,7 @@ export async function provisionAgent(
       {
         owner_id: ownerId,
         org_id: orgId,
-        name: input.name?.trim() || "My Digital Twin",
+        name: input.name?.trim() || "My Scout",
         persona: input.persona?.trim() || null,
       },
       { onConflict: "owner_id" },

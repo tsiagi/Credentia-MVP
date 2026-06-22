@@ -27,7 +27,7 @@
 // blank gap, never implies something is pending when it isn't). While loading
 // it renders nothing too — the section simply appears once candidates resolve.
 //
-// Built on Batch 1 primitives (Card, Badge) + Cairn tokens. Light + dark.
+// Built on Batch 1 primitives (Card, Badge) + Core-Roborate tokens. Light + dark.
 // ─────────────────────────────────────────────────────────────
 import React, { useEffect, useState } from "react";
 import { Sparkles, Clock } from "lucide-react";

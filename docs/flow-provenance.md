@@ -96,7 +96,7 @@ quarantine (`InferenceSidebar`) is a **separate component tree** from the board.
 
 ## Rebuilding from source
 
-The schema + seed are already applied to the live Credentia project. To
+The schema + seed are already applied to the live Core-Roborate project. To
 reproduce on another database:
 
 ```bash

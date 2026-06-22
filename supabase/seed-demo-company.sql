@@ -204,7 +204,7 @@ begin
      '2026-02-15', 1, 'individual', 'https://qa-democo.test/evidence/taylor-automation.pdf', false),
     -- Taylor: L2 verified
     (v_emp1_id, v_org_id, 'certification',
-     'Credentia Analyst Cert: Completed internal verification training.',
+     'Core-Roborate Analyst Cert: Completed internal verification training.',
      '2025-11-01', 2, 'individual', null, false),
     -- Jordan: L1 pending
     (v_emp2_id, v_org_id, 'award',

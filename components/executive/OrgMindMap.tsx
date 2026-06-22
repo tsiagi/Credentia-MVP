@@ -569,7 +569,7 @@ function PrintReport({ node, tier }: { node: OrgIntelNode | null; tier: MindTier
     <div className="mm-print-portal" aria-hidden>
       <div style={{ maxWidth: 920, margin: "0 auto", padding: "8mm 4mm", color: "#1b212b", fontFamily: "var(--font-sans)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#5C7290", fontWeight: 700 }}>
-          <ShieldCheck size={14} color="#5C7290" /> Cairn · Executive command center
+          <ShieldCheck size={14} color="#5C7290" /> Core-Roborate · Executive command center
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, borderBottom: "2px solid #232A37", paddingBottom: 12, marginTop: 6 }}>
           <div>
@@ -660,7 +660,7 @@ function PrintReport({ node, tier }: { node: OrgIntelNode | null; tier: MindTier
 
         <div style={{ marginTop: 22, paddingTop: 10, borderTop: "1px solid #d6dbe6", fontSize: 10.5, color: "#6b7280", lineHeight: 1.5 }}>
           Health, risk and readiness figures are <strong>AI inferences</strong> computed from verified inputs — internal decision support only,
-          never written to an employee&apos;s verified passport, never applied automatically. Generated from the Cairn executive command center.
+          never written to an employee&apos;s verified passport, never applied automatically. Generated from the Core-Roborate executive command center.
         </div>
       </div>
     </div>

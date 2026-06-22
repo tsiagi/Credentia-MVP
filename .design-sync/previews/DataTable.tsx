@@ -1,4 +1,4 @@
-import { DataTable, VerifiedBadge, AIEstimateBadge, StatusPill, Button, EmptyState } from 'credentia';
+import { DataTable, VerifiedBadge, AIEstimateBadge, StatusPill, Button, EmptyState } from 'core-roborate';
 import { Users, UserPlus } from 'lucide-react';
 
 interface Employee {
@@ -38,7 +38,7 @@ const columns = [
   },
   {
     key: 'trust',
-    header: 'Credential',
+    header: 'Core-Roboratel',
     render: (r: Employee) =>
       r.trust === 'verified' ? (
         <VerifiedBadge label="Verified" />

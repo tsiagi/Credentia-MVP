@@ -99,7 +99,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? title_id : undefined}
         className={cn(
-          "cairn-pop w-full outline-none rounded-[var(--radius-lg)] border",
+          "core-roborate-pop w-full outline-none rounded-[var(--radius-lg)] border",
           SIZE[size],
           className,
         )}

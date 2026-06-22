@@ -10,7 +10,7 @@ export default function ManagerDashboardPreview() {
     <div style={{ minHeight: "100vh", background: "var(--content-bg, var(--bg))" }}>
       <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <div className="cairn-eyebrow mb-2">Preview · Manager</div>
+          <div className="core-roborate-eyebrow mb-2">Preview · Manager</div>
           <h1 className="text-[28px] font-semibold" style={{ color: "var(--ink)" }}>
             Manager Dashboard
           </h1>

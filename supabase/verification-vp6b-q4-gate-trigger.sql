@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — VP-6b: DB-level Q4 enablement gate (hardening)
+-- Core-Roborate — VP-6b: DB-level Q4 enablement gate (hardening)
 --
 -- Additive, idempotent migration. Run AFTER verification-vp6-overseer.sql.
 --

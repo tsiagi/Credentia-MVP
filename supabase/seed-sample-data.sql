@@ -20,10 +20,10 @@
 -- ── CONFIG: change these emails ───────────────────────────────
 do $$
 declare
-  v_exec_email    text := 'executive@demo.credentia.test';
-  v_mgr_email     text := 'manager@demo.credentia.test';
-  v_emp1_email    text := 'employee1@demo.credentia.test';
-  v_emp2_email    text := 'employee2@demo.credentia.test';
+  v_exec_email    text := 'executive@demo.core-roborate.test';
+  v_mgr_email     text := 'manager@demo.core-roborate.test';
+  v_emp1_email    text := 'employee1@demo.core-roborate.test';
+  v_emp2_email    text := 'employee2@demo.core-roborate.test';
 
   v_org_id        uuid := 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
   v_exec_id       uuid;

@@ -21,7 +21,7 @@ type MemoryRow = {
 
 /**
  * POST /api/ai/agent/ingest
- * Teach the caller's Digital-Twin from VERIFIED facts only:
+ * Teach the caller's Scout from VERIFIED facts only:
  *   • completed verified_tasks assigned to them
  *   • verified documentation they are allowed to see
  *   • messages they explicitly saved to memory
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (agentErr) return NextResponse.json({ error: agentErr.message }, { status: 400 });
   if (!agent) {
-    return NextResponse.json({ error: "Provision your Digital Twin before training it." }, { status: 400 });
+    return NextResponse.json({ error: "Provision your Scout before training it." }, { status: 400 });
   }
   if (!agent.enabled) {
     return NextResponse.json({ error: "This agent is disabled." }, { status: 400 });

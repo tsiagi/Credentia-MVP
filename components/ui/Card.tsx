@@ -1,6 +1,6 @@
 // components/ui/Card.tsx
 // ─────────────────────────────────────────────────────────────
-// Cairn surface primitives: Card + CardHeader / CardTitle / CardBody.
+// Core-Roborate surface primitives: Card + CardHeader / CardTitle / CardBody.
 // `interactive` adds the hover lift used by clickable cards.
 // Presentation only.
 // ─────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(function Card(
       ref={ref}
       className={cn(
         "rounded-[var(--radius-lg)] border",
-        interactive && "cairn-lift cursor-pointer",
+        interactive && "core-roborate-lift cursor-pointer",
         PAD[padding],
         className,
       )}

@@ -114,7 +114,7 @@ const ROLE_LABELS: Record<Role, string> = {
   admin: "System Admin", hr: "HR / People Ops", superadmin: "Platform Operator",
 };
 
-/* Cairn palette — periwinkle default + coral, lavender, olive, ochre accents */
+/* Core-Roborate palette — periwinkle default + coral, lavender, olive, ochre accents */
 const CAIRN_DEFAULT_ACCENT = "#6B7FC0";
 const THEME_SWATCHES = ["#6B7FC0", "#E07C5E", "#8E7CB0", "#6E7A4F", "#C28A2C"];
 
@@ -171,7 +171,7 @@ function DashboardWelcome({ userId, role }: { userId: string; role: Role }) {
   );
 }
 
-// ── theme (Cairn design tokens — colors.css; optional accent override) ──
+// ── theme (Core-Roborate design tokens — colors.css; optional accent override) ──
 function useThemeVars(theme: Theme) {
   return useMemo(() => {
     if (theme.accent === CAIRN_DEFAULT_ACCENT) return {};
@@ -250,7 +250,7 @@ function MobileNavToggle({ open, onToggle }: { open: boolean; onToggle: () => vo
 
 const Stat = ({ label, value, sub, accent }: { label: string; value: ReactNode; sub?: string; accent?: string }) => (
   <Card className="p-6">
-    <div className="cairn-eyebrow">{label}</div>
+    <div className="core-roborate-eyebrow">{label}</div>
     <div className="mt-1 text-[32px] font-semibold serif tabular" style={{ color: accent || "var(--ink)", letterSpacing: "-0.02em", lineHeight: 1.05 }}>{value}</div>
     {sub && <div className="text-[12px] mt-1" style={{ color: "var(--ink-3)" }}>{sub}</div>}
   </Card>
@@ -521,7 +521,7 @@ function PassportMock() {
       <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2 }}>Senior Equity Program Lead</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 18 }}>
         {[["Tenure", "6.2 yr"], ["Skills", "14"], ["Validations", "9"]].map(([label, val]) => (
-          <div key={label}><div className="cairn-eyebrow">{label}</div><div style={{ fontSize: 20, fontWeight: 600, fontFamily: "var(--font-display)", color: "var(--ink)" }}>{val}</div></div>
+          <div key={label}><div className="core-roborate-eyebrow">{label}</div><div style={{ fontSize: 20, fontWeight: 600, fontFamily: "var(--font-display)", color: "var(--ink)" }}>{val}</div></div>
         ))}
       </div>
     </MktCard>
@@ -534,7 +534,7 @@ function FeedbackMock() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {[["Employee", "Led the bands rollout end-to-end."], ["Manager", "Owned it; unblocked two teams."]].map(([who, txt]) => (
           <div key={who} style={{ background: "var(--surface-2)", borderRadius: "var(--radius-md)", padding: 12 }}>
-            <div className="cairn-eyebrow" style={{ marginBottom: 6 }}>{who}</div>
+            <div className="core-roborate-eyebrow" style={{ marginBottom: 6 }}>{who}</div>
             <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.45 }}>{txt}</div>
           </div>
         ))}
@@ -552,7 +552,7 @@ function AnalyticsMock() {
   return (
     <MktCard style={{ padding: 22, width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
-        <div className="cairn-eyebrow">Company health</div>
+        <div className="core-roborate-eyebrow">Company health</div>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 600, color: "var(--accent)", lineHeight: 1 }}>83</div>
       </div>
       {rows.map(([name, val, c]) => (
@@ -595,7 +595,7 @@ function RecruitMock() {
   return (
     <MktCard style={{ padding: 20, width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div className="cairn-eyebrow">Verified shortlist</div>
+        <div className="core-roborate-eyebrow">Verified shortlist</div>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--ink-3)" }}>3 of 28 matched</span>
       </div>
       {cands.map(([name, role, , val]) => (
@@ -620,16 +620,16 @@ const MKT_FEATURES = [
 ] as const;
 
 const MKT_STEPS = [
-  { n: "01", Icon: Inbox, t: "Collect", d: "Tailored prompts go to employee and manager each cycle.", long: "Every review cycle, Cairn sends role- and level-aware prompts to the employee and, separately, to their manager. No blank-page reviews — just a few sharp questions tuned to the work that actually happened.", points: ["Adaptive prompts by role, level, and recent projects", "Employee and manager answer independently", "~10 minutes per cycle, with gentle reminders", "Every submission is timestamped to the audit log"] },
+  { n: "01", Icon: Inbox, t: "Collect", d: "Tailored prompts go to employee and manager each cycle.", long: "Every review cycle, Core-Roborate sends role- and level-aware prompts to the employee and, separately, to their manager. No blank-page reviews — just a few sharp questions tuned to the work that actually happened.", points: ["Adaptive prompts by role, level, and recent projects", "Employee and manager answer independently", "~10 minutes per cycle, with gentle reminders", "Every submission is timestamped to the audit log"] },
   { n: "02", Icon: Sparkles, t: "Synthesize", d: "AI produces a consensus summary, a delta log, and an outlook.", long: "The model reconciles both sides into a consensus summary, flags where the two accounts diverge, and drafts a forward outlook — all of it clearly labeled as inference, never as fact.", points: ["Sentiment + impact analysis across both responses", "A deviation score surfaces coaching moments", "Every output is tagged AI INFERENCE", "Each carries a 'How was this decided?' explainer"] },
   { n: "03", Icon: BadgeCheck, t: "Verify", d: "Facts get attested by real people and locked with an audit trail.", long: "A real person attests each claim, promoting it up the five-level verification ladder. Verified facts are immutable-but-correctable: locked against silent edits, yet always disputable with a full history.", points: ["Attested by a real, accountable person", "Verification levels L1 (self) → L5 (multi-source)", "Immutable but correctable, never silently permanent", "Complete, viewable verification history"] },
-  { n: "04", Icon: Luggage, t: "Carry", d: "Employees take a verified passport to their next opportunity.", long: "The employee owns a portable passport at a correctable public URL. It shows attested facts only — self-reported items and internal inferences never leave the org — and the employee can revoke or correct it anytime.", points: ["Public URL shows manager-verified (L2+) facts only", "Self-reported and inferred items stay internal", "Revocable and correctable by the employee", "Portable across every employer on Cairn"] },
+  { n: "04", Icon: Luggage, t: "Carry", d: "Employees take a verified passport to their next opportunity.", long: "The employee owns a portable passport at a correctable public URL. It shows attested facts only — self-reported items and internal inferences never leave the org — and the employee can revoke or correct it anytime.", points: ["Public URL shows manager-verified (L2+) facts only", "Self-reported and inferred items stay internal", "Revocable and correctable by the employee", "Portable across every employer on Core-Roborate"] },
 ];
 
 const MKT_NAV = [
   { label: "Platform", route: "platform" as MktRoute, sections: [{ label: "Verified Talent Passport", anchor: "platform-passport" }, { label: "Multi-Layer Feedback Engine", anchor: "platform-feedback" }, { label: "Executive Analytics", anchor: "platform-analytics" }, { label: "Past-Experience Validation", anchor: "platform-validation" }, { label: "How It Works", anchor: "platform-how" }] },
-  { label: "Why Cairn", route: "why" as MktRoute, sections: [{ label: "The Shift", anchor: "why-shift" }, { label: "Our Mission", anchor: "why-mission" }, { label: "Value on Both Sides", anchor: "why-value" }, { label: "What You Get", anchor: "why-benefits" }] },
-  { label: "What's Different", route: "different" as MktRoute, sections: [{ label: "What Sets Us Apart", anchor: "different-pillars" }, { label: "How Cairn Compares", anchor: "different-compare" }] },
+  { label: "Why Core-Roborate", route: "why" as MktRoute, sections: [{ label: "The Shift", anchor: "why-shift" }, { label: "Our Mission", anchor: "why-mission" }, { label: "Value on Both Sides", anchor: "why-value" }, { label: "What You Get", anchor: "why-benefits" }] },
+  { label: "What's Different", route: "different" as MktRoute, sections: [{ label: "What Sets Us Apart", anchor: "different-pillars" }, { label: "How Core-Roborate Compares", anchor: "different-compare" }] },
   { label: "For Employers", route: "employers" as MktRoute, sections: [{ label: "Hire From Proof", anchor: "employers-proof" }, { label: "Testimonials", anchor: "employers-testimonials" }] },
   { label: "Transparency", route: "transparency" as MktRoute, sections: [{ label: "Facts vs. Inferences", anchor: "transparency-types" }, { label: "Verification Ladder", anchor: "transparency-ladder" }] },
 ];
@@ -639,8 +639,8 @@ const INDUSTRIES = ["Healthcare", "Manufacturing", "Financial Services", "Public
 function MktLogo() {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-      <img src="/cairn-logo-mark.svg" alt="" style={{ width: 34, height: 34 }} />
-      <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)" }}>Credentia</span>
+      <img src="/core-roborate-logo-mark.svg" alt="" style={{ width: 34, height: 34 }} />
+      <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)" }}>Core-Roborate</span>
     </span>
   );
 }
@@ -766,7 +766,7 @@ function MktHeader({ route, navigate, onEnter }: { route: MktRoute; navigate: (t
 function MktFooter({ navigate, onEnter }: { navigate: (to: MktRoute) => void; onEnter: () => void }) {
   const cols: [string, [string, MktRoute][]][] = [
     ["Product", [["Platform", "platform"], ["Transparency", "transparency"]]],
-    ["Company", [["Why Cairn", "why"], ["What's different", "different"], ["For employers", "employers"]]],
+    ["Company", [["Why Core-Roborate", "why"], ["What's different", "different"], ["For employers", "employers"]]],
     ["Audiences", [["For Talent", "why"], ["For Employers", "employers"], ["For Career Teams", "platform"]]],
   ];
   return (
@@ -781,7 +781,7 @@ function MktFooter({ navigate, onEnter }: { navigate: (to: MktRoute) => void; on
         </div>
         {cols.map(([title, items]) => (
           <div key={title}>
-            <div className="cairn-eyebrow" style={{ marginBottom: 14 }}>{title}</div>
+            <div className="core-roborate-eyebrow" style={{ marginBottom: 14 }}>{title}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {items.map(([label, to]) => (
                 <button key={label} type="button" onClick={() => navigate(to)} style={{ fontSize: 14, color: "var(--ink-2)", background: "none", border: 0, cursor: "pointer", textAlign: "left", padding: 0 }}>{label}</button>
@@ -792,7 +792,7 @@ function MktFooter({ navigate, onEnter }: { navigate: (to: MktRoute) => void; on
       </div>
       <div style={{ borderTop: "1px solid var(--line)", padding: "20px 0" }}>
         <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, fontSize: 13, color: "var(--ink-3)" }}>
-          <span>© 2026 Credentia. Verified facts. Labeled inferences. Your data, correctable.</span>
+          <span>© 2026 Core-Roborate. Verified facts. Labeled inferences. Your data, correctable.</span>
         </div>
       </div>
     </footer>
@@ -813,7 +813,7 @@ function MktHero({ onEnter }: { onEnter: () => void }) {
             The verified record of how good someone actually is.
           </h1>
           <p style={{ fontSize: 19, lineHeight: 1.6, color: "var(--ink-2)", marginTop: 22, maxWidth: 540 }}>
-            Credentia turns ongoing performance feedback into an attested talent passport — so hiring no longer starts from an unverifiable resume.
+            Core-Roborate turns ongoing performance feedback into an attested talent passport — so hiring no longer starts from an unverifiable resume.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 30 }}>
             <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>
@@ -831,7 +831,7 @@ function MktHero({ onEnter }: { onEnter: () => void }) {
         </Reveal>
       </div>
       <Reveal delay={120} style={{ position: "relative", zIndex: 1, marginTop: 64 }}>
-        <div className="cairn-eyebrow" style={{ textAlign: "center", marginBottom: 18 }}>Built for accuracy across every industry</div>
+        <div className="core-roborate-eyebrow" style={{ textAlign: "center", marginBottom: 18 }}>Built for accuracy across every industry</div>
         <div style={{ position: "relative", overflow: "hidden", maskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)" }}>
           <div className="mkt-marquee-track">
             {[...INDUSTRIES, ...INDUSTRIES].map((name, i) => (
@@ -932,15 +932,15 @@ function MktStatsBand() {
 
 function MktPillars({ navigate }: { navigate: (to: MktRoute) => void }) {
   const pillars = [
-    { to: "why" as MktRoute, Icon: Compass, accent: "var(--accent)", soft: "var(--accent-soft)", eyebrow: "Why Cairn", t: "A record you can trust", d: "The mission, the value, and why a verified record beats an unverifiable resume — for talent and teams alike.", cta: "See why Cairn" },
+    { to: "why" as MktRoute, Icon: Compass, accent: "var(--accent)", soft: "var(--accent-soft)", eyebrow: "Why Core-Roborate", t: "A record you can trust", d: "The mission, the value, and why a verified record beats an unverifiable resume — for talent and teams alike.", cta: "See why Core-Roborate" },
     { to: "different" as MktRoute, Icon: GitBranch, accent: "var(--coral)", soft: "var(--coral-soft)", eyebrow: "What's different", t: "Not another HR tool", d: "Fact and inference, kept separate by design. The methodology and standout features competitors can't copy.", cta: "What sets us apart" },
-    { to: "employers" as MktRoute, Icon: Building2, accent: "var(--gold)", soft: "var(--gold-soft)", eyebrow: "For employers", t: "Hire from proof", d: "A verified talent pool, reference checks in minutes, and partner stories from teams already hiring on Credentia.", cta: "Explore for employers" },
+    { to: "employers" as MktRoute, Icon: Building2, accent: "var(--gold)", soft: "var(--gold-soft)", eyebrow: "For employers", t: "Hire from proof", d: "A verified talent pool, reference checks in minutes, and partner stories from teams already hiring on Core-Roborate.", cta: "Explore for employers" },
   ];
   return (
     <section style={{ maxWidth: MAX_W, margin: "0 auto", padding: "92px 24px" }}>
       <Reveal style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 44px" }}>
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>Where to go next</h2>
-        <p style={{ fontSize: 18, color: "var(--ink-2)", marginTop: 12 }}>Three ways into Credentia, depending on what you came to learn.</p>
+        <p style={{ fontSize: 18, color: "var(--ink-2)", marginTop: 12 }}>Three ways into Core-Roborate, depending on what you came to learn.</p>
       </Reveal>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="mkt-stat-grid">
         {pillars.map((p, i) => {
@@ -952,7 +952,7 @@ function MktPillars({ navigate }: { navigate: (to: MktRoute) => void }) {
                   <span style={{ width: 50, height: 50, borderRadius: "var(--radius-md)", background: p.soft, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Icon size={24} style={{ color: p.accent }} />
                   </span>
-                  <div className="cairn-eyebrow" style={{ marginTop: 18 }}>{p.eyebrow}</div>
+                  <div className="core-roborate-eyebrow" style={{ marginTop: 18 }}>{p.eyebrow}</div>
                   <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "6px 0 0", lineHeight: 1.2 }}>{p.t}</h3>
                   <p style={{ fontSize: 14.5, color: "var(--ink-2)", marginTop: 10, lineHeight: 1.6, flex: 1 }}>{p.d}</p>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 18, fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>
@@ -1045,7 +1045,7 @@ function MktPlatformPage({ onEnter, goBack }: { onEnter: () => void; goBack: () 
               })}
             </div>
             <MktCard key={openStep} style={{ padding: 30, minHeight: 300 }}>
-              <div className="cairn-eyebrow">Step {step.n}</div>
+              <div className="core-roborate-eyebrow">Step {step.n}</div>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, color: "var(--ink)", margin: "6px 0 0", letterSpacing: "-0.01em" }}>{step.t}</h3>
               <p style={{ fontSize: 16, color: "var(--ink-2)", marginTop: 14, lineHeight: 1.65 }}>{step.long}</p>
               <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 11, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
@@ -1072,10 +1072,10 @@ function MktPlatformPage({ onEnter, goBack }: { onEnter: () => void; goBack: () 
   );
 }
 
-/* ═══════════════════ Why Cairn page ═══════════════════ */
+/* ═══════════════════ Why Core-Roborate page ═══════════════════ */
 function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack: () => void; navigate: (to: MktRoute) => void }) {
   const audiences = [
-    { Icon: UserCircle2, who: "For talent", t: "Proof you own and carry", pts: ["A passport at a correctable public URL", "Verified facts only — you control what's shown", "Portable across every employer on Credentia", "Revocable and disputable, always"] },
+    { Icon: UserCircle2, who: "For talent", t: "Proof you own and carry", pts: ["A passport at a correctable public URL", "Verified facts only — you control what's shown", "Portable across every employer on Core-Roborate", "Revocable and disputable, always"] },
     { Icon: Users, who: "For people teams", t: "Management that compounds", pts: ["~10-minute review cycles people finish", "Consensus summaries, not blank-page reviews", "An audit trail on every attested fact", "Reference checks answered in one click"] },
   ];
   const benefits: [typeof Check, string, string][] = [
@@ -1086,7 +1086,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
   ];
   return (
     <>
-      <PageHero eyebrow="Why Cairn" eyebrowIcon={<Compass size={14} />} title="Hiring starts from a document no one can verify." lede="Resumes are self-written and rarely checked. Credentia replaces the unverifiable resume with an attested record of real performance — built from the work people already do." goBack={goBack}>
+      <PageHero eyebrow="Why Core-Roborate" eyebrowIcon={<Compass size={14} />} title="Hiring starts from a document no one can verify." lede="Resumes are self-written and rarely checked. Core-Roborate replaces the unverifiable resume with an attested record of real performance — built from the work people already do." goBack={goBack}>
         <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
           <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Enter the platform <ArrowRight size={18} /></button>
           <button type="button" onClick={() => navigate("different")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>What makes us different</button>
@@ -1096,7 +1096,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 28, alignItems: "center" }} className="mkt-shift">
           <Reveal>
             <MktCard style={{ padding: 26, borderStyle: "dashed" }}>
-              <div className="cairn-eyebrow" style={{ color: "var(--danger-fg)" }}>The old way</div>
+              <div className="core-roborate-eyebrow" style={{ color: "var(--danger-fg)" }}>The old way</div>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "8px 0 12px" }}>The unverifiable resume</h3>
               {["Self-written, rarely checked", "References take weeks", "Skills are claimed, not proven", "Nothing is correctable"].map((t) => (
                 <div key={t} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14.5, color: "var(--ink-2)", marginTop: 8 }}>
@@ -1112,7 +1112,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
           </Reveal>
           <Reveal delay={200}>
             <MktCard style={{ padding: 26, borderColor: "var(--accent-line)", boxShadow: "var(--shadow-md)" }}>
-              <div className="cairn-eyebrow" style={{ color: "var(--accent-text)" }}>The Credentia way</div>
+              <div className="core-roborate-eyebrow" style={{ color: "var(--accent-text)" }}>The Core-Roborate way</div>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--ink)", margin: "8px 0 12px" }}>The verified record</h3>
               {["Attested by accountable people", "References in one click", "Skills validated and leveled", "Correctable, with an audit trail"].map((t) => (
                 <div key={t} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14.5, color: "var(--ink-2)", marginTop: 8 }}>
@@ -1126,7 +1126,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
       <section id="why-mission" style={{ background: "var(--ink)", color: "var(--on-accent)", scrollMarginTop: 70 }}>
         <div style={{ maxWidth: 900, margin: "0 auto", padding: "84px 24px", textAlign: "center" }}>
           <Reveal>
-            <div className="cairn-eyebrow" style={{ color: "var(--gold)", justifyContent: "center", display: "flex" }}>Our mission</div>
+            <div className="core-roborate-eyebrow" style={{ color: "var(--gold)", justifyContent: "center", display: "flex" }}>Our mission</div>
             <p style={{ fontFamily: "var(--font-display)", fontSize: 34, fontWeight: 500, lineHeight: 1.32, letterSpacing: "-0.01em", marginTop: 18, color: "var(--on-accent)" }}>
               Make the truth about someone's work portable — so opportunity follows proven contribution, not the polish of a résumé.
             </p>
@@ -1146,7 +1146,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
                   <span style={{ width: 48, height: 48, borderRadius: "var(--radius-md)", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <AIcon size={23} style={{ color: "var(--accent)" }} />
                   </span>
-                  <div className="cairn-eyebrow" style={{ marginTop: 16 }}>{a.who}</div>
+                  <div className="core-roborate-eyebrow" style={{ marginTop: 16 }}>{a.who}</div>
                   <h3 style={{ fontFamily: "var(--font-display)", fontSize: 23, fontWeight: 600, color: "var(--ink)", margin: "6px 0 16px" }}>{a.t}</h3>
                   {a.pts.map((p) => (
                     <div key={p} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, color: "var(--ink-2)", lineHeight: 1.5, marginBottom: 11 }}>
@@ -1162,7 +1162,7 @@ function MktWhyPage({ onEnter, goBack, navigate }: { onEnter: () => void; goBack
       <section id="why-benefits" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", scrollMarginTop: 70 }}>
         <div style={{ maxWidth: MAX_W, margin: "0 auto", padding: "88px 24px" }}>
           <Reveal style={{ marginBottom: 40, maxWidth: 560 }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>What you get with Credentia</h2>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>What you get with Core-Roborate</h2>
           </Reveal>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 18 }} className="mkt-split">
             {benefits.map(([BIcon, t, d], i) => (
@@ -1210,7 +1210,7 @@ function MktDifferentPage({ onEnter, goBack, navigate }: { onEnter: () => void; 
   ] as const;
   return (
     <>
-      <PageHero tone="warm" eyebrow="What makes us different" eyebrowIcon={<GitBranch size={14} />} title="Not another HR tool. A new source of truth." lede="Performance tools score people. Background checks verify the past. Credentia does something neither does — it turns everyday management into a portable, verified record, with fact and inference kept rigorously apart." goBack={goBack}>
+      <PageHero tone="warm" eyebrow="What makes us different" eyebrowIcon={<GitBranch size={14} />} title="Not another HR tool. A new source of truth." lede="Performance tools score people. Background checks verify the past. Core-Roborate does something neither does — it turns everyday management into a portable, verified record, with fact and inference kept rigorously apart." goBack={goBack}>
         <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
           <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Enter the platform <ArrowRight size={18} /></button>
           <button type="button" onClick={() => navigate("transparency")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>See the methodology</button>
@@ -1236,7 +1236,7 @@ function MktDifferentPage({ onEnter, goBack, navigate }: { onEnter: () => void; 
       <section id="different-compare" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", scrollMarginTop: 70 }}>
         <div style={{ maxWidth: 1040, margin: "0 auto", padding: "84px 24px" }}>
           <Reveal style={{ marginBottom: 36 }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>How Credentia compares</h2>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em", margin: 0 }}>How Core-Roborate compares</h2>
             <p style={{ fontSize: 17, color: "var(--ink-2)", marginTop: 12 }}>Side by side with the tools teams use today.</p>
           </Reveal>
           <Reveal>
@@ -1244,7 +1244,7 @@ function MktDifferentPage({ onEnter, goBack, navigate }: { onEnter: () => void; 
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
                 <thead>
                   <tr>
-                    {["Capability", "Resume", "Annual review", "Credentia"].map((h, i) => (
+                    {["Capability", "Resume", "Annual review", "Core-Roborate"].map((h, i) => (
                       <th key={h} style={{ textAlign: "left", padding: "18px 20px", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: i === 3 ? "var(--accent-text)" : "var(--ink-3)", background: i === 3 ? "var(--accent-soft)" : "transparent", borderBottom: "1px solid var(--line)" }}>{h}</th>
                     ))}
                   </tr>
@@ -1292,13 +1292,13 @@ function MktEmployersPage({ onEnter, goBack }: { onEnter: () => void; goBack: ()
   const cases = [
     ["72%", "faster time-to-shortlist", "Meridian Manufacturing"],
     ["3 wks → 1 day", "reference-check turnaround", "Northwind Health"],
-    ["0", "inferred claims shown to candidates", "every Credentia employer"],
+    ["0", "inferred claims shown to candidates", "every Core-Roborate employer"],
   ];
   return (
     <>
-      <PageHero eyebrow="For employers" eyebrowIcon={<Building2 size={14} />} title="Recruit from a record, not a resume." lede="Credentia gives hiring teams a verified talent pool where every claim traces back to an accountable person — so your first interview starts from proof." goBack={goBack}>
+      <PageHero eyebrow="For employers" eyebrowIcon={<Building2 size={14} />} title="Recruit from a record, not a resume." lede="Core-Roborate gives hiring teams a verified talent pool where every claim traces back to an accountable person — so your first interview starts from proof." goBack={goBack}>
         <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Hire on Credentia <ArrowRight size={18} /></button>
+          <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 16, fontWeight: 600, border: 0, cursor: "pointer" }}>Hire on Core-Roborate <ArrowRight size={18} /></button>
           <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 16, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>Talk to sales</button>
         </div>
       </PageHero>
@@ -1372,7 +1372,7 @@ function MktEmployersPage({ onEnter, goBack }: { onEnter: () => void; goBack: ()
         <Reveal>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 42, fontWeight: 600, color: "var(--ink)", maxWidth: 660, margin: "0 auto", lineHeight: 1.12, letterSpacing: "-0.02em" }}>Build your shortlist from a verified talent pool.</h2>
           <div style={{ marginTop: 28, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Hire on Credentia <ArrowRight size={18} /></button>
+            <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--accent)", color: "var(--on-accent)", fontSize: 15, fontWeight: 600, border: 0, cursor: "pointer" }}>Hire on Core-Roborate <ArrowRight size={18} /></button>
             <button type="button" onClick={onEnter} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 24px", borderRadius: "var(--radius-md)", background: "var(--surface)", color: "var(--ink)", fontSize: 15, fontWeight: 600, border: "1px solid var(--line)", cursor: "pointer" }}>Talk to sales</button>
           </div>
         </Reveal>
@@ -1597,7 +1597,7 @@ function AuthScreen({ onLogin, onBack }: { onLogin: (role: Role) => void; onBack
         </button>
         <div className="flex items-center gap-2 mb-1">
           <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}><ShieldCheck size={18} color="#fff" /></div>
-          <span className="serif text-xl font-semibold">Credentia</span>
+          <span className="serif text-xl font-semibold">Core-Roborate</span>
         </div>
         <h1 className="serif text-2xl font-semibold mt-4">Sign in</h1>
         <p className="text-[13px] opacity-60 mb-5">
@@ -2186,7 +2186,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
       <div className="space-y-6">
       {aiCoaching && (
       <RiseIn delay={40}>
-      <Card className="p-6 cairn-lift" style={{ background: "var(--inferred-bg)" }}>
+      <Card className="p-6 core-roborate-lift" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="Generate AI insights" tag={<InferredTag />}
           sub="Calls Anthropic server-side using verified team data, then saves to promotion_readiness, compensation_recommendations, and employee_value_scores. You decide every outcome." />
         <p className="text-[13px] opacity-80 mb-4">
@@ -2215,7 +2215,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
 
       {aiCoaching && (
       <RiseIn delay={180}>
-      <Card className="p-6 cairn-pulse" style={{ background: "var(--inferred-bg)" }}>
+      <Card className="p-6 core-roborate-pulse" style={{ background: "var(--inferred-bg)" }}>
         <SectionHeader icon={Sparkles} title="AI Coaching Insights" tag={<InferredTag />}
           sub="From promotion_readiness — evidence-based guidance only." />
         <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -2284,7 +2284,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
       {mgrTab === "team" && (
       <div className="space-y-6">
       <RiseIn delay={40}>
-      <Card className="p-6 cairn-lift">
+      <Card className="p-6 core-roborate-lift">
         <SectionHeader icon={Activity} title="Team Health Overview" sub={`${health.reportCount} direct reports — from pulse_surveys and employee_value_scores.`} />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Stat label="Morale" value={health.morale != null ? <AnimatedNumber value={health.morale} decimals={2} /> : "—"} sub="pulse avg" accent="var(--accent)" />
@@ -2304,7 +2304,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
       {/* Employee Verification Center moved to the Verifications tab as an interactive card deck. */}
 
       <RiseIn delay={180}>
-      <Card className="p-6 cairn-lift">
+      <Card className="p-6 core-roborate-lift">
         <SectionHeader icon={ClipboardList} title="Performance Review Center" sub="Cycle reviews from feedback_cycles — you sign off; AI never completes a review." />
         {reviews.length === 0 ? (
           <p className="text-sm opacity-60">No direct reports found. Ask your admin to assign team members to you.</p>
@@ -2334,7 +2334,7 @@ function ManagerView({ userId, orgSettings }: { userId: string; orgSettings?: Or
       </RiseIn>
 
       <RiseIn delay={220}>
-      <Card className="p-6 cairn-lift" style={{ background: "var(--surface-2)" }}>
+      <Card className="p-6 core-roborate-lift" style={{ background: "var(--surface-2)" }}>
         <SectionHeader icon={Activity} title="Team Value Scores" tag={<SupportingMetricTag />}
           sub="0–1000 supporting index per direct report — compare against team average. Not used alone for decisions." />
         {teamScores.length === 0 ? (
@@ -2925,7 +2925,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
             ? "px-3 py-2 rounded-lg text-[13px] gap-1.5 whitespace-nowrap shrink-0"
             : "w-full text-left px-3 py-2.5 rounded-xl text-sm gap-2 border-l-2",
           // resting hover for inactive items (token-driven, both layouts)
-          !active && "cairn-nav-item",
+          !active && "core-roborate-nav-item",
           // vertical drawer keeps a 2px left rail; transparent when inactive
           !horizontal && !active && "border-transparent",
         )}
@@ -2973,9 +2973,9 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={orgLogoUrl} alt="Company logo" className="h-7 sm:h-8 w-auto max-w-[100px] object-contain shrink-0" />
               ) : (
-                <img src="/cairn-logo-mark.svg" alt="" className="h-8 w-8 shrink-0" />
+                <img src="/core-roborate-logo-mark.svg" alt="" className="h-8 w-8 shrink-0" />
               )}
-              <span className="serif text-lg sm:text-xl font-semibold truncate hidden sm:inline">Credentia</span>
+              <span className="serif text-lg sm:text-xl font-semibold truncate hidden sm:inline">Core-Roborate</span>
             </div>
             <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center overflow-x-auto px-2 min-w-0">
               <NavList horizontal />
@@ -3027,7 +3027,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
 
       <div className={`flex-1 flex flex-col min-h-0 ${isCommandCenter ? "w-full" : "max-w-7xl mx-auto px-6 py-8 w-full"}`}>
         {/* Key on `tab` so each tab switch re-triggers the entrance (reduced-motion gated in CSS). */}
-        <main key={tab} className={cn("min-w-0 flex-1 flex flex-col cairn-reveal", isCommandCenter && "min-h-0")}>
+        <main key={tab} className={cn("min-w-0 flex-1 flex flex-col core-roborate-reveal", isCommandCenter && "min-h-0")}>
           <FlowErrorBoundary label="This page">
           {tab !== "dashboard" && !isCommandCenter && (
             <PageHeader
@@ -3069,7 +3069,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
               <EmployeeVerificationsView userId={userId} requireProof={requireProof} />
             )
           )}
-          {/* ── Task / Knowledge / Messaging / Digital-Twin layer ── */}
+          {/* ── Task / Knowledge / Messaging / Scout layer ── */}
           {tab === "work" && isIndividualContributor && userId && (
             orgId
               ? (role === "manager"
@@ -3114,7 +3114,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
                   Employees get both; managers keep the shareable profile card. */}
               {(role === "employee" || role === "manager") && <RiseIn delay={0}><ShareableLinkCard userId={userId} /></RiseIn>}
               {role === "employee" && <RiseIn delay={40}><PassportLinkCard userId={userId} /></RiseIn>}
-              {/* Cred-Bot setup lives in Settings; the bubble is for day-to-day use. */}
+              {/* Scout setup lives in Settings; the bubble is for day-to-day use. */}
               {isWorkforce && orgId && (
                 <RiseIn delay={0}>
                   <AgentConfiguration userId={userId} orgId={orgId} userName={userName ?? undefined} />
@@ -3134,7 +3134,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
         </main>
       </div>
 
-      {/* Floating Messages / Cred-Bot bubble — workforce roles only */}
+      {/* Floating Messages / Scout bubble — workforce roles only */}
       {isWorkforce && userId && orgId && (
         <FloatingAssistant
           userId={userId}
@@ -3148,7 +3148,7 @@ function AppShell({ role, theme, setTheme, onSignOut }: { role: Role; theme: The
 }
 
 /* ═══════════════════ ROOT ROUTER ═══════════════════ */
-export default function CredentiaSite() {
+export default function CoreRoborateSite() {
   const [screen, setScreen] = useState<"public" | "auth" | "app">("public");
   const [role, setRole] = useState<Role>("employee");
   const [authReady, setAuthReady] = useState(false);

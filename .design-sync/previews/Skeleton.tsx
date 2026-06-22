@@ -1,4 +1,4 @@
-import { Skeleton, SkeletonText } from 'credentia';
+import { Skeleton, SkeletonText } from 'core-roborate';
 
 const surface: React.CSSProperties = {
   width: 360,

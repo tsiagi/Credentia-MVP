@@ -33,7 +33,7 @@ const LIMITS: Record<RateLimitName, { tokens: number; window: `${number} ${"s" |
   "ai-single": { tokens: 20, window: "1 m" },
   // batch generation over a whole team/org/department — expensive per call
   "ai-batch": { tokens: 8, window: "1 m" },
-  // digital-twin memory ingestion
+  // Scout memory ingestion
   "ai-ingest": { tokens: 12, window: "1 m" },
   // verified-record export — guard against scraping
   "export": { tokens: 30, window: "1 m" },

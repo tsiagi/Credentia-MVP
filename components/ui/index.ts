@@ -1,5 +1,5 @@
 // components/ui/index.ts
-// Barrel for the Cairn UI primitive layer (Batch 1). Import from
+// Barrel for the Core-Roborate UI primitive layer (Batch 1). Import from
 // "@/components/ui" so pages stop hand-rolling markup.
 export { cn } from "./cn";
 export { Button } from "./Button";

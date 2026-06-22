@@ -99,7 +99,7 @@ export function ExecutiveOversight() {
       </div>
 
       {/* AI suggestions awaiting human review — advisory, never counted as fact */}
-      <div className="rounded-xl border p-4 cairn-pulse" style={{ borderColor: "var(--inferred-fg)", background: "var(--inferred-bg)" }}>
+      <div className="rounded-xl border p-4 core-roborate-pulse" style={{ borderColor: "var(--inferred-fg)", background: "var(--inferred-bg)" }}>
         <div className="flex items-center gap-2">
           <Sparkles size={15} style={{ color: "var(--inferred-fg)" }} />
           <span className="text-[13px] font-semibold" style={{ color: "var(--inferred-fg)" }}>

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../styles/cairn/cairn.css";
+@import "../styles/core-roborate/core-roborate.css";
 
 @theme inline {
   --color-background: var(--bg);

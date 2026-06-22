@@ -1,4 +1,4 @@
-import { PageHeader, Button } from 'credentia';
+import { PageHeader, Button } from 'core-roborate';
 import { Plus, Download } from 'lucide-react';
 
 const actionRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 };

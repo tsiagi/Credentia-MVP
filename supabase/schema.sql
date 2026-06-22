@@ -1,4 +1,4 @@
--- Workforce Verify (Credentia) — Supabase schema
+-- Workforce Verify (Core-Roborate) — Supabase schema
 -- Paste into Supabase → SQL Editor and run once.
 -- Verified records and AI inference tables are kept in separate sections.
 

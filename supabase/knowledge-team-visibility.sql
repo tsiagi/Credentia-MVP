@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Documentation "Immediate team" visibility
+-- Core-Roborate — Documentation "Immediate team" visibility
 -- Additive. Run AFTER task-knowledge-agent.sql.
 --
 -- Adds a third sharing scope to documentation:

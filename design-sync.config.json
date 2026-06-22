@@ -1,11 +1,11 @@
 {
-  "pkg": "credentia",
-  "globalName": "CairnUI",
+  "pkg": "core-roborate",
+  "globalName": "CoreRoborateUI",
   "projectId": "cc1694e5-0160-41f6-8830-ad8188a8d189",
   "shape": "package",
   "srcDir": "components/ui",
   "tsconfig": "tsconfig.json",
-  "cssEntry": ".design-sync/.cache/cairn-flat.css",
+  "cssEntry": ".design-sync/.cache/core-roborate-flat.css",
   "runtimeFontPrefixes": ["--font-", "Hanken", "Newsreader", "IBM Plex"],
   "overrides": {
     "Modal": { "cardMode": "single", "viewport": "640x440" },

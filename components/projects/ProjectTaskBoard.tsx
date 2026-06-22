@@ -141,7 +141,7 @@ function TaskActions({ t, h }: { t: VerifiedTask; h: TaskHandlers }) {
 
 function TaskCard({ t, h, assigneeName, delay = 0 }: { t: VerifiedTask; h: TaskHandlers; assigneeName?: string; delay?: number }) {
   return (
-    <Reveal delay={delay} className="rounded-lg border p-3 cairn-lift" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+    <Reveal delay={delay} className="rounded-lg border p-3 core-roborate-lift" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
       <div className="flex items-start gap-2">
         <span className="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[t.priority] }} />
         <div className="min-w-0 flex-1">
@@ -403,7 +403,7 @@ export function ProjectTaskBoard({
       {/* create task form */}
       <div className="grid transition-all duration-300" style={{ gridTemplateRows: creating ? "1fr" : "0fr" }}>
         <div className="overflow-hidden">
-          <div className="p-4 rounded-xl border mb-4 cairn-pop" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+          <div className="p-4 rounded-xl border mb-4 core-roborate-pop" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               placeholder="Task title"
               className="w-full px-3 py-2 rounded-lg border text-sm outline-none mb-2"
@@ -520,7 +520,7 @@ export function ProjectTaskBoard({
       {showProjectModal && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "color-mix(in srgb, var(--ink) 45%, transparent)", backdropFilter: "blur(2px)" }}
           onClick={() => !projectBusy && setShowProjectModal(false)}>
-          <div className="w-full max-w-md rounded-2xl border shadow-2xl cairn-pop" style={{ background: "var(--surface)", borderColor: "var(--line)" }} onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-2xl border shadow-2xl core-roborate-pop" style={{ background: "var(--surface)", borderColor: "var(--line)" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 px-5 py-4 border-b" style={{ borderColor: "var(--line)" }}>
               <KanbanSquare size={18} style={{ color: "var(--accent)" }} />
               <h4 className="font-semibold">New project</h4>

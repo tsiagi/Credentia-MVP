@@ -1,6 +1,6 @@
 # Subprocessor list
 
-Credentia uses the following subprocessors to deliver the service. This list backs our customer DPA; notify customers before adding or replacing a subprocessor per the DPA's change-notification terms.
+Core-Roborate uses the following subprocessors to deliver the service. This list backs our customer DPA; notify customers before adding or replacing a subprocessor per the DPA's change-notification terms.
 
 > Replace bracketed items with verified details before publishing. Confirm each provider's current DPA, region options, and compliance reports during the SOC 2 kickoff.
 

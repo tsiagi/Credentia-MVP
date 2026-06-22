@@ -9,7 +9,7 @@
 // a non-privileged author cannot self-verify even if they craft the request.
 //
 // Browser client + RLS (lib/supabase.ts). Visibility ('org' | 'managers' |
-// 'private') is what keeps an employee's Digital-Twin from learning
+// 'private') is what keeps an employee's Scout from learning
 // manager-only knowledge.
 // ─────────────────────────────────────────────────────────────
 import { supabase } from "@/lib/supabase";

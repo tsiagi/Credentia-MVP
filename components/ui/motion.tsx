@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 // Shared presentation-only motion primitives for dashboards.
 // Pure React + CSS (no animation library). Paired with the
-// `.cairn-reveal` / `.cairn-lift` utilities in styles/cairn/tokens/base.css.
+// `.core-roborate-reveal` / `.core-roborate-lift` utilities in styles/core-roborate/tokens/base.css.
 // These touch presentation only — never data, queries, or RLS.
 // ─────────────────────────────────────────────────────────────
 import React, { useEffect, useState } from "react";
@@ -49,7 +49,7 @@ export function Reveal({
   children, delay = 0, className = "", style,
 }: { children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`cairn-reveal ${className}`} style={{ animationDelay: `${delay}ms`, ...style }}>
+    <div className={`core-roborate-reveal ${className}`} style={{ animationDelay: `${delay}ms`, ...style }}>
       {children}
     </div>
   );

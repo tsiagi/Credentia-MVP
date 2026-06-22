@@ -21,7 +21,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Credentia — Verified workforce records",
+  title: "Core-Roborate — Verified workforce records",
   description: "The verified record of how good someone actually is.",
 };
 

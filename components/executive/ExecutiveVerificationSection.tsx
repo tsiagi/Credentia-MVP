@@ -257,7 +257,7 @@ export function ExecutiveVerificationSection() {
     <div className="space-y-6">
       {/* Heading */}
       <div>
-        <div className="cairn-eyebrow flex items-center gap-1.5">
+        <div className="core-roborate-eyebrow flex items-center gap-1.5">
           <ShieldCheck size={13} /> Verification oversight
         </div>
         <h1 className="serif text-2xl sm:text-3xl font-semibold mt-1">Manager Verification & Integrity</h1>

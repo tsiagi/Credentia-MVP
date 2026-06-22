@@ -2,7 +2,7 @@
 // components/assistant/FloatingAssistant.tsx
 // ─────────────────────────────────────────────────────────────
 // Bottom-right floating bubble that toggles between Messages and the user's
-// Cred-Bot. Expandable. Full Cred-Bot SETUP lives in Settings — here we show a
+// Scout. Expandable. Full Scout SETUP lives in Settings — here we show a
 // compact status + a peek at what it has learned (verified facts, blue), with a
 // shortcut to configure. Its outputs remain AI estimates (amber).
 // ─────────────────────────────────────────────────────────────
@@ -32,8 +32,8 @@ export function FloatingAssistant({
     return (
       <button
         onClick={() => setOpen(true)}
-        aria-label="Open messages and Cred-Bot"
-        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full grid place-items-center text-white shadow-lg transition active:scale-95 cairn-lift"
+        aria-label="Open messages and Scout"
+        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full grid place-items-center text-white shadow-lg transition active:scale-95 core-roborate-lift"
         style={{ background: "var(--accent)" }}
       >
         <MessageSquare size={22} />
@@ -50,7 +50,7 @@ export function FloatingAssistant({
 
   return (
     <div
-      className="fixed bottom-5 right-5 z-40 rounded-2xl border shadow-2xl flex flex-col overflow-hidden cairn-pop"
+      className="fixed bottom-5 right-5 z-40 rounded-2xl border shadow-2xl flex flex-col overflow-hidden core-roborate-pop"
       style={{ width, height, background: "var(--surface)", borderColor: "var(--line)" }}
     >
       {/* header: mode toggle + window controls */}
@@ -64,7 +64,7 @@ export function FloatingAssistant({
           <button onClick={() => setMode("bot")}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[12px] font-medium transition"
             style={mode === "bot" ? { background: "var(--inferred-fg)", color: "#fff" } : { color: "var(--ink-2)" }}>
-            <Bot size={13} /> Cred-Bot
+            <Bot size={13} /> Scout
           </button>
         </div>
         <div className="ml-auto flex items-center gap-1">
@@ -86,7 +86,7 @@ export function FloatingAssistant({
             <ChatInterface userId={userId} orgId={orgId} />
           </div>
         ) : (
-          <CredBotPanel
+          <ScoutPanel
             userId={userId}
             firstName={firstName}
             onConfigureBot={() => { setOpen(false); onConfigureBot(); }}
@@ -97,7 +97,7 @@ export function FloatingAssistant({
   );
 }
 
-function CredBotPanel({
+function ScoutPanel({
   userId, firstName, onConfigureBot,
 }: { userId: string; firstName: string; onConfigureBot: () => void }) {
   const [agent, setAgent] = useState<UserAgent | null>(null);
@@ -126,7 +126,7 @@ function CredBotPanel({
           <Bot size={18} style={{ color: "var(--inferred-fg)" }} />
         </div>
         <div className="min-w-0">
-          <p className="font-semibold text-[14px]" style={{ color: "var(--ink)" }}>{firstName}&apos;s Cred-Bot</p>
+          <p className="font-semibold text-[14px]" style={{ color: "var(--ink)" }}>{firstName}&apos;s Scout</p>
           <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>
             {loading ? "Loading…" : agent ? (agent.enabled ? "Active · learning from verified work" : "Disabled") : "Not set up yet"}
           </p>
@@ -136,7 +136,7 @@ function CredBotPanel({
       {!loading && !agent && (
         <div className="rounded-xl border p-3" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
           <p className="text-[13px]" style={{ color: "var(--ink-2)" }}>
-            Set up your Cred-Bot to let it learn from your verified tasks, docs, and saved messages.
+            Set up your Scout to let it learn from your verified tasks, docs, and saved messages.
           </p>
         </div>
       )}
@@ -170,7 +170,7 @@ function CredBotPanel({
               <span className="text-[11px] font-semibold" style={{ color: "var(--inferred-fg)" }}>AI ESTIMATE</span>
             </div>
             <p className="text-[12px] mt-1" style={{ color: "var(--ink-2)" }}>
-              Anything your Cred-Bot drafts or suggests is advisory — you approve before it becomes verified work.
+              Anything your Scout drafts or suggests is advisory — you approve before it becomes verified work.
             </p>
           </div>
         </>

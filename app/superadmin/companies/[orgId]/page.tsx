@@ -86,7 +86,7 @@ function ReadonlyRow({ label, value, onCopy }: { label: string; value: string; o
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg" style={{ background: "var(--surface-2)" }}>
       <div className="min-w-0">
-        <div className="cairn-eyebrow mb-0.5">{label}</div>
+        <div className="core-roborate-eyebrow mb-0.5">{label}</div>
         <div className="font-mono text-[12px] truncate" style={{ color: "var(--ink)" }}>{value}</div>
       </div>
       <Button variant="ghost" size="sm" leadingIcon={<Copy size={14} />} onClick={onCopy}>Copy</Button>
@@ -141,7 +141,7 @@ function ScimCard({ orgId, token }: { orgId: string; token: string }) {
         <ReadonlyRow label="Header" value={`x-org-id: ${orgId}`} onCopy={() => copy(orgId, "Org ID")} />
         <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg" style={{ background: "var(--surface-2)" }}>
           <div className="min-w-0">
-            <div className="cairn-eyebrow mb-0.5">Bearer token</div>
+            <div className="core-roborate-eyebrow mb-0.5">Bearer token</div>
             <div className="font-mono text-[12px] truncate" style={{ color: "var(--ink)" }}>
               {secret ?? "•••••••••••••••••• (hidden)"}
             </div>
@@ -238,7 +238,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ orgId:
                 ["Trial ends", company.trial_ends_at ? new Date(company.trial_ends_at).toLocaleDateString() : "—"],
               ].map(([label, value], i) => (
                 <div key={i}>
-                  <div className="cairn-eyebrow mb-1">{label as string}</div>
+                  <div className="core-roborate-eyebrow mb-1">{label as string}</div>
                   <div className="font-medium" style={{ color: "var(--ink)" }}>{value as React.ReactNode}</div>
                 </div>
               ))}

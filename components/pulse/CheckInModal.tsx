@@ -30,7 +30,7 @@ export function CheckInModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4"
       style={{ background: "rgba(2,6,23,0.45)", backdropFilter: "blur(4px)" }}>
-      <div className="cairn-pop w-full max-w-md rounded-2xl border p-6"
+      <div className="core-roborate-pop w-full max-w-md rounded-2xl border p-6"
         style={{ background: "var(--surface)", borderColor: "var(--line)", boxShadow: "var(--shadow-lg)" }}>
         <div className="flex items-start gap-3 mb-4">
           <div className="p-2 rounded-xl" style={{ background: "var(--accent-soft)" }}>

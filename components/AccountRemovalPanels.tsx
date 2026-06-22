@@ -99,7 +99,7 @@ export function FormerEmployeeDeletePanel({ userId, onDeleted }: { userId: strin
           <p className="text-[13px] opacity-70 mt-1 leading-relaxed">
             As a former employee, you may delete your account and personal data. This is <strong>permanent</strong> and cannot be undone.
             Facts you already attested and shared externally (share links, passports) may persist where they were distributed —
-            we cannot recall copies outside Credentia.
+            we cannot recall copies outside Core-Roborate.
           </p>
         </div>
       </div>

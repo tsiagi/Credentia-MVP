@@ -284,7 +284,7 @@ export default function VerifiedResumePage({ token }: { token: string }) {
             <div className="p-1.5 rounded-lg" style={{ background: "var(--accent)" }}>
               <ShieldCheck size={16} color="#fff" />
             </div>
-            <span className="font-semibold text-[15px]">Credentia Verified Resume</span>
+            <span className="font-semibold text-[15px]">Core-Roborate Verified Resume</span>
           </div>
           <div
             className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full"
@@ -353,7 +353,7 @@ export default function VerifiedResumePage({ token }: { token: string }) {
           className="text-center text-[12px] opacity-50 pt-8 border-t"
           style={{ borderColor: "var(--line)" }}
         >
-          Credentia Verified Resume Network · Token-gated · Records are correctable with audit trail
+          Core-Roborate Verified Resume Network · Token-gated · Records are correctable with audit trail
         </footer>
       </main>
     </div>

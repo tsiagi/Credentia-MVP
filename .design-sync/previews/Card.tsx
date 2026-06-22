@@ -7,7 +7,7 @@ import {
   Button,
   VerifiedBadge,
   AIEstimateBadge,
-} from 'credentia';
+} from 'core-roborate';
 import { MoreHorizontal, ArrowRight } from 'lucide-react';
 
 export function Composed() {

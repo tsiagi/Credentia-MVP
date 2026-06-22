@@ -1,7 +1,7 @@
 // components/ui/StatusPill.tsx
 // ─────────────────────────────────────────────────────────────
 // Lifecycle / state pill with a leading status dot. Semantic
-// statuses map to Cairn tokens. Use Badge for labels; use this
+// statuses map to Core-Roborate tokens. Use Badge for labels; use this
 // for entity state (pending / active / inactive / flagged …).
 // Presentation only.
 // ─────────────────────────────────────────────────────────────

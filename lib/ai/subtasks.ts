@@ -31,7 +31,7 @@ export type SuggestedSubtask = {
   confidence: number;
 };
 
-export const SUBTASK_SYSTEM_PROMPT = `You are Credentia's internal task-planning model.
+export const SUBTASK_SYSTEM_PROMPT = `You are Core-Roborate's internal task-planning model.
 
 STRICT RULES (never break these):
 1. Output is AI INFERENCE / decision SUPPORT only. A human must approve every

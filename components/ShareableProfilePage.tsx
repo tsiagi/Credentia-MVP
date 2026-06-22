@@ -130,8 +130,8 @@ export default function ShareableProfilePage({ token }: { token: string }) {
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-2 text-[13px] opacity-50">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/cairn-logo-mark.svg" alt="" className="h-6 w-6" />
-          Credentia · Verified profile
+          <img src="/core-roborate-logo-mark.svg" alt="" className="h-6 w-6" />
+          Core-Roborate · Verified profile
         </div>
 
         {/* Identity */}

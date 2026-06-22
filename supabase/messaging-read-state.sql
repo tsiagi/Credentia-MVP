@@ -1,6 +1,6 @@
 -- ════════════════════════════════════════════════════════════════
 -- MESSAGING — M4 read-state + M2 Realtime enablement
--- Applied to the Credentia project (plepkdgxhrgptczzpbkp) 2026-06-19.
+-- Applied to the Core-Roborate project (plepkdgxhrgptczzpbkp) 2026-06-19.
 -- Kept here so the repo schema mirrors the live database.
 -- ════════════════════════════════════════════════════════════════
 

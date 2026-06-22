@@ -2,7 +2,7 @@
 // ─────────────────────────────────────────────────────────────
 // Loading placeholders. Use these instead of spinners on
 // data-fetching surfaces (per CLAUDE.md: never a blank state).
-// Respects prefers-reduced-motion via the .cairn-skeleton class.
+// Respects prefers-reduced-motion via the .core-roborate-skeleton class.
 // Presentation only.
 // ─────────────────────────────────────────────────────────────
 import React from "react";
@@ -19,7 +19,7 @@ export function Skeleton({ className, circle = false, style, ...rest }: Skeleton
   return (
     <div
       aria-hidden
-      className={cn("cairn-skeleton", circle ? "rounded-full" : "rounded-[var(--radius-sm)]", className)}
+      className={cn("core-roborate-skeleton", circle ? "rounded-full" : "rounded-[var(--radius-sm)]", className)}
       style={style}
       {...rest}
     />

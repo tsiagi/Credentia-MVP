@@ -24,7 +24,7 @@
  *
  * | Step | What you do |
  * |------|-------------|
- * | 1 | User opens Credentia and clicks "Continue with email" or "Set personal password". |
+ * | 1 | User opens Core-Roborate and clicks "Continue with email" or "Set personal password". |
  * | 2 | Call `supabase.auth.updateUser({ email: personalEmail, password })` **or** link a magic link to a personal email they control. |
  * | 3 | In Supabase Dashboard → Auth → disable SSO-only for that user if your org enforced IdP-only sign-in. |
  * | 4 | Optional: send `auth.admin.generateLink({ type: 'recovery', email })` so they set a password without Okta. |

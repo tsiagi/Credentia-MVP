@@ -114,7 +114,7 @@ export function DocRepository({
 
       <div className="grid transition-all duration-300" style={{ gridTemplateRows: creating ? "1fr" : "0fr" }}>
         <div className="overflow-hidden">
-          <div className="p-4 rounded-xl border mb-4 cairn-pop" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
+          <div className="p-4 rounded-xl border mb-4 core-roborate-pop" style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
             <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <span className="text-[12px]" style={{ color: "var(--ink-3)" }}>Write below, or import a file from your computer.</span>
               <input ref={fileRef} type="file" className="hidden"

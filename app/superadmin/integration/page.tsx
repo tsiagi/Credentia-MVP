@@ -83,7 +83,7 @@ export default function SuperadminIntegration() {
                   key={c.id}
                   type="button"
                   onClick={() => setSelectedId(c.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left cairn-nav-item"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left core-roborate-nav-item"
                   style={i > 0 ? { borderTop: "1px solid var(--line)" } : undefined}
                 >
                   <div className="min-w-0 flex-1">

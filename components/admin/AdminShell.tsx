@@ -1,6 +1,6 @@
 // components/admin/AdminShell.tsx
 // Left-sidebar enterprise shell for the two admin route trees. Visuals follow
-// the Cairn tokens used across the app; the nav set is chosen by `variant`.
+// the Core-Roborate tokens used across the app; the nav set is chosen by `variant`.
 //   superadmin → Dashboard · Companies · Integration · Org Controls
 //   admin      → Dashboard · Company  · Integration · Org Controls
 "use client";
@@ -66,11 +66,11 @@ export function AdminShell({ variant, userName, orgName, orgLogoUrl, children }:
         // eslint-disable-next-line @next/next/no-img-element
         <img src={orgLogoUrl} alt="" className="h-7 w-auto max-w-[120px] object-contain shrink-0" />
       ) : (
-        <img src="/cairn-logo-mark.svg" alt="" className="h-7 w-7 shrink-0" />
+        <img src="/core-roborate-logo-mark.svg" alt="" className="h-7 w-7 shrink-0" />
       )}
       <div className="min-w-0">
         <div className="serif text-[15px] font-semibold leading-tight truncate" style={{ color: "var(--ink)" }}>
-          {variant === "admin" ? orgName || "Credentia" : "Credentia"}
+          {variant === "admin" ? orgName || "Core-Roborate" : "Core-Roborate"}
         </div>
         <div className="text-[11px] leading-tight truncate" style={{ color: "var(--ink-3)" }}>
           {variant === "superadmin" ? "Platform Console" : "Company Admin"}
@@ -92,7 +92,7 @@ export function AdminShell({ variant, userName, orgName, orgLogoUrl, children }:
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium border-l-2 transition-colors duration-150",
-              !active && "cairn-nav-item border-transparent",
+              !active && "core-roborate-nav-item border-transparent",
             )}
             style={
               active
@@ -126,7 +126,7 @@ export function AdminShell({ variant, userName, orgName, orgLogoUrl, children }:
       <button
         type="button"
         onClick={signOut}
-        className="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium cairn-nav-item"
+        className="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium core-roborate-nav-item"
         style={{ color: "var(--ink-2)" }}
       >
         <LogOut size={15} /> Sign out
@@ -200,7 +200,7 @@ export function AdminShell({ variant, userName, orgName, orgLogoUrl, children }:
                   <button
                     type="button"
                     onClick={signOut}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium cairn-nav-item"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium core-roborate-nav-item"
                     style={{ color: "var(--ink-2)" }}
                   >
                     <LogOut size={15} /> Sign out
@@ -212,7 +212,7 @@ export function AdminShell({ variant, userName, orgName, orgLogoUrl, children }:
         </header>
 
         <main className="flex-1 min-w-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full cairn-reveal">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full core-roborate-reveal">
             <ToastProvider>{children}</ToastProvider>
           </div>
         </main>

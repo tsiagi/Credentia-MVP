@@ -158,7 +158,7 @@ export function PlatformBillingSection() {
           <AlertTriangle size={20} className="shrink-0 mt-0.5" style={{ color: "var(--warn)" }} />
           <div>
             <div className="font-semibold">Mock billing — connect a payment processor before going live</div>
-            <p className="text-[13px] opacity-80 mt-1">All charges here are ledger entries only. Real card data is handled by Stripe (or similar) later — never stored in Credentia.</p>
+            <p className="text-[13px] opacity-80 mt-1">All charges here are ledger entries only. Real card data is handled by Stripe (or similar) later — never stored in Core-Roborate.</p>
           </div>
         </div>
       </Card>

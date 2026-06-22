@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Verification Pipeline VP-3: Passive Messenger evidence
+-- Core-Roborate — Verification Pipeline VP-3: Passive Messenger evidence
 --
 -- Additive, idempotent migration. Run AFTER:
 --   schema.sql + rls-policies.sql + provisioning-rls.sql
@@ -20,7 +20,7 @@
 --       deferred to VP-6, behind a context-architect gate). VP-3 only records
 --       that the evidence EXISTS.
 --     • make any model / AI call.
---     • touch the Digital-Twin memory path. `messages.save_to_agent_memory` and
+--     • touch the Scout memory path. `messages.save_to_agent_memory` and
 --       the whole `agent_memory` opt-in are a SEPARATE pipeline (memory ≠
 --       evidence) and are left exactly as they are.
 --     • copy message body text anywhere.
@@ -83,11 +83,11 @@ comment on column organizations.privacy_mode is
 -- Per-conversation: "Exclude from verification evidence". Available in BOTH
 -- privacy modes. A participant may set it (see §5). This is DISTINCT from the
 -- existing memory toggle (conversations.agent_memory_default / "Off the
--- Record") — that governs the Digital-Twin; this governs verification evidence.
+-- Record") — that governs the Scout; this governs verification evidence.
 alter table conversations
   add column if not exists evidence_suppressed boolean not null default false;
 comment on column conversations.evidence_suppressed is
-  'VP-3: when true, evidence ingested from this conversation is marked redacted (content-suppressed) in BOTH privacy modes. Separate from agent_memory_default (Digital-Twin learning).';
+  'VP-3: when true, evidence ingested from this conversation is marked redacted (content-suppressed) in BOTH privacy modes. Separate from agent_memory_default (Scout learning).';
 
 -- Per-message: honored ONLY when organizations.privacy_mode = 'strict'. Lets a
 -- sender keep one message out of evidence content even in an otherwise-ingested
@@ -95,7 +95,7 @@ comment on column conversations.evidence_suppressed is
 alter table messages
   add column if not exists evidence_suppressed boolean not null default false;
 comment on column messages.evidence_suppressed is
-  'VP-3: per-message content-suppression, honored ONLY when the org privacy_mode = strict. Separate from save_to_agent_memory (Digital-Twin learning).';
+  'VP-3: per-message content-suppression, honored ONLY when the org privacy_mode = strict. Separate from save_to_agent_memory (Scout learning).';
 
 -- ────────────────────────────────────────────────────────────────
 -- §3 — Evidence ingestion function (AFTER INSERT on messages)
@@ -178,7 +178,7 @@ end;
 $$;
 
 comment on function ingest_message_evidence() is
-  'VP-3: on a work-context message INSERT, records ONE ingestion_events evidence POINTER (no body copy) honoring privacy_mode + conversation/message evidence_suppressed. No candidate, no model call, no per-message audit, Digital-Twin memory untouched. Best-effort: failures never block the message insert.';
+  'VP-3: on a work-context message INSERT, records ONE ingestion_events evidence POINTER (no body copy) honoring privacy_mode + conversation/message evidence_suppressed. No candidate, no model call, no per-message audit, Scout memory untouched. Best-effort: failures never block the message insert.';
 
 -- Trigger functions never need to be RPC-callable. Revoke EXECUTE so it is not
 -- exposed via PostgREST (/rest/v1/rpc/...); the trigger still fires as owner.
@@ -224,5 +224,5 @@ create trigger trg_messages_ingest_evidence
 --   • verification_candidates / verified_* / achievements — never written here.
 --   • promote_candidate()  — VP-5 owns the only exit to verified_*.
 --   • message → claim staging — VP-6 (needs a model; context-architect-gated).
---   • save_to_agent_memory / agent_memory — the Digital-Twin path is untouched.
+--   • save_to_agent_memory / agent_memory — the Scout path is untouched.
 -- ════════════════════════════════════════════════════════════════

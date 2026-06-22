@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia · FLOW — demo seed (Demo Corp)
+-- Core-Roborate · FLOW — demo seed (Demo Corp)
 --
 -- Demonstrates all three provenance tiers and a NON-TRIVIAL burndown gap:
 --   committed            = 40 pts
@@ -67,11 +67,11 @@ begin
 
   -- ── evidence artifacts (required before the ATTESTED events that cite them) ──
   insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by)
-    values (v_org, i1, 'merged_pr', 'https://github.com/credentia/app/pull/411', 'PR #411 — key rotation (merged)', v_maya) returning id into a1;
+    values (v_org, i1, 'merged_pr', 'https://github.com/core-roborate/app/pull/411', 'PR #411 — key rotation (merged)', v_maya) returning id into a1;
   insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by)
     values (v_org, i2, 'deploy', 'deploy:prod:2026-06-16:7f3ac2', 'Prod deploy 7f3ac2', v_devin) returning id into a2;
   insert into flow_evidence_artifacts (org_id, item_id, kind, uri, label, added_by)
-    values (v_org, i5, 'merged_pr', 'https://github.com/credentia/app/pull/418', 'PR #418 — skeletons (merged)', v_sasha) returning id into a5;
+    values (v_org, i5, 'merged_pr', 'https://github.com/core-roborate/app/pull/418', 'PR #418 — skeletons (merged)', v_sasha) returning id into a5;
 
   -- ── ledger: create events at sprint start (all begin in Backlog, ASSERTED) ──
   insert into flow_transition_events (org_id, item_id, board_id, event_type, provenance_tier, to_column_id, actor_id, reason, created_at)
