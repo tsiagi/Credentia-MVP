@@ -3,7 +3,7 @@ import VerifiedResumePage from "@/components/VerifiedResumePage";
 import "./passport.css";
 
 export const metadata: Metadata = {
-  title: "Verified Resume — Credentia",
+  title: "Verified Resume — Core-Roborate",
   description: "Attested career record for recruiters. View-only.",
   robots: { index: false, follow: false },
 };

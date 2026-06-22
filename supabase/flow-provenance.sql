@@ -1,9 +1,9 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia · FLOW — Provenance-Native Work Tracking
+-- Core-Roborate · FLOW — Provenance-Native Work Tracking
 --
 -- A project-management module that is architecturally distinct from
 -- Asana/Monday: every work-item state is recorded at an explicit TRUST
--- TIER, mirroring Credentia's verified-vs-inferred mission.
+-- TIER, mirroring Core-Roborate's verified-vs-inferred mission.
 --
 --   ATTESTED  — backed by a linked evidence artifact (merged PR, file,
 --               approval, deploy id, webhook). CANNOT exist without an

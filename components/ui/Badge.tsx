@@ -1,6 +1,6 @@
 // components/ui/Badge.tsx
 // ─────────────────────────────────────────────────────────────
-// Cairn badge primitive + the two TRUST presets.
+// Core-Roborate badge primitive + the two TRUST presets.
 //
 // Non-negotiable (CLAUDE.md): verified facts are blue + ShieldCheck,
 // AI inferences are amber + Sparkles. Both pull from the central

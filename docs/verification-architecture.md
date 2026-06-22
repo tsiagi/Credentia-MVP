@@ -1,14 +1,14 @@
 # Continuous Verification Pipeline & Overseer AI — Technical Architecture
 
 > Status: DESIGN (architecture + DDL + step-by-step logic). No migrations applied, no app code shipped in this deliverable.
-> Audience: Credentia engineering. Anchored on the existing schema and `lib/*`.
+> Audience: Core-Roborate engineering. Anchored on the existing schema and `lib/*`.
 > Author scope: the context/memory/harness boundary and the verified-vs-inferred wall.
 
 ---
 
 ## 0. The one rule everything below obeys
 
-Credentia's differentiator is that **verified facts** (human-attested, `verified_*`, blue/`ShieldCheck`) and **AI inferences** (model estimates, `ai_inference_*`, amber/`Sparkles`) are never merged, relabeled, or co-mingled. This redesign turns a manual hierarchical workflow (Employee → Manager → Executive) into a **continuous, AI-assisted pipeline** — *without eroding that rule*.
+Core-Roborate's differentiator is that **verified facts** (human-attested, `verified_*`, blue/`ShieldCheck`) and **AI inferences** (model estimates, `ai_inference_*`, amber/`Sparkles`) are never merged, relabeled, or co-mingled. This redesign turns a manual hierarchical workflow (Employee → Manager → Executive) into a **continuous, AI-assisted pipeline** — *without eroding that rule*.
 
 The mechanism that makes "continuous AI verification" safe is a single sentence:
 
@@ -344,11 +344,11 @@ Key invariant: `attested` is only ever reached **through `promote_candidate()`**
 
 ### Mechanic 3 — Passive Messenger Verification (always-on) + privacy reconciliation
 
-**The tension.** Today `messages.save_to_agent_memory` defaults to `false` ("Off the Record"); only opted-in messages can train the **sender's Digital Twin** (`agent_memory`). The new requirement wants messages auto-ingested as verification *evidence*. These look contradictory only if you conflate two different pipelines.
+**The tension.** Today `messages.save_to_agent_memory` defaults to `false` ("Off the Record"); only opted-in messages can train the **sender's Scout** (`agent_memory`). The new requirement wants messages auto-ingested as verification *evidence*. These look contradictory only if you conflate two different pipelines.
 
 **The reconciliation — two distinct pipelines over the same messages:**
 
-| | (a) Digital-Twin memory | (b) Verification evidence ingestion |
+| | (a) Scout memory | (b) Verification evidence ingestion |
 |---|---|---|
 | Table | `agent_memory` (owner-only) | `ingestion_events` + `verification_candidates` |
 | Purpose | personalises the user's own assistant | proposes verifiable claims about work |

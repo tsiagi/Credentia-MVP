@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   key={t.id}
                   role="status"
                   className={cn(
-                    "cairn-toast-in flex items-start gap-2.5 rounded-[var(--radius-md)] border px-3.5 py-3",
+                    "core-roborate-toast-in flex items-start gap-2.5 rounded-[var(--radius-md)] border px-3.5 py-3",
                   )}
                   style={{ background: "var(--surface)", borderColor: "var(--line)", boxShadow: "var(--shadow-lg)" }}
                 >

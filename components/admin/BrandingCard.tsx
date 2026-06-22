@@ -75,7 +75,7 @@ export function BrandingCard({ logoUrl, brandColor, onSave, title, description }
           </div>
         )}
         <label
-          className="cairn-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border cursor-pointer"
+          className="core-roborate-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border cursor-pointer"
           data-variant="secondary"
         >
           <ImageIcon size={14} /> Upload logo
@@ -84,7 +84,7 @@ export function BrandingCard({ logoUrl, brandColor, onSave, title, description }
       </div>
 
       <div>
-        <div className="cairn-eyebrow mb-2">Brand colour</div>
+        <div className="core-roborate-eyebrow mb-2">Brand colour</div>
         <div className="flex items-center gap-2 flex-wrap">
           {SWATCHES.map((s) => {
             const active = color.toLowerCase() === s.toLowerCase();

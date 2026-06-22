@@ -21,7 +21,7 @@ export function PageHeader({ title, subtitle, eyebrow, actions, className }: Pag
   return (
     <header className={cn("flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", className)}>
       <div className="min-w-0">
-        {eyebrow && <p className="cairn-eyebrow mb-1.5">{eyebrow}</p>}
+        {eyebrow && <p className="core-roborate-eyebrow mb-1.5">{eyebrow}</p>}
         <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--ink)" }}>
           {title}
         </h1>

@@ -1,6 +1,6 @@
 // components/ui/Button.tsx
 // ─────────────────────────────────────────────────────────────
-// Cairn button primitive. Variants map to design tokens only —
+// Core-Roborate button primitive. Variants map to design tokens only —
 // never raw hex. Loading state shows a spinner and disables the
 // button; `active:scale-[0.98]` gives the press micro-interaction.
 // Presentation only — never touches data, queries, or RLS.
@@ -28,8 +28,8 @@ const SIZES: Record<ButtonSize, { pad: string; text: string; gap: string; icon: 
   md: { pad: "px-3.5 py-2",   text: "text-[13px]", gap: "gap-2",   icon: 15 },
   lg: { pad: "px-5 py-2.5",   text: "text-[15px]", gap: "gap-2",   icon: 17 },
 };
-// Variant colors (incl. hover) live in `.cairn-btn[data-variant]` rules in
-// styles/cairn/tokens/base.css so hover can override the resting color.
+// Variant colors (incl. hover) live in `.core-roborate-btn[data-variant]` rules in
+// styles/core-roborate/tokens/base.css so hover can override the resting color.
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -55,7 +55,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       disabled={isDisabled}
       data-variant={variant}
       className={cn(
-        "cairn-btn inline-flex items-center justify-center font-semibold border",
+        "core-roborate-btn inline-flex items-center justify-center font-semibold border",
         "rounded-[var(--radius-sm)] select-none whitespace-nowrap",
         "transition-[transform,background-color,border-color,box-shadow] duration-[var(--duration-fast)]",
         "active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none",

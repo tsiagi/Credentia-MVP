@@ -5,7 +5,7 @@
 // Conversations are 'direct' (user↔user) or 'task' threads (pinned to a
 // verified_task). Every message carries an explicit "Save to Agent Memory"
 // flag — the opposite is "Off the Record". Only messages a user marks
-// save_to_agent_memory = true are eligible to become THAT user's Digital-Twin
+// save_to_agent_memory = true are eligible to become THAT user's Scout
 // memory (see lib/agents.ts ingestion). Off-the-record messages are never
 // learned.
 //
@@ -27,7 +27,7 @@ export type Conversation = {
   created_by: string | null;
   agent_memory_default: boolean;
   // VP-3 — per-conversation "Exclude from verification evidence". DISTINCT from
-  // agent_memory_default (Digital-Twin learning): this governs the verification
+  // agent_memory_default (Scout learning): this governs the verification
   // EVIDENCE pipeline, not memory. Flipped via
   // lib/verification/evidence.ts → setConversationEvidenceSuppressed.
   evidence_suppressed: boolean;
@@ -240,7 +240,7 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
 
 /**
  * Send a message. `saveToAgentMemory` is the explicit per-message toggle:
- * true → eligible for the sender's Digital-Twin; false → Off the Record.
+ * true → eligible for the sender's Scout; false → Off the Record.
  */
 export async function sendMessage(
   actorId: string,

@@ -10,7 +10,7 @@
 -- views all show real content. Idempotent: re-running replaces the seed rows.
 --
 -- Demo logins (no password set — these exist for metrics, not sign-in):
---   …@seed.credentia.test
+--   …@seed.core-roborate.test
 -- Superadmin sign-in remains: superadmin@demo.corp.com.
 -- ════════════════════════════════════════════════════════════════
 
@@ -38,7 +38,7 @@ declare
 begin
   -- idempotent cleanup
   delete from profiles where org_id in (v_nw, v_ac, v_in);
-  delete from auth.users where email like '%@seed.credentia.test';
+  delete from auth.users where email like '%@seed.core-roborate.test';
   delete from ai_inference_reports where (org_id in (v_nw, v_ac, v_in) or org_id = v_demo) and model = 'seed';
   delete from billing_events where org_id in (v_nw, v_ac, v_in);
   delete from tenant_integrations where org_id in (v_nw, v_ac, v_in);
@@ -55,16 +55,16 @@ begin
 
   -- users (account_status accepts active_sso|active_invited|former_trial|former_free|former_paid)
   for r in select * from (values
-      (v_nw,'northwind-amelia@seed.credentia.test','Amelia Stone','Logistics Lead','manager',   'active_sso'),
-      (v_nw,'northwind-ben@seed.credentia.test',   'Ben Carter',  'Dispatch Analyst','employee', 'active_sso'),
-      (v_nw,'northwind-chloe@seed.credentia.test', 'Chloe Diaz',  'Operations Analyst','employee','active_sso'),
-      (v_nw,'northwind-dan@seed.credentia.test',   'Dan Ellis',   'Fleet Coordinator','employee','active_sso'),
-      (v_nw,'northwind-olivia@seed.credentia.test','Olivia Reed', 'VP Operations','executive',   'active_sso'),
-      (v_ac,'acme-fiona@seed.credentia.test',      'Fiona Grant', 'Plant Manager','manager',     'active_sso'),
-      (v_ac,'acme-george@seed.credentia.test',     'George Hall', 'Line Supervisor','employee',  'active_invited'),
-      (v_ac,'acme-hannah@seed.credentia.test',     'Hannah Price','Site Admin','admin',          'active_sso'),
-      (v_in,'initech-ivan@seed.credentia.test',    'Ivan Novak',  'Project Manager','manager',   'former_paid'),
-      (v_in,'initech-jane@seed.credentia.test',    'Jane Kim',    'Engineer','employee',         'active_sso')
+      (v_nw,'northwind-amelia@seed.core-roborate.test','Amelia Stone','Logistics Lead','manager',   'active_sso'),
+      (v_nw,'northwind-ben@seed.core-roborate.test',   'Ben Carter',  'Dispatch Analyst','employee', 'active_sso'),
+      (v_nw,'northwind-chloe@seed.core-roborate.test', 'Chloe Diaz',  'Operations Analyst','employee','active_sso'),
+      (v_nw,'northwind-dan@seed.core-roborate.test',   'Dan Ellis',   'Fleet Coordinator','employee','active_sso'),
+      (v_nw,'northwind-olivia@seed.core-roborate.test','Olivia Reed', 'VP Operations','executive',   'active_sso'),
+      (v_ac,'acme-fiona@seed.core-roborate.test',      'Fiona Grant', 'Plant Manager','manager',     'active_sso'),
+      (v_ac,'acme-george@seed.core-roborate.test',     'George Hall', 'Line Supervisor','employee',  'active_invited'),
+      (v_ac,'acme-hannah@seed.core-roborate.test',     'Hannah Price','Site Admin','admin',          'active_sso'),
+      (v_in,'initech-ivan@seed.core-roborate.test',    'Ivan Novak',  'Project Manager','manager',   'former_paid'),
+      (v_in,'initech-jane@seed.core-roborate.test',    'Jane Kim',    'Engineer','employee',         'active_sso')
     ) as t(org, email, name, title, role, acct)
   loop
     insert into auth.users

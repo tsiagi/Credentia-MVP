@@ -74,7 +74,7 @@ function s(
 }
 
 const SEEDS: Seed[] = [
-  s("ceo-1", "Jordan Park", "Chief Executive Officer", "Credentia Inc.", "ceo", null, 210, 82, 0.84, 0.79, 0.71, 0.22, 0.88, "up",
+  s("ceo-1", "Jordan Park", "Chief Executive Officer", "Core-Roborate Inc.", "ceo", null, 210, 82, 0.84, 0.79, 0.71, 0.22, 0.88, "up",
     { recommendations: ["Review Operations retention", "Approve Q3 comp for Fulfillment cohort"] }),
 
   // Level 2 — Executive Leadership (all peers visible)

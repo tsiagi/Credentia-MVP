@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ShareableProfilePage from "@/components/ShareableProfilePage";
 
 export const metadata: Metadata = {
-  title: "Verified Profile — Credentia",
+  title: "Verified Profile — Core-Roborate",
   description: "Shareable verified achievements. View-only.",
   robots: { index: false, follow: false },
 };

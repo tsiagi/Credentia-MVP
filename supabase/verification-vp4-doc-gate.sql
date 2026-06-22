@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — VP-4: Knowledge-doc AI-ingest gate (trigger enforcement)
+-- Core-Roborate — VP-4: Knowledge-doc AI-ingest gate (trigger enforcement)
 --
 -- Additive, idempotent migration. Run AFTER:
 --   schema.sql + rls-policies.sql + provisioning-rls.sql

@@ -29,7 +29,7 @@ export default function FlowPreview() {
     <div style={{ minHeight: "100vh", background: "var(--content-bg, var(--bg))" }}>
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-5">
-          <div className="cairn-eyebrow mb-2">Preview · Flow</div>
+          <div className="core-roborate-eyebrow mb-2">Preview · Flow</div>
           <h1 className="text-[28px] font-semibold" style={{ color: "var(--ink)" }}>Provenance-Native Work Tracking</h1>
           <p className="text-[14px] mt-1 max-w-2xl" style={{ color: "var(--ink-3)" }}>
             Every status carries a trust tier. Evidence-backed work is attested; self-reported work is flagged

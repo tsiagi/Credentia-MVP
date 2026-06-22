@@ -91,7 +91,7 @@ export function CompanyDirectory({
           {groups.map(([group, rows]) => (
             <div key={group}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="cairn-eyebrow">{group}</span>
+                <span className="core-roborate-eyebrow">{group}</span>
                 <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: "var(--surface-2)", color: "var(--ink-3)" }}>
                   {rows.length}
                 </span>
@@ -129,7 +129,7 @@ export function CompanyDirectory({
                     </div>
                   );
                   return it.href ? (
-                    <Link key={it.id} href={it.href} className="block cairn-nav-item">{inner}</Link>
+                    <Link key={it.id} href={it.href} className="block core-roborate-nav-item">{inner}</Link>
                   ) : (
                     <div key={it.id}>{inner}</div>
                   );

@@ -102,7 +102,7 @@ export function EmployeeTaskBoard({ userId, orgId }: { userId: string; orgId: st
       {/* ad-hoc self-report */}
       <div className="grid transition-all duration-300" style={{ gridTemplateRows: adding ? "1fr" : "0fr" }}>
         <div className="overflow-hidden">
-          <div className="p-4 rounded-xl border mb-4 flex flex-wrap gap-2 items-center cairn-pop"
+          <div className="p-4 rounded-xl border mb-4 flex flex-wrap gap-2 items-center core-roborate-pop"
             style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
             <Sparkles size={14} style={{ color: "var(--accent)" }} />
             <input

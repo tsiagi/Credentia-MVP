@@ -1,8 +1,8 @@
-# Credentia — Claude Code Context
+# Core-Roborate — Claude Code Context
 
 ## What This Product Is
 
-Credentia is an enterprise workforce verification and talent intelligence platform. Companies use it to verify employee credentials, track performance, and surface workforce insights. It is multi-tenant SaaS — each company is an isolated org.
+Core-Roborate is an enterprise workforce verification and talent intelligence platform. Companies use it to verify employee credentials, track performance, and surface workforce insights. It is multi-tenant SaaS — each company is an isolated org.
 
 The platform's **single most important architectural principle** is the strict separation of:
 - **Verified facts** — attested by real humans, stored in `verified_*` tables, displayed with a shield icon and blue color
@@ -82,11 +82,11 @@ Every authenticated app page (dashboards, settings, profiles, admin panels, veri
 
 ### Design Direction
 
-> **DECISION (2026-06-19): "Blend" — Cairn is the authoritative design system; trust colors are blue/amber.**
-> The implemented system is **Cairn** (`styles/cairn/`, imported via `app/globals.css`): a warm palette (sand/clay/terracotta/coral/plum/ochre/olive) with `--accent` = terracotta. Keep it as the source of truth for shell, accent, surfaces, and typography. The indigo/violet "Rippling/Linear" direction below is **superseded** for shell/accent — do not retokenize the app to indigo.
-> The ONE override: the **trust language** must be blue (verified) + amber (AI), per the non-negotiable. This is implemented centrally in `styles/cairn/tokens/colors.css` via `--verified-fg`/`--verified-bg` (blue) and `--inferred-fg`/`--inferred-bg` (amber). All ~40 components already consume these tokens, so trust color is controlled in that one file — never hardcode trust colors in a component.
+> **DECISION (2026-06-19): "Blend" — Core-Roborate is the authoritative design system; trust colors are blue/amber.**
+> The implemented system is **Core-Roborate** (`styles/core-roborate/`, imported via `app/globals.css`): a warm palette (sand/clay/terracotta/coral/plum/ochre/olive) with `--accent` = terracotta. Keep it as the source of truth for shell, accent, surfaces, and typography. The indigo/violet "Rippling/Linear" direction below is **superseded** for shell/accent — do not retokenize the app to indigo.
+> The ONE override: the **trust language** must be blue (verified) + amber (AI), per the non-negotiable. This is implemented centrally in `styles/core-roborate/tokens/colors.css` via `--verified-fg`/`--verified-bg` (blue) and `--inferred-fg`/`--inferred-bg` (amber). All ~40 components already consume these tokens, so trust color is controlled in that one file — never hardcode trust colors in a component.
 
-**Visual style:** Warm enterprise (Cairn) — terracotta accent on a sand/clay neutral base, light + dark themes. (The original indigo/violet brief is retained below for historical context only.)
+**Visual style:** Warm enterprise (Core-Roborate) — terracotta accent on a sand/clay neutral base, light + dark themes. (The original indigo/violet brief is retained below for historical context only.)
 
 **Verified vs AI-inferred visual language:**
 - Verified facts → `ShieldCheck` icon (Lucide) + blue (`--verified-fg` / `--verified-bg`)

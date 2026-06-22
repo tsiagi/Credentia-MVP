@@ -7,7 +7,7 @@
 --   (c) forget_subject() anonymizes the person and revokes share links
 -- Separately confirm the cron job:
 --   select jobname, schedule, active from cron.job
---    where jobname = 'credentia-retention-purge';
+--    where jobname = 'core-roborate-retention-purge';
 -- ════════════════════════════════════════════════════════════════
 begin;
 

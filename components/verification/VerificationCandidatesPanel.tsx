@@ -14,7 +14,7 @@
 // confidence is shown ONLY as a Low/Med/High band (Q6).
 //
 // Built entirely on Batch 1 primitives (Card, Badge, StatusPill, DataTable,
-// Skeleton, EmptyState, Button, Modal) + Cairn tokens. Light + dark.
+// Skeleton, EmptyState, Button, Modal) + Core-Roborate tokens. Light + dark.
 // ─────────────────────────────────────────────────────────────
 import React, { useCallback, useEffect, useState } from "react";
 import {

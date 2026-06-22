@@ -47,7 +47,7 @@ export function ExecutiveDashboard() {
 
       <div className="flex-1 px-4 py-5 sm:px-6">
         <div className="mb-4">
-          <div className="cairn-eyebrow flex items-center gap-1.5">Org health · command center</div>
+          <div className="core-roborate-eyebrow flex items-center gap-1.5">Org health · command center</div>
           <h1 className="serif text-2xl sm:text-3xl font-semibold mt-1">{root.department}</h1>
           <p className="text-[14px] opacity-60 mt-1 max-w-2xl">
             A live map of the organization. Click any department to zoom into its leader and direct reports, compare teams

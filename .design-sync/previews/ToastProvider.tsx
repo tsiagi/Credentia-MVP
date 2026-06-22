@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { ToastProvider, useToast, Button } from 'credentia';
+import { ToastProvider, useToast, Button } from 'core-roborate';
 
 function Emitter() {
   const toast = useToast();
   useEffect(() => {
-    toast.success('Credential attested for Priya Raman');
+    toast.success('Core-Roboratel attested for Priya Raman');
     toast.info('AI estimate refreshed for 12 employees');
     toast.error('Verification request expired (SLA breach)');
   }, [toast]);

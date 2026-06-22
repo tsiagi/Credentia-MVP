@@ -71,7 +71,7 @@ export default function AdminCompany() {
                 <SubscriptionBadge status={sub.billing_status} plan={sub.plan} />
               </div>
               <p className="text-[13px] mt-0.5" style={{ color: "var(--ink-3)" }}>
-                {sub.seats ? `${sub.seats} licensed seats` : "Seat count set by your Credentia operator"}.
+                {sub.seats ? `${sub.seats} licensed seats` : "Seat count set by your Core-Roborate operator"}.
               </p>
             </div>
           </div>

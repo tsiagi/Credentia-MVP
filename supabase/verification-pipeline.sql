@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Continuous Verification Pipeline (VP-1, additive staging)
+-- Core-Roborate — Continuous Verification Pipeline (VP-1, additive staging)
 --
 -- Additive, idempotent migration. Run AFTER:
 --   schema.sql + rls-policies.sql + provisioning-rls.sql

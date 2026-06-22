@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Daily Pulse, Smart Task Delegation, and AI Reports
+-- Core-Roborate — Daily Pulse, Smart Task Delegation, and AI Reports
 -- Additive migration. Run AFTER schema.sql + rls-policies.sql.
 --
 -- Design decisions (confirmed):

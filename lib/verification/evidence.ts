@@ -17,7 +17,7 @@
 // ONLY evidence_suppressed — not a general UPDATE policy. Deferred here.
 //
 // SEPARATION (never blurred): this is the VERIFICATION-EVIDENCE pipeline. It is
-// DISTINCT from the Digital-Twin memory toggle (agent_memory_default /
+// DISTINCT from the Scout memory toggle (agent_memory_default /
 // save_to_agent_memory / "Off the Record"). Suppressing evidence does NOT change
 // learning, and vice-versa. Neither helper touches body text, candidates, or any
 // verified_* row — they only set a privacy boolean.

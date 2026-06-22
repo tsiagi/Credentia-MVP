@@ -100,7 +100,7 @@ export function BillingPlanView({ userId, accountStatus, trialEndsAt, onStatusCh
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "credentia-verified-record.json";
+      a.download = "core-roborate-verified-record.json";
       a.click();
       URL.revokeObjectURL(url);
     } catch {

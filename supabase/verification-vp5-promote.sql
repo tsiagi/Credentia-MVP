@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Verification Pipeline VP-5: promote_candidate()
+-- Core-Roborate — Verification Pipeline VP-5: promote_candidate()
 --   THE PROMOTION BOUNDARY (amber candidate → blue verified record)
 --
 -- Additive, idempotent migration. Run AFTER:

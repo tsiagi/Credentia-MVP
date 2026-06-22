@@ -80,7 +80,7 @@ begin
   -- Profiles: superadmin is platform-scoped (no org)
   insert into profiles (id, org_id, manager_id, role, full_name, title, account_status, provisioned_via)
   values
-    (v_super_id, null,  null,     'superadmin', 'Platform Operator',  'Credentia Ops',        'active_sso', 'invite'),
+    (v_super_id, null,  null,     'superadmin', 'Platform Operator',  'Core-Roborate Ops',        'active_sso', 'invite'),
     (v_admin_id, v_org_id, null,  'admin',      'Casey Admin',        'System Administrator', 'active_sso', 'invite'),
     (v_exec_id,  v_org_id, null,  'executive',  'Alex Morgan',        'Chief People Officer', 'active_sso', 'sso'),
     (v_mgr_id,   v_org_id, null,  'manager',    'Jordan Lee',         'Engineering Manager',  'active_sso', 'sso'),

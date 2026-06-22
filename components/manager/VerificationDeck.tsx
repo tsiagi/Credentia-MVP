@@ -67,7 +67,7 @@ function Pile({ side, count, tone }: { side: "approve" | "deny"; count: number; 
             }} />
         ))}
       </div>
-      <div key={count} className="cairn-pop inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-semibold"
+      <div key={count} className="core-roborate-pop inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] font-semibold"
         style={{ background: tone.bg, color: tone.fg, border: `1px solid ${tone.line}` }}>
         <Icon size={13} /> <AnimatedNumber value={count} duration={500} />
       </div>
@@ -366,7 +366,7 @@ export function VerificationDeck({ userId }: { userId: string }) {
                   onBusy={setBusy}
                 />
               ) : (
-                <div className="h-full grid place-items-center text-center px-6 cairn-pop">
+                <div className="h-full grid place-items-center text-center px-6 core-roborate-pop">
                   <div>
                     <div className="w-12 h-12 rounded-full grid place-items-center mx-auto mb-3" style={{ background: "var(--verified-bg)" }}>
                       <Check size={24} style={{ color: "var(--verified-fg)" }} />

@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Verification Pipeline VP-2: Task-as-a-Verifier signal
+-- Core-Roborate — Verification Pipeline VP-2: Task-as-a-Verifier signal
 --
 -- Additive, idempotent migration. Run AFTER:
 --   schema.sql + rls-policies.sql + provisioning-rls.sql

@@ -1,4 +1,4 @@
-/* Cairn Design System — typography scale (fonts loaded via next/font in layout) */
+/* Core-Roborate Design System — typography scale (fonts loaded via next/font in layout) */
 
 :root {
   --font-display: var(--font-newsreader), Georgia, "Times New Roman", serif;

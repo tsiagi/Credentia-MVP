@@ -1,5 +1,5 @@
 # scripts/build_qa_doc.py
-# Generates the Credentia Q&A defense document (.docx) with cost + timeline tables.
+# Generates the Core-Roborate Q&A defense document (.docx) with cost + timeline tables.
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -70,7 +70,7 @@ def labeled(label, text, label_color=DARK):
 
 # ── Title ─────────────────────────────────────────────────────
 t = doc.add_paragraph(); t.paragraph_format.space_after = Pt(2)
-run(t, "Credentia — Q&A Defense Briefing", size=24, color=DARK, bold=True)
+run(t, "Core-Roborate — Q&A Defense Briefing", size=24, color=DARK, bold=True)
 st = doc.add_paragraph(); st.paragraph_format.space_after = Pt(2)
 run(st, "Demo Block (Slides 8–10) & Roadmap (Slides 13–15)", size=13, color=ACCENT, bold=True)
 fr = doc.add_paragraph(); fr.paragraph_format.space_after = Pt(10)
@@ -269,6 +269,6 @@ run(ol, "“The AI is cheap because it narrates instead of computes — under ~$
         "network play next — and our biggest risk is a consent model, not a line of code.”",
     size=12, color=ACCENT, italic=True, bold=True)
 
-out = r"C:\Users\tyrel\credentia\Credentia_QA_Defense.docx"
+out = r"C:\Users\tyrel\credentia\Core-Roborate_QA_Defense.docx"
 doc.save(out)
 print("Saved:", out)

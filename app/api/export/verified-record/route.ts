@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     verifiedFacts: facts.data ?? [],
   };
 
-  const filename = `credentia-verified-record-${userId.slice(0, 8)}.json`;
+  const filename = `core-roborate-verified-record-${userId.slice(0, 8)}.json`;
   return new NextResponse(JSON.stringify(bundle, null, 2), {
     status: 200,
     headers: {

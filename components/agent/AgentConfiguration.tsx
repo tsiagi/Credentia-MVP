@@ -1,7 +1,7 @@
 "use client";
 // components/agent/AgentConfiguration.tsx
 // ─────────────────────────────────────────────────────────────
-// Digital-Twin Agent configuration.
+// Scout Agent configuration.
 //
 // The strict data silo, made explicit in the UI:
 //   • TRAINING DATA (left) — VERIFIED facts only (blue shield): completed
@@ -26,7 +26,7 @@ import {
 
 /**
  * Deterministic "grounding credibility" — a measure of how much VERIFIED
- * material the Cred-Bot has learned. This is a fact about training-data volume
+ * material the Scout has learned. This is a fact about training-data volume
  * (blue), not an AI inference about a person. Diminishing returns on volume,
  * plus a weighting for source diversity (tasks / docs / messages).
  */
@@ -49,7 +49,7 @@ export function AgentConfiguration({
   userId, orgId, userName,
 }: { userId: string; orgId: string; userName?: string }) {
   const firstName = (userName ?? "").trim().split(/\s+/)[0] || "My";
-  const botTitle = `${firstName}'s Cred-Bot`;
+  const botTitle = `${firstName}'s Scout`;
   const [agent, setAgent] = useState<UserAgent | null>(null);
   const [memory, setMemory] = useState<AgentMemoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,13 +133,13 @@ export function AgentConfiguration({
         <Bot size={32} style={{ color: "var(--accent)" }} className="mx-auto mb-3" />
         <h3 className="font-semibold text-lg">Create {botTitle}</h3>
         <p className="text-[13px] opacity-65 mt-1 max-w-md mx-auto">
-          A personal Cred-Bot that learns from your verified work — completed tasks, verified docs, and the
+          A personal Scout that learns from your verified work — completed tasks, verified docs, and the
           messages you save. Its suggestions are always AI estimates you stay in control of.
         </p>
         <button onClick={provision} disabled={busy}
           className="mt-4 px-5 py-2.5 rounded-lg text-sm font-medium text-white transition active:scale-[0.98] disabled:opacity-40 inline-flex items-center gap-2"
           style={{ background: "var(--accent)" }}>
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <Bot size={15} />} Provision Cred-Bot
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <Bot size={15} />} Provision Scout
         </button>
       </div>
     );
@@ -164,7 +164,7 @@ export function AgentConfiguration({
               onBlur={() => patch({ name: agent.name })}
               className="font-semibold text-lg bg-transparent outline-none border-b border-transparent focus:border-[var(--line)]"
               style={{ color: "var(--ink)" }} />
-            <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>One Cred-Bot per person · scoped to your org &amp; role</p>
+            <p className="text-[12px]" style={{ color: "var(--ink-3)" }}>One Scout per person · scoped to your org &amp; role</p>
           </div>
           <button onClick={() => patch({ enabled: !agent.enabled })}
             className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition active:scale-[0.98]"
@@ -214,7 +214,7 @@ export function AgentConfiguration({
             </span>
           </div>
           <p className="text-[11px] mt-1.5" style={{ color: "var(--ink-3)" }}>
-            Reflects how much verified material your Cred-Bot has learned — more completed tasks, verified docs,
+            Reflects how much verified material your Scout has learned — more completed tasks, verified docs,
             and saved messages raise it. This is a measure of grounding, not an AI estimate.
           </p>
         </div>
@@ -258,7 +258,7 @@ export function AgentConfiguration({
         </div>
 
         {/* outputs — AI inference, amber */}
-        <div className="border rounded-2xl p-5 cairn-pulse" style={{ borderColor: "var(--inferred-fg)", background: "var(--surface)", boxShadow: "var(--shadow-sm)" }}>
+        <div className="border rounded-2xl p-5 core-roborate-pulse" style={{ borderColor: "var(--inferred-fg)", background: "var(--surface)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center gap-2 mb-1">
             <Sparkles size={16} style={{ color: "var(--inferred-fg)" }} />
             <h4 className="font-semibold text-[14px]">Agent outputs · AI estimates</h4>

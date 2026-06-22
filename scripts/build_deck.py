@@ -1,5 +1,5 @@
 # scripts/build_deck.py
-# Generates the Credentia demo + roadmap deck as a .pptx.
+# Generates the Core-Roborate demo + roadmap deck as a .pptx.
 # Brand-aligned with CLAUDE.md tokens: dark slate, indigo accent, blue/amber semantics.
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -81,7 +81,7 @@ def title(slide, text, top=Inches(0.95), color=TEXT_PRIMARY, size=34):
     set_para(tf.paragraphs[0], text, size, color, bold=True)
 
 
-def footer(slide, idx, total, label="Credentia — Confidential"):
+def footer(slide, idx, total, label="Core-Roborate — Confidential"):
     tf = textbox(slide, Inches(0.7), Inches(7.02), Inches(11.9), Inches(0.35))
     p = tf.paragraphs[0]
     set_para(p, label, 9, TEXT_MUTED)
@@ -133,7 +133,7 @@ TOTAL = 18
 s = add_slide(SIDEBAR_BG)
 accent_bar(s, ACCENT, top=Inches(0), height=Inches(0.18))
 tf = textbox(s, Inches(0.9), Inches(2.5), Inches(11.5), Inches(2.2))
-set_para(tf.paragraphs[0], "Credentia", 60, WHITE, bold=True)
+set_para(tf.paragraphs[0], "Core-Roborate", 60, WHITE, bold=True)
 add_para(tf, "The System of Record for Workforce Truth", 24, RGBColor(0xC7,0xD2,0xFE), space_after=4)
 add_para(tf, "Current Build Demo  +  Product Roadmap", 16, TEXT_MUTED)
 tf2 = textbox(s, Inches(0.9), Inches(6.6), Inches(11.5), Inches(0.5))
@@ -190,7 +190,7 @@ footer(s, 3, TOTAL)
 # ════════════════════════════════════════════════════════════
 s = add_slide()
 accent_bar(s)
-kicker(s, "What Credentia Is")
+kicker(s, "What Core-Roborate Is")
 title(s, "Enterprise workforce verification & talent intelligence.")
 bullets(s, [
     "Multi-tenant SaaS — each company is fully isolated.",
@@ -216,7 +216,7 @@ accent_bar(s, ACCENT, top=Inches(3.5), height=Inches(0.06))
 tf = textbox(s, Inches(0.9), Inches(2.6), Inches(11.5), Inches(2.0), anchor=MSO_ANCHOR.MIDDLE)
 set_para(tf.paragraphs[0], "Part 1 — What We've Built", 40, WHITE, bold=True)
 add_para(tf, "The platform is live. Here's what works today.", 20, TEXT_MUTED)
-footer(s, 5, TOTAL, "Credentia — Current Build")
+footer(s, 5, TOTAL, "Core-Roborate — Current Build")
 
 # ════════════════════════════════════════════════════════════
 # SLIDE 6 — PLATFORM FOUNDATION
@@ -339,7 +339,7 @@ tf = textbox(s, Inches(0.9), Inches(2.4), Inches(11.5), Inches(2.4), anchor=MSO_
 set_para(tf.paragraphs[0], "Part 2 — Where We're Going", 40, WHITE, bold=True)
 add_para(tf, "Today we verify truth inside one company.", 20, TEXT_MUTED, space_after=2)
 add_para(tf, "Next, we make it portable.", 20, RGBColor(0xC7,0xD2,0xFE), bold=True)
-footer(s, 12, TOTAL, "Credentia — Roadmap")
+footer(s, 12, TOTAL, "Core-Roborate — Roadmap")
 
 # ════════════════════════════════════════════════════════════
 # SLIDE 13 — PHASE 2
@@ -402,12 +402,12 @@ footer(s, 15, TOTAL)
 s = add_slide(SIDEBAR_BG)
 accent_bar(s, ACCENT, top=Inches(0), height=Inches(0.18))
 tf = textbox(s, Inches(0.9), Inches(2.0), Inches(11.5), Inches(2.5))
-set_para(tf.paragraphs[0], "Credentia makes workforce data\nprovable — and portable.", 34, WHITE, bold=True)
+set_para(tf.paragraphs[0], "Core-Roborate makes workforce data\nprovable — and portable.", 34, WHITE, bold=True)
 add_para(tf, "A live platform · a defensible moat · a clear path to a network.", 18, TEXT_MUTED, space_after=18)
 add_para(tf, "The Ask:  [funding / pilot customers / hiring — fill per audience]", 18, RGBColor(0xC7,0xD2,0xFE), bold=True)
 tf2 = textbox(s, Inches(0.9), Inches(6.4), Inches(11.5), Inches(0.6))
 set_para(tf2.paragraphs[0], "Contact  •  Q&A", 14, TEXT_MUTED)
-footer(s, 16, TOTAL, "Credentia — Confidential")
+footer(s, 16, TOTAL, "Core-Roborate — Confidential")
 
 # ════════════════════════════════════════════════════════════
 # SLIDE 17 — APPENDIX: BUILD MATURITY
@@ -449,6 +449,6 @@ for i, item in enumerate(stack):
     chip.text_frame.margin_left=Inches(0.3)
 footer(s, 18, TOTAL)
 
-out = r"C:\Users\tyrel\credentia\Credentia_Demo_Roadmap.pptx"
+out = r"C:\Users\tyrel\credentia\Core-Roborate_Demo_Roadmap.pptx"
 prs.save(out)
 print("Saved:", out, "slides:", len(prs.slides._sldIdLst))

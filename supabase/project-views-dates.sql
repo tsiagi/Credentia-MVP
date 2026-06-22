@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Project board fix + dates
+-- Core-Roborate — Project board fix + dates
 -- Additive. Run AFTER task-knowledge-agent.sql.
 --
 -- 1) FIX: the "wp: member read" (work_projects → verified_tasks) and

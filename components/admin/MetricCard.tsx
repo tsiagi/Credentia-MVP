@@ -63,7 +63,7 @@ export function MetricCard({
               style={{ color: inferred ? "var(--inferred-fg)" : "var(--accent)" }}
             />
           )}
-          <span className="cairn-eyebrow truncate">{label}</span>
+          <span className="core-roborate-eyebrow truncate">{label}</span>
         </div>
         {tone === "verified" && <VerifiedBadge label={badgeLabel ?? "Verified"} />}
         {tone === "inferred" && <AIEstimateBadge label={badgeLabel ?? "AI Estimate"} />}

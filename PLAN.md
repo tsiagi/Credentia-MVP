@@ -1,28 +1,28 @@
-# Credentia — Enterprise Readiness Plan
+# Core-Roborate — Enterprise Readiness Plan
 
 _Owner: enterprise-planner. Re-audited each time a batch closes._
 _Last updated: 2026-06-19 (Batch 1 closed; messaging initiative shipped M1/M2/M3/M5/M6)._
 
 ## Authoritative decisions
 
-- **Design system:** Cairn (`styles/cairn/`) is the source of truth for shell, accent (terracotta), surfaces, and type. The indigo/violet brief in `CLAUDE.md` is superseded for shell/accent.
-- **Trust language (non-negotiable):** verified = **blue** (`--verified-*`) + `ShieldCheck`; AI = **amber** (`--inferred-*`) + `Sparkles`. Controlled centrally in `styles/cairn/tokens/colors.css`. Never hardcode in a component.
+- **Design system:** Core-Roborate (`styles/core-roborate/`) is the source of truth for shell, accent (terracotta), surfaces, and type. The indigo/violet brief in `CLAUDE.md` is superseded for shell/accent.
+- **Trust language (non-negotiable):** verified = **blue** (`--verified-*`) + `ShieldCheck`; AI = **amber** (`--inferred-*`) + `Sparkles`. Controlled centrally in `styles/core-roborate/tokens/colors.css`. Never hardcode in a component.
 
 ## Enterprise-readiness scorecard
 
 | Dimension | State | Notes |
 |---|---|---|
-| Visual cohesion | 🟡 Partial | Cairn tokens used widely via inline `style`, but no shared shell layer yet → drift risk (Batch 3). |
+| Visual cohesion | 🟡 Partial | Core-Roborate tokens used widely via inline `style`, but no shared shell layer yet → drift risk (Batch 3). |
 | Trust language | 🟢 Strong | Tokenized + iconed across ~40 files; now blue/amber. |
 | Component reuse | 🟢 Improving | Batch 1 shipped the `components/ui/` primitive layer (Button, Card, Badge + trust presets, StatusPill, PageHeader, DataTable, Modal, Toast, Skeleton, EmptyState). Pages must now adopt them (Batches 3–9). |
 | States (load/empty/error) | 🟡 Unknown | Present ad hoc (e.g. workspace skeleton, messaging now full-coverage). Audit per page. |
 | Accessibility | 🟡 Unknown | Focus ring token exists; icon-button labels/contrast unverified outside messaging. |
-| Performance | 🟡 Risk | `CredentiaSite.tsx` is ~2,992 lines, `"use client"` monolith holding marketing + app. |
+| Performance | 🟡 Risk | `CoreRoborateSite.tsx` is ~2,992 lines, `"use client"` monolith holding marketing + app. |
 | Consistency | 🟡 Partial | Type/spacing tokens exist; enforcement is manual. |
 
 ## Hard boundaries (encoded in every batch)
 
-- `app/page.tsx` and marketing sections of `CredentiaSite.tsx` are **off-limits**. The marketing/app boundary runs *through* `CredentiaSite.tsx` — Batch 2 maps it before anyone edits it.
+- `app/page.tsx` and marketing sections of `CoreRoborateSite.tsx` are **off-limits**. The marketing/app boundary runs *through* `CoreRoborateSite.tsx` — Batch 2 maps it before anyone edits it.
 - No changes to data-fetching, Supabase queries, or RLS for redesign work. Presentation only.
 - Never merge or relabel verified vs AI-inferred data.
 - Check `components/` before creating anything new.
@@ -36,19 +36,19 @@ _Last updated: 2026-06-19 (Batch 1 closed; messaging initiative shipped M1/M2/M3
 - **Done:** `--verified-fg/bg` → blue, `--inferred-fg/bg` → amber (light + dark) in `colors.css`; decision recorded in `CLAUDE.md`. All ~40 consuming components inherit it.
 
 ### Batch 1 — Shared UI primitives (foundation) ✅ DONE (2026-06-19)  → `coder`
-- **Goal:** Build the missing `components/ui/` primitives on Cairn tokens so pages stop hand-rolling markup.
-- **Done:** Shipped `components/ui/`: `cn.ts`, `Button.tsx` (4 variants × 3 sizes, loading spinner, `active:scale-[0.98]`), `Card.tsx` (+ Header/Title/Description/Body, `interactive` lift), `Badge.tsx` (+ `VerifiedBadge`/`AIEstimateBadge` presets), `StatusPill.tsx`, `PageHeader.tsx`, `DataTable.tsx` (sticky header, click-to-sort, skeleton rows, empty-with-CTA), `Modal.tsx` (portal, backdrop blur, scale-in, ESC, scroll-lock), `Toast.tsx` (`ToastProvider` + `useToast`, top-right slide-in, 4s auto-dismiss), `Skeleton.tsx`, `EmptyState.tsx`, `index.ts` barrel. Supporting CSS (button variants/hover, skeleton pulse, toast slide-in) added to `styles/cairn/tokens/base.css`, all reduced-motion gated.
+- **Goal:** Build the missing `components/ui/` primitives on Core-Roborate tokens so pages stop hand-rolling markup.
+- **Done:** Shipped `components/ui/`: `cn.ts`, `Button.tsx` (4 variants × 3 sizes, loading spinner, `active:scale-[0.98]`), `Card.tsx` (+ Header/Title/Description/Body, `interactive` lift), `Badge.tsx` (+ `VerifiedBadge`/`AIEstimateBadge` presets), `StatusPill.tsx`, `PageHeader.tsx`, `DataTable.tsx` (sticky header, click-to-sort, skeleton rows, empty-with-CTA), `Modal.tsx` (portal, backdrop blur, scale-in, ESC, scroll-lock), `Toast.tsx` (`ToastProvider` + `useToast`, top-right slide-in, 4s auto-dismiss), `Skeleton.tsx`, `EmptyState.tsx`, `index.ts` barrel. Supporting CSS (button variants/hover, skeleton pulse, toast slide-in) added to `styles/core-roborate/tokens/base.css`, all reduced-motion gated.
 - **Trust checks:** trust color appears ONLY via `--verified-*`/`--inferred-*` tokens; `VerifiedBadge` = blue + `ShieldCheck`, `AIEstimateBadge` = amber + `Sparkles`. No raw hex.
 - **Verification:** `tsc --noEmit` exit 0; ESLint clean on all 12 Batch 1 files. (Pre-existing `set-state-in-effect` errors in `motion.tsx` remain — unrelated tech debt, file unchanged.)
 
-### Batch 2 — Decompose & map `CredentiaSite.tsx`  → `coder` (mapping) + `enterprise-planner` (re-plan)
+### Batch 2 — Decompose & map `CoreRoborateSite.tsx`  → `coder` (mapping) + `enterprise-planner` (re-plan)
 - **Goal:** Identify which sections are marketing (off-limits) vs authenticated app, so later batches edit safely.
 - **Output:** a section map (route/state → component → marketing|app) appended here. No visual edits yet — extraction only where it clarifies the boundary.
 - **Boundary:** do not restyle marketing. Flag any shared component used by both.
 
 ### Batch 3 — App shell (top-nav + content frame) ✅ DONE (2026-06-19)  → `coder`
 - **Decision:** kept the existing **horizontal top-nav + mobile drawer** topology (restyle-in-place); a true left `w-64` rail is deferred to a post-Batch-9 layout batch (converting now would rewrite every view's width contract). Detailed spec in "Batch 3 — app shell (detailed plan)" section below.
-- **Done (all in `AppShell` + `screen === "app"` arm of `CredentiaSite.tsx`):** width → `max-w-7xl mx-auto px-6 py-8` for standard pages, `isCommandCenter` (exec/HR) stays full-width; desktop nav active/hover + `aria-current`; user menu → ghost `Button`s + neutral role `Badge`; mobile drawer active left-bar + focus rings; content frame → `PageHeader` (title from nav label) + `space-y-6` + per-tab `cairn-reveal` fade-in; first load → `Skeleton`. Added `--accent-ink` token. Marketing/`nav[]` data/role map/`supabase.*` untouched.
+- **Done (all in `AppShell` + `screen === "app"` arm of `CoreRoborateSite.tsx`):** width → `max-w-7xl mx-auto px-6 py-8` for standard pages, `isCommandCenter` (exec/HR) stays full-width; desktop nav active/hover + `aria-current`; user menu → ghost `Button`s + neutral role `Badge`; mobile drawer active left-bar + focus rings; content frame → `PageHeader` (title from nav label) + `space-y-6` + per-tab `core-roborate-reveal` fade-in; first load → `Skeleton`. Added `--accent-ink` token. Marketing/`nav[]` data/role map/`supabase.*` untouched.
 - **Verification:** tester PASS (tsc + `npm run build` green; 7 eslint errors, all pre-existing; all six roles' nav/dashboard wiring intact; marketing unchanged; no new fetches).
 - **ux-review → HOLD→fixed→SHIP:** two P1s fixed before close — (1) active top-nav pill failed WCAG AA in both themes → switched to the drawer's soft-fill `--accent-soft` + `--accent-text` idiom (AA-legible, now one consistent active style); (2) nav vanished 768–1024px (`md:hidden` toggle vs `lg:flex` nav) → toggle aligned to `lg:hidden`. tsc clean, error count unchanged.
 - **Follow-ups (P2/P3, non-blocking → planner):** user-menu trigger needs `aria-haspopup`/`aria-expanded`/`aria-label` + the dropdown should be a keyboard `role="menu"` with Escape-to-close; accent hue (periwinkle) sits visually near verified-blue — keep distinct; **`CLAUDE.md` still calls the accent "terracotta" but the live token is periwinkle — stale, fix**; `PageHeader` title falls back to empty for future menu-only tabs; shorten the 0.55s tab fade.
@@ -61,7 +61,7 @@ _Last updated: 2026-06-19 (Batch 1 closed; messaging initiative shipped M1/M2/M3
 ### Batch 9 — Settings & privacy controls  → `coder`
 
 _For each of Batches 4–9 (defined in detail when reached):_
-- Rebuild presentation on Batch 1 primitives + Cairn tokens; remove bespoke inline markup where a primitive fits.
+- Rebuild presentation on Batch 1 primitives + Core-Roborate tokens; remove bespoke inline markup where a primitive fits.
 - Required states: skeleton loading, empty-with-CTA, error.
 - Trust checks: verified blue+shield / AI amber+sparkle wherever both appear; AI strings framed as estimate/suggestion.
 - No data-fetching / RLS changes.
@@ -91,7 +91,7 @@ _For each of Batches 4–9 (defined in detail when reached):_
 
 ### Shipped (M1/M2/M3/M5/M6) — 2026-06-19
 - **New files:** `lib/messaging-format.ts` (pure grouping/relative-time), `lib/presence.ts` (`joinOrgPresence` on `org:${orgId}:presence`), `components/messaging/{PresenceDot,ProfileCard,ConversationListItem,MessageGroup,MessageComposer}.tsx`.
-- **Changed:** `lib/messaging.ts` (`subscribeToMessages`, `subscribeToTyping`, `conversationChannelName`), `components/messaging/ChatInterface.tsx` (full rebuild on primitives, live subscription with optimistic-echo dedupe, presence, typing, near-bottom-only auto-scroll, reconnecting `StatusPill`), `components/CredentiaSite.tsx` (wrapped `AppShell` in `<ToastProvider>`), `styles/cairn/tokens/base.css` (typing-dot animation).
+- **Changed:** `lib/messaging.ts` (`subscribeToMessages`, `subscribeToTyping`, `conversationChannelName`), `components/messaging/ChatInterface.tsx` (full rebuild on primitives, live subscription with optimistic-echo dedupe, presence, typing, near-bottom-only auto-scroll, reconnecting `StatusPill`), `components/CoreRoborateSite.tsx` (wrapped `AppShell` in `<ToastProvider>`), `styles/core-roborate/tokens/base.css` (typing-dot animation).
 - **tester:** PASS — tsc/eslint clean; 10/10 grouping unit tests; all 3 `.channel()` sites org-namespaced; postgres_changes filter `conversation_id=eq.${id}`; `profiles` select still `org_id`-scoped + `neq(self)`; presence/identity uses neutral tokens (no trust token/icon); channel teardown on switch/unmount; optimistic dedupe by id; no schema/RLS/`ai_inference_*`.
 - **ux-reviewer:** SHIP (no P0). Trust boundary discipline called out as excellent; per-message memory indicator survives grouping; auto-scroll respects the reader; reduced-motion handled.
 
@@ -123,13 +123,13 @@ Batch 1 ✅; messaging **M1–M7 ✅ COMPLETE**; **Batch 2 ✅** (section map be
 
 ---
 
-## Batch 2 — CredentiaSite.tsx section map (coder, 2026-06-19)
+## Batch 2 — CoreRoborateSite.tsx section map (coder, 2026-06-19)
 
-**File:** `components/CredentiaSite.tsx` (2,998 lines, single `"use client"` default export `CredentiaSite`). `app/page.tsx` renders `<CredentiaSite />` and nothing else — the marketing/app boundary lives entirely *inside* this one file, gated by a 3-value `screen` state.
+**File:** `components/CoreRoborateSite.tsx` (2,998 lines, single `"use client"` default export `CoreRoborateSite`). `app/page.tsx` renders `<CoreRoborateSite />` and nothing else — the marketing/app boundary lives entirely *inside* this one file, gated by a 3-value `screen` state.
 
 ### The boundary (where marketing ends and the app begins)
 
-Root router `CredentiaSite()` (L2916) holds `const [screen, setScreen] = useState<"public" | "auth" | "app">("public")`. The final `return` (L2986–2996) is the switch:
+Root router `CoreRoborateSite()` (L2916) holds `const [screen, setScreen] = useState<"public" | "auth" | "app">("public")`. The final `return` (L2986–2996) is the switch:
 
 | screen value | renders | classification |
 |---|---|---|
@@ -182,19 +182,19 @@ Transitions: `onEnter` (marketing → auth), `enterApp(role)` sets `screen="app"
 | 2445–2627 | `SettingsView` | app | Settings & privacy (Batch 9). |
 | 2628–2639 | `NoOrgNotice` | app | Empty-state when user has no `org_id`. |
 | **2640–2913** | **`AppShell`** | **app (root)** | **Authenticated shell**: header, role-based `nav[]`, mobile sidebar, tab router, role→dashboard map, `FloatingAssistant`. **Batch 3 primary target.** |
-| 2915–2998 | `CredentiaSite` (default export) | **shared (router)** | Root: `screen` state, session restore/auth listener, theme, renders one of the three screens. |
+| 2915–2998 | `CoreRoborateSite` (default export) | **shared (router)** | Root: `screen` state, session restore/auth listener, theme, renders one of the three screens. |
 
-**Counts:** marketing sections ≈ **23** (L446–1593 subtree); app sections ≈ **18** (helpers L117–444 + L1694–2913); shared/router/gate ≈ **6** (imports, types/consts, `useThemeVars`, in-file `Card`, `AuthScreen`, root `CredentiaSite`).
+**Counts:** marketing sections ≈ **23** (L446–1593 subtree); app sections ≈ **18** (helpers L117–444 + L1694–2913); shared/router/gate ≈ **6** (imports, types/consts, `useThemeVars`, in-file `Card`, `AuthScreen`, root `CoreRoborateSite`).
 
 ### Shared components used by BOTH sides (risk items — restyle with care)
 
 1. **`Card` (in-file, L218–231) — the one true cross-cutting primitive.** Used **27×**. App side: DashboardWelcome (L158), app data primitives (L261, 331, 346, 394), all role views (L1792–2630), AppShell hero (L2716, 2831). Gate side: `AuthScreen` (L1640). **NOT used by any `Mkt*` marketing page** — marketing uses `MktCard` (L548) instead. So restyling in-file `Card` affects the **app + the sign-in screen**, never the marketing pages. Still: when Batch 3+ migrate to `components/ui/Card`, do it view-by-view; do not delete the in-file `Card` until every app + AuthScreen consumer is migrated, or the build breaks.
 
-2. **`useThemeVars` (L171–182).** Consumed once by the root `CredentiaSite` wrapper `<div>` (L2926, 2980, 2987) that wraps *all three* screens. It only emits CSS custom props for a non-default accent — touching it would recolor marketing too. Treat as off-limits for Batch 3 (it is not shell-layout anyway).
+2. **`useThemeVars` (L171–182).** Consumed once by the root `CoreRoborateSite` wrapper `<div>` (L2926, 2980, 2987) that wraps *all three* screens. It only emits CSS custom props for a non-default accent — touching it would recolor marketing too. Treat as off-limits for Batch 3 (it is not shell-layout anyway).
 
 3. **Name-collision trap (not a true shared component, but a footgun):** `Reveal` exists **twice** — the marketing-only in-file `function Reveal` (L512) and the app-side `import { Reveal as RiseIn }` from `@/components/ui/motion` (L27). They are different components; the app uses `<RiseIn>`, marketing uses `<Reveal>`. Do not "unify" them — restyling the in-file `Reveal` is a marketing edit and is OFF-LIMITS.
 
-4. **Root `CredentiaSite` + `AuthScreen`** straddle the boundary by definition. The router is shared; `AuthScreen` is the gate. Both may receive light shell polish, but `AuthScreen` is not on a redesign batch yet — leave it unless a batch names it.
+4. **Root `CoreRoborateSite` + `AuthScreen`** straddle the boundary by definition. The router is shared; `AuthScreen` is the gate. Both may receive light shell polish, but `AuthScreen` is not on a redesign batch yet — leave it unless a batch names it.
 
 No app-side data primitive (`Stat`, `SectionHeader`, `ProfileAvatar`, `ConfidenceBar`, `TransparencyNote`, etc.) is used by marketing, and no `Mkt*` helper is used by the app. The boundary is clean apart from `Card`.
 
@@ -202,7 +202,7 @@ No app-side data primitive (`Stat`, `SectionHeader`, `ProfileAvatar`, `Confidenc
 
 - The **entire marketing subtree is already self-contained** under `PublicSite` (L1537) + its `Mkt*`/`Reveal`/`CountUp`/`MktCard`/`VideoModal` helpers (L446–1535). It has **zero inbound dependencies from the app** except sharing the file. It could be lifted wholesale into `components/marketing/PublicSite.tsx` (+ a small `marketing/` folder) with only the in-file `Card` needing a decision (marketing doesn't use it, so no shared dependency travels with it). This would shrink the redesign-editable file by ~1,150 lines and make "off-limits" enforceable by directory, not by line range.
 - Similarly `AuthScreen` (L1597–1693) could move to `components/AuthScreen.tsx`.
-- After extraction, `CredentiaSite.tsx` would reduce to the app shell + role views + router (~the part every redesign batch actually edits). **Extraction is a separate, planner-approved batch — not Batch 2 and not part of any visual batch.**
+- After extraction, `CoreRoborateSite.tsx` would reduce to the app shell + role views + router (~the part every redesign batch actually edits). **Extraction is a separate, planner-approved batch — not Batch 2 and not part of any visual batch.**
 
 ### Recommendation for Batch 3 (app shell)
 
@@ -216,10 +216,10 @@ No app-side data primitive (`Stat`, `SectionHeader`, `ProfileAvatar`, `Confidenc
 
 ## Batch 3 — app shell (detailed plan, enterprise-planner, 2026-06-19)
 
-Scope: restyle the authenticated shell ONLY — the `AppShell` function (`components/CredentiaSite.tsx` L2640–2913) and the `screen === "app"` render arm (L2990–2993). Presentation-only: the `nav[]` data builder (L2695–2706), the `dashboard` role map (L2709–2724), the load `useEffect` (L2655–2686), and every `supabase.*` / `fetch*` call stay byte-for-byte. We re-skin the chrome around them. Per-page dashboard internals (the role views, panels, ExecutiveDashboard, etc.) are Batches 4–9 and are NOT touched here beyond the shared in-file `Card` rule below.
+Scope: restyle the authenticated shell ONLY — the `AppShell` function (`components/CoreRoborateSite.tsx` L2640–2913) and the `screen === "app"` render arm (L2990–2993). Presentation-only: the `nav[]` data builder (L2695–2706), the `dashboard` role map (L2709–2724), the load `useEffect` (L2655–2686), and every `supabase.*` / `fetch*` call stay byte-for-byte. We re-skin the chrome around them. Per-page dashboard internals (the role views, panels, ExecutiveDashboard, etc.) are Batches 4–9 and are NOT touched here beyond the shared in-file `Card` rule below.
 
 ### Reality check vs the brief (read first)
-The Batch 3 goal line says "Cairn **sidebar** (collapsible on mobile)." The shell as built is NOT a left sidebar — it is a **centered horizontal top-nav** inside a sticky `<header>` (L2779–2781, `<nav className="hidden lg:flex … justify-center">`) plus a **mobile left drawer** (L2814–2820). Rebuilding it into a `w-64` fixed left rail is a layout rewrite that would ripple into every role view's width assumptions and the `isCommandCenter` full-width path. **Recommendation: keep the top-nav + mobile-drawer topology; do not convert to a left rail in Batch 3.** "Sidebar" in the goal is satisfied by the existing collapsible mobile drawer (which IS a left sidebar on small screens). A left-rail conversion, if still wanted, is its own planner-approved layout batch after the page batches land — flagged in "Deferred" below. This keeps Batch 3 tightly scoped and low-risk.
+The Batch 3 goal line says "Core-Roborate **sidebar** (collapsible on mobile)." The shell as built is NOT a left sidebar — it is a **centered horizontal top-nav** inside a sticky `<header>` (L2779–2781, `<nav className="hidden lg:flex … justify-center">`) plus a **mobile left drawer** (L2814–2820). Rebuilding it into a `w-64` fixed left rail is a layout rewrite that would ripple into every role view's width assumptions and the `isCommandCenter` full-width path. **Recommendation: keep the top-nav + mobile-drawer topology; do not convert to a left rail in Batch 3.** "Sidebar" in the goal is satisfied by the existing collapsible mobile drawer (which IS a left sidebar on small screens). A left-rail conversion, if still wanted, is its own planner-approved layout batch after the page batches land — flagged in "Deferred" below. This keeps Batch 3 tightly scoped and low-risk.
 
 ### (a) Width decision + rationale — RESOLVED
 - **Standard pages → `max-w-7xl mx-auto px-6 py-8`.** Adopt the CLAUDE.md width. It applies to the header inner wrapper (L2767) and the content frame (L2822) on every non-command-center tab.
@@ -230,11 +230,11 @@ The Batch 3 goal line says "Cairn **sidebar** (collapsible on mobile)." The shel
 ### (b) Concrete change list (tied to AppShell line areas)
 
 **B3.1 — Header rail + width (L2766–2778)**
-- L2767: `${isCommandCenter ? "w-full" : "max-w-6xl"} mx-auto px-4 sm:px-5` → `${isCommandCenter ? "w-full" : "max-w-7xl"} mx-auto px-6`. Keep `backdrop-blur` + `color-mix` bg (already Cairn-token-driven, L2766) — do not introduce raw hex.
-- Logo block (L2769–2778): leave the `orgLogoUrl` / fallback `/cairn-logo-mark.svg` logic and the `MobileNavToggle` placement intact. Cosmetic only: ensure the wordmark uses `--ink` via existing class, no new colors.
+- L2767: `${isCommandCenter ? "w-full" : "max-w-6xl"} mx-auto px-4 sm:px-5` → `${isCommandCenter ? "w-full" : "max-w-7xl"} mx-auto px-6`. Keep `backdrop-blur` + `color-mix` bg (already Core-Roborate-token-driven, L2766) — do not introduce raw hex.
+- Logo block (L2769–2778): leave the `orgLogoUrl` / fallback `/core-roborate-logo-mark.svg` logic and the `MobileNavToggle` placement intact. Cosmetic only: ensure the wordmark uses `--ink` via existing class, no new colors.
 
 **B3.2 — Desktop nav active/hover state (NavButton, L2732–2750)**
-- Active state already fills with `var(--accent)` + `#fff` text (L2743–2745) — keep the active fill but make it spec-correct: replace the hardcoded `#fff` with `var(--accent-ink)` (the Cairn on-accent token) so dark-mode contrast is token-controlled, not hardcoded. (If `--accent-ink` does not exist, coder adds it to `colors.css` rather than hardcoding — flag to planner; do NOT inline a hex.)
+- Active state already fills with `var(--accent)` + `#fff` text (L2743–2745) — keep the active fill but make it spec-correct: replace the hardcoded `#fff` with `var(--accent-ink)` (the Core-Roborate on-accent token) so dark-mode contrast is token-controlled, not hardcoded. (If `--accent-ink` does not exist, coder adds it to `colors.css` rather than hardcoding — flag to planner; do NOT inline a hex.)
 - Add a **resting hover** for inactive items (currently none): on hover, inactive nav buttons get `background: var(--surface-2)` via a className hover rule, with `transition-colors duration-150`. Keep `var(--ink-2)` resting text.
 - Add `aria-current="page"` when `active` (accessibility — currently missing). Keep `transition` → make it explicit `transition-colors duration-150`.
 - The brief's "active item has left border accent" is a left-rail idiom; for the horizontal top-nav the **filled-pill active state is the correct equivalent** — keep the pill, do not bolt on a left border. The mobile drawer (vertical) MAY use a left-accent bar (see B3.4).
@@ -245,9 +245,9 @@ The Batch 3 goal line says "Cairn **sidebar** (collapsible on mobile)." The shel
 - Keep the click-away overlay (L2792) and `ChevronDown` rotation (L2788) as-is.
 
 **B3.4 — Mobile drawer (L2814–2820)**
-- Keep topology (left drawer, `top-14 sm:top-16`, `w-72`, click-scrim). Tokens already Cairn (`--surface`/`--line`).
+- Keep topology (left drawer, `top-14 sm:top-16`, `w-72`, click-scrim). Tokens already Core-Roborate (`--surface`/`--line`).
 - In the vertical `NavList` (L2752–2762), give the active item a 2px left-accent bar (token-driven `border-l-2` with `var(--accent)`) to satisfy the brief's "left border accent" idiom in the one place it belongs (the vertical list). Inactive items get the same `--surface-2` hover as desktop.
-- Add focus rings: every nav button must show the Cairn focus ring on `:focus-visible` (token exists from Batch 1). `MobileNavToggle` already has `aria-expanded`/`aria-label` (L252–253) — leave it.
+- Add focus rings: every nav button must show the Core-Roborate focus ring on `:focus-visible` (token exists from Batch 1). `MobileNavToggle` already has `aria-expanded`/`aria-label` (L252–253) — leave it.
 
 **B3.5 — Content frame: PageHeader adoption + spacing + fade-in (L2822–2899)**
 - L2822 content wrapper: `max-w-6xl mx-auto px-5 py-6` → `max-w-7xl mx-auto px-6 py-8` (command-center branch unchanged at `w-full`).
@@ -270,9 +270,9 @@ The Batch 3 goal line says "Cairn **sidebar** (collapsible on mobile)." The shel
 Keep using: the in-file `Card` for the dashboard intro card (L2831) and superadmin card (L2716) **as-is** — do NOT migrate those to `components/ui/Card` in Batch 3 (Card migration is per-page, Batches 4–9; in-file `Card` must keep rendering for AuthScreen + all views until every consumer moves).
 
 ### (d) Explicit DO NOT TOUCH
-- `app/page.tsx`, and anything in `CredentiaSite.tsx` L446–1593 (the `PublicSite` marketing subtree) — off-limits.
+- `app/page.tsx`, and anything in `CoreRoborateSite.tsx` L446–1593 (the `PublicSite` marketing subtree) — off-limits.
 - The marketing-only in-file `Reveal` (L512); do NOT unify it with the app's `Reveal as RiseIn` (L27).
-- `useThemeVars` (L171) and the three-way `screen` switch / session-restore effect / `onAuthStateChange` in root `CredentiaSite` (L2916+).
+- `useThemeVars` (L171) and the three-way `screen` switch / session-restore effect / `onAuthStateChange` in root `CoreRoborateSite` (L2916+).
 - The `nav[]` builder (L2695–2706) and `dashboard` role map (L2709–2724) **logic** — restyle the buttons they produce, never the role-gating conditions or which view mounts.
 - Any `supabase.*`, `fetchOrgSettingsForUser`, `ensureUserSettings`, `getUserId` call, or the load `useEffect` (L2655–2686).
 - The in-file `Card` (L218) — leave it and all consumers intact this batch.
@@ -281,7 +281,7 @@ Keep using: the in-file `Card` for the dashboard intro card (L2831) and superadm
 
 ### (e) Handoff checks
 **tester (must verify):**
-- Build green: `tsc --noEmit` exit 0; ESLint clean on `CredentiaSite.tsx` (no new errors vs baseline; pre-existing `motion.tsx` errors are out of scope).
+- Build green: `tsc --noEmit` exit 0; ESLint clean on `CoreRoborateSite.tsx` (no new errors vs baseline; pre-existing `motion.tsx` errors are out of scope).
 - Renders for **all six role contexts**: `superadmin`, `admin`, `manager`, `employee`, `former_employee` (i.e. `accountStatus.startsWith("former_")` → `plan` tab present), and the **executive view** (`executive`/`hr` → command-center full-width path). Confirm each role's `nav[]` produces the expected tabs and the active-pill renders.
 - **No cross-org / data-layer change:** diff shows zero edits inside the load `useEffect`, `nav[]` builder, `dashboard` map conditions, or any `supabase.*` call. Nav data still derived purely from `role`/`accountStatus` — no new query, no `org_id` widening.
 - Width: standard tabs render at `max-w-7xl`; executive dashboard tab is full-width (no `max-w-7xl` box around the org tree).
@@ -333,9 +333,9 @@ Keep using: the in-file `Card` for the dashboard intro card (L2831) and superadm
 3. **No client write of `state='attested'`** on `verification_candidates`. Client UPDATE policy permits only `pending|shadow_approved → rejected` (with `rejected_by`/`rejected_reason`). `attested` is reached ONLY through `promote_candidate()` (SECURITY DEFINER) — human-attest or active-rule path — which is also the only pipeline writer into `verified_*`.
 4. **Audit every significant action**: `evidence_ingested`, `verification_candidate_staged`, `candidate_rejected`, `candidate_attested`, `candidate_auto_promoted`, `overseer_rule_proposed`, `overseer_shadow_decision`, `overseer_rule_enabled`, `overseer_rule_paused`.
 5. **Provenance preserved**: candidate ↔ `candidate_evidence` ↔ `ingestion_events` ↔ source row, end to end.
-6. **verified_* (blue) vs candidates/inference (amber) never merged or relabeled.** Tokens `--verified-fg/-bg` (blue, `ShieldCheck`) vs `--inferred-fg/-bg` (amber, `Sparkles`) from `styles/cairn/tokens/colors.css`. Never hardcode trust colors.
+6. **verified_* (blue) vs candidates/inference (amber) never merged or relabeled.** Tokens `--verified-fg/-bg` (blue, `ShieldCheck`) vs `--inferred-fg/-bg` (amber, `Sparkles`) from `styles/core-roborate/tokens/colors.css`. Never hardcode trust colors.
 7. **Any model-input construction or `ai_inference_*`/candidate-payload shaping routes through `context-architect`** (harness boundary, output schema, provenance tagging, validation).
-8. **Reuse Batch 1 UI primitives + Cairn tokens** for all review/oversight/Passport UI. No bespoke markup; check `components/ui/` first.
+8. **Reuse Batch 1 UI primitives + Core-Roborate tokens** for all review/oversight/Passport UI. No bespoke markup; check `components/ui/` first.
 9. **Public RPC blindness:** `get_public_passport` must NEVER select from `verification_candidates`. Verify in the Passport batch.
 
 ---
@@ -355,7 +355,7 @@ Keep using: the in-file `Card` for the dashboard intro card (L2831) and superadm
 ---
 
 ### VP-1 — RECOMMENDED FIRST BATCH (lowest risk) ✅ DONE (2026-06-19)
-**Status:** shipped. Migration `supabase/verification-pipeline.sql` applied to live project `plepkdgxhrgptczzpbkp` (6 tables + `ai_ingest_state` column + RLS; 11 policies; 0 client INSERT; 1 reject-only UPDATE; security advisor clean of new findings). App: `lib/verification/{ingest,staging}.ts`, 9 audit labels, `components/verification/VerificationCandidatesPanel.tsx` (amber read-only), one manager+leader nav entry in `CredentiaSite.tsx`. **tester PASS 8/8** (no `verified_*` writes, no client `attested` path, RLS isolation, service-role containment, amber-only, band-not-number). **ux-review SHIP** — trust framing called "exemplary"; one P1 fixed inline (the `verified_fact` target-kind label said "Verified fact" on an amber card → relabeled "Proposed fact" so the word "Verified" never touches an unverified candidate). One RLS tightening applied vs the design: subject may reject ONLY self-generated candidates (`generated_by = auth.uid()`), not manager/system-staged ones.
+**Status:** shipped. Migration `supabase/verification-pipeline.sql` applied to live project `plepkdgxhrgptczzpbkp` (6 tables + `ai_ingest_state` column + RLS; 11 policies; 0 client INSERT; 1 reject-only UPDATE; security advisor clean of new findings). App: `lib/verification/{ingest,staging}.ts`, 9 audit labels, `components/verification/VerificationCandidatesPanel.tsx` (amber read-only), one manager+leader nav entry in `CoreRoborateSite.tsx`. **tester PASS 8/8** (no `verified_*` writes, no client `attested` path, RLS isolation, service-role containment, amber-only, band-not-number). **ux-review SHIP** — trust framing called "exemplary"; one P1 fixed inline (the `verified_fact` target-kind label said "Verified fact" on an amber card → relabeled "Proposed fact" so the word "Verified" never touches an unverified candidate). One RLS tightening applied vs the design: subject may reject ONLY self-generated candidates (`generated_by = auth.uid()`), not manager/system-staged ones.
 **Fast-follows (P2/P3 → planner, non-blocking):** true Tab focus-trap in `Modal` (currently Escape + initial-focus only); show the candidate's subject (name/avatar) on each card (only `subject_id` is surfaced now); Undo/softer copy on the reject toast; clickable evidence-source links (raw truncated UUID today); audit blank reject reason as null not the synthetic "No reason given".
 
 **Goal.** Stand up the additive staging/evidence/oversight tables, the `documentation.ai_ingest_state` gate **column only** (no enforcement yet), the server-side ingestion entry point, and a **read-only** review surface. No `verified_*` writes. No model calls. No context-assembly changes.
@@ -410,7 +410,7 @@ Keep using: the in-file `Card` for the dashboard intro card (L2831) and superadm
 
 ### VP-4 — Doc gate enforcement in context assembly ✅ DONE (2026-06-19)
 **Status:** shipped (context-architect-gated batch). Migration `supabase/verification-vp4-doc-gate.sql` applied to `plepkdgxhrgptczzpbkp`: extended `guard_doc_verification()` (faithful — preserves the existing manager+/HR verify gate, stamp, and de-verify reset verbatim; ADDS: `ai_ingest_state='cleared'` requires `status='verified'` + the same privileged actor; leaving verified forces `ai_ingest_state→blocked`; `quarantined` is terminal-exclusionary, never auto-cleared, lift requires manager+/HR). Single trigger `trg_doc_verification` (BEFORE INS/UPD) confirmed; `EXECUTE` revoked (closed a pre-existing advisor finding); zero new advisor findings; **zero doc rows live → no behavior change to existing data.**
-**Key finding (context-architect):** exactly ONE doc→model-input path exists today — `app/api/ai/agent/ingest/route.ts` (Digital-Twin trainer), which previously filtered only `status='verified'` (the bypass). Now gated. `lib/ai/*` never read `documentation`. **App gate:** new `lib/verification/doc-eligibility.ts` (`CLEARED_DOC_FILTER` single source of truth, `eligibleDocsQuery` applies verified+cleared on top of RLS, `assertDocCleared` hard-throws) wired into the ingest route (still uses the user/RLS client). New `lib/verification/context-assembly.ts` encodes the §6 contract — `verified[]`/`inferred[]` as separate arrays (no flattened field), `assertContextWallIntact` throws on misclassification, cleared docs only ever tagged `source:'verified'` (uncleared ones absent, never downgraded to inferred).
+**Key finding (context-architect):** exactly ONE doc→model-input path exists today — `app/api/ai/agent/ingest/route.ts` (Scout trainer), which previously filtered only `status='verified'` (the bypass). Now gated. `lib/ai/*` never read `documentation`. **App gate:** new `lib/verification/doc-eligibility.ts` (`CLEARED_DOC_FILTER` single source of truth, `eligibleDocsQuery` applies verified+cleared on top of RLS, `assertDocCleared` hard-throws) wired into the ingest route (still uses the user/RLS client). New `lib/verification/context-assembly.ts` encodes the §6 contract — `verified[]`/`inferred[]` as separate arrays (no flattened field), `assertContextWallIntact` throws on misclassification, cleared docs only ever tagged `source:'verified'` (uncleared ones absent, never downgraded to inferred).
 **tester PASS 7/7** + 15/15 pure-logic unit tests; tsc/eslint clean; no `verified_*`/candidate writes; service-role containment; no other ungated doc→model-input path.
 **Verification caveat (honest):** the trigger's role-gated branches can't be exercised under the service role (`auth.uid() is null` bypass) — verified by faithful-extension inspection + clean compile; live role behavior is app-level QA with real JWTs.
 **Policy follow-ups (→ planner):** who/what sets `ai_ingest_state='staged'`→`'cleared'` (recommend a separate explicit reviewer action, distinct from verify) — until defined, all docs stay `blocked` and the agent learns zero docs (the gate working safely); a `quarantined` producer (PII/secrets/disputed) is a later batch.

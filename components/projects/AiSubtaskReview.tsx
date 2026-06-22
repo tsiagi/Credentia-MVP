@@ -85,7 +85,7 @@ export function AiSubtaskReview({
 
   return (
     <div
-      className="mt-3 rounded-xl border p-3 cairn-pulse"
+      className="mt-3 rounded-xl border p-3 core-roborate-pulse"
       style={{ borderColor: "var(--inferred-fg)", background: "var(--inferred-bg)" }}
     >
       <div className="flex items-center gap-2 mb-2">

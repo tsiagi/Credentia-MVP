@@ -1,7 +1,7 @@
 // middleware.ts
 // Route-level role separation for the admin route trees.
 //
-//   /superadmin/*  → role 'superadmin' only (Credentia operators)
+//   /superadmin/*  → role 'superadmin' only (Core-Roborate operators)
 //   /admin/*       → role 'admin' only (company admins)
 //
 // Anyone else is redirected away. This is enforcement in addition to (never

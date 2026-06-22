@@ -70,11 +70,11 @@ function StatTile({
   };
   const t = toneMap[tone];
   return (
-    <Reveal delay={delay} className={`${card} cairn-lift cairn-icon-host`}
+    <Reveal delay={delay} className={`${card} core-roborate-lift core-roborate-icon-host`}
       style={{ ...cardStyle, padding: 18 }}>
       <div className="flex items-center gap-2.5">
         <div className="p-2 rounded-xl shrink-0" style={{ background: t.bg }}>
-          <Icon size={18} className="cairn-icon" style={{ color: t.fg }} />
+          <Icon size={18} className="core-roborate-icon" style={{ color: t.fg }} />
         </div>
         <div className="text-[12px] uppercase tracking-widest opacity-60">{label}</div>
       </div>
@@ -148,7 +148,7 @@ function VerificationCenter() {
             const isOpen = expanded === it.id;
             return (
               <Reveal key={it.id} delay={300 + idx * 70}>
-                <div className={`rounded-xl border cairn-lift cairn-icon-host overflow-hidden`}
+                <div className={`rounded-xl border core-roborate-lift core-roborate-icon-host overflow-hidden`}
                   style={{ borderColor: isOpen ? "var(--accent-line)" : "var(--line)",
                     background: it.status === "rejected" ? "var(--warn-bg)" : "var(--surface-2)" }}>
                   {/* clickable summary row — progressive disclosure */}
@@ -156,7 +156,7 @@ function VerificationCenter() {
                     onClick={() => setExpanded(isOpen ? null : it.id)}
                     className="w-full text-left p-4 flex items-start gap-3">
                     <div className="p-2 rounded-lg shrink-0" style={{ background: "var(--accent-soft)" }}>
-                      <Icon size={18} className="cairn-icon" style={{ color: "var(--accent)" }} />
+                      <Icon size={18} className="core-roborate-icon" style={{ color: "var(--accent)" }} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -253,7 +253,7 @@ function CoachingInsights() {
   const go = (n: number) => setIdx((prev) => (prev + n + insights.length) % insights.length);
 
   return (
-    <Reveal className={`${card} cairn-pulse`} style={{ ...cardStyle, padding: 24, background: "var(--inferred-bg)" }}>
+    <Reveal className={`${card} core-roborate-pulse`} style={{ ...cardStyle, padding: 24, background: "var(--inferred-bg)" }}>
       <div className="flex items-center gap-2 mb-1">
         <Sparkles size={18} style={{ color: "var(--inferred-fg)" }} />
         <h3 className="font-semibold">AI Coaching Insights</h3>
@@ -362,7 +362,7 @@ function KpiSystem() {
 
         <div className="grid transition-all duration-300" style={{ gridTemplateRows: adding ? "1fr" : "0fr" }}>
           <div className="overflow-hidden">
-            <div className="p-4 rounded-xl border mb-4 flex gap-2 flex-wrap items-end cairn-pop"
+            <div className="p-4 rounded-xl border mb-4 flex gap-2 flex-wrap items-end core-roborate-pop"
               style={{ borderColor: "var(--line)", background: "var(--surface-2)" }}>
               <input placeholder="KPI title" value={draft.title}
                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -384,7 +384,7 @@ function KpiSystem() {
             const met = pct(k) >= 100;
             return (
               <Reveal key={k.id} delay={220 + idx * 80}
-                className="rounded-xl border p-4 cairn-lift"
+                className="rounded-xl border p-4 core-roborate-lift"
                 style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <span className="font-medium text-[14px]">{k.title}</span>
@@ -454,7 +454,7 @@ export default function EmployerSide({ role = "manager" }: { role?: string }) {
       )}
 
       {/* keyed wrapper re-triggers the entrance animation on tab change */}
-      <div key={tab} className="cairn-reveal">
+      <div key={tab} className="core-roborate-reveal">
         {tab === "verify" && <VerificationCenter />}
         {tab === "coaching" && <CoachingInsights />}
         {tab === "kpis" && <KpiSystem />}

@@ -1,4 +1,4 @@
-import { EmptyState, Button } from 'credentia';
+import { EmptyState, Button } from 'core-roborate';
 import { Inbox, ShieldCheck, Search, Plus } from 'lucide-react';
 
 const surface: React.CSSProperties = {

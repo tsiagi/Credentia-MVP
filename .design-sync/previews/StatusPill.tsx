@@ -1,4 +1,4 @@
-import { StatusPill } from 'credentia';
+import { StatusPill } from 'core-roborate';
 
 const row: React.CSSProperties = {
   display: 'flex',

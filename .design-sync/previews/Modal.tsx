@@ -1,4 +1,4 @@
-import { Modal, Button, VerifiedBadge } from 'credentia';
+import { Modal, Button, VerifiedBadge } from 'core-roborate';
 
 export function Confirm() {
   return (

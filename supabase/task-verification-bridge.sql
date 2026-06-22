@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- Credentia — Task → Verification bridge
+-- Core-Roborate — Task → Verification bridge
 -- Additive. Run AFTER task-knowledge-agent.sql.
 --
 -- Continues the existing 5-level verification flow from the new task engine:

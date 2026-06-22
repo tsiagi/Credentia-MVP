@@ -1,4 +1,4 @@
-import { VerifiedBadge, AIEstimateBadge } from 'credentia';
+import { VerifiedBadge, AIEstimateBadge } from 'core-roborate';
 
 const row: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 };
 const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };

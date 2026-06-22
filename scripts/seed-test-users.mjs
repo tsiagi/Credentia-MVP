@@ -20,7 +20,7 @@ const DEPT_ENG = "a2222222-2222-4222-8222-222222222222";
 const DEPT_HR = "a4444444-4444-4444-8444-444444444444";
 
 const USERS = [
-  { email: "superadmin@demo.corp.com", role: "superadmin", full_name: "Platform Operator", title: "Credentia Ops", org_id: null, manager_key: null, source: "invite" },
+  { email: "superadmin@demo.corp.com", role: "superadmin", full_name: "Platform Operator", title: "Core-Roborate Ops", org_id: null, manager_key: null, source: "invite" },
   { email: "admin@demo.corp.com", role: "admin", full_name: "Casey Admin", title: "System Administrator", org_id: ORG_ID, manager_key: null, source: "invite" },
   { email: "executive@demo.corp.com", role: "executive", full_name: "Alex Morgan", title: "Chief People Officer", org_id: ORG_ID, manager_key: null, source: "sso" },
   { email: "manager@demo.corp.com", role: "manager", full_name: "Jordan Lee", title: "Engineering Manager", org_id: ORG_ID, manager_key: null, source: "sso" },

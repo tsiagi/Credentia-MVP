@@ -1,9 +1,9 @@
 // app/page.tsx
-// This is the home route. It just renders the whole Credentia site/app.
+// This is the home route. It just renders the whole Core-Roborate site/app.
 "use client";
 
-import CredentiaSite from "@/components/CredentiaSite";
+import CoreRoborateSite from "@/components/CoreRoborateSite";
 
 export default function Home() {
-  return <CredentiaSite />;
+  return <CoreRoborateSite />;
 }

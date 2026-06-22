@@ -1,5 +1,5 @@
 // app/dev/workspace/page.tsx
-// Preview route for the Task/Project · Documentation · Messaging · Digital-Twin
+// Preview route for the Task/Project · Documentation · Messaging · Scout
 // workspace. Not linked from the marketing site; safe to delete. Mounts the new
 // features against the signed-in user's real session (RLS scopes everything).
 "use client";
@@ -19,7 +19,7 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: "board", label: "Project Board", icon: <KanbanSquare size={15} /> },
   { key: "docs", label: "Documentation", icon: <BookOpen size={15} /> },
   { key: "messages", label: "Messages", icon: <MessageSquare size={15} /> },
-  { key: "agent", label: "Digital Twin", icon: <Bot size={15} /> },
+  { key: "agent", label: "Scout", icon: <Bot size={15} /> },
 ];
 
 export default function WorkspacePreview() {
@@ -42,7 +42,7 @@ export default function WorkspacePreview() {
     <div style={{ minHeight: "100vh", background: "var(--content-bg, var(--bg))" }}>
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-6">
-          <div className="cairn-eyebrow mb-2">Preview · Workspace</div>
+          <div className="core-roborate-eyebrow mb-2">Preview · Workspace</div>
           <h1 className="text-[28px] font-semibold" style={{ color: "var(--ink)" }}>Tasks, Knowledge &amp; Your Twin</h1>
           <p className="text-[14px] mt-1" style={{ color: "var(--ink-3)" }}>
             Verified facts stay blue; AI suggestions stay amber — never mixed.

@@ -1,6 +1,6 @@
 # SOC 2 kickoff
 
-Practical plan to get Credentia from "architecturally sound" to a SOC 2 report. Scope assumption: **Security (Common Criteria)** first; add Confidentiality and Availability if customers require them.
+Practical plan to get Core-Roborate from "architecturally sound" to a SOC 2 report. Scope assumption: **Security (Common Criteria)** first; add Confidentiality and Availability if customers require them.
 
 ## The fastest path (80/20)
 1. **Pick a compliance-automation platform** — Vanta, Drata, or Secureframe. They provide policy templates and auto-collect evidence from GitHub, Vercel, Supabase, Google Workspace, and (most) your subprocessors. This converts SOC 2 from a project into a checklist and is the single biggest accelerator.

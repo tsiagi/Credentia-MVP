@@ -7,7 +7,7 @@
 // Record" toggle. When a thread is in "learning" mode (or a message is saved)
 // the UI shows a clear sparkle indicator — the user always knows when the
 // system is allowed to learn from what they write. Off-the-record messages are
-// never eligible for the Digital-Twin.
+// never eligible for the Scout.
 //
 // Batches wired here:
 //   M1 — primitives + sender grouping + day dividers + skeleton/empty/toast.
@@ -582,7 +582,7 @@ export function ChatInterface({ userId, orgId }: { userId: string; orgId: string
                 className="flex items-center gap-1.5 px-4 py-1.5 text-[11px]"
                 style={{ background: "var(--inferred-bg)", color: "var(--inferred-fg)" }}
               >
-                <Sparkles size={11} /> This thread is being learned by your Digital Twin. New messages default to saved.
+                <Sparkles size={11} /> This thread is being learned by your Scout. New messages default to saved.
               </div>
             )}
 
@@ -664,9 +664,9 @@ export function ChatInterface({ userId, orgId }: { userId: string; orgId: string
               >
                 {!prefersReducedMotion() && (
                   <span className="inline-flex gap-0.5" aria-hidden>
-                    <span className="cairn-typing-dot" />
-                    <span className="cairn-typing-dot" />
-                    <span className="cairn-typing-dot" />
+                    <span className="core-roborate-typing-dot" />
+                    <span className="core-roborate-typing-dot" />
+                    <span className="core-roborate-typing-dot" />
                   </span>
                 )}
                 {typingLabel}

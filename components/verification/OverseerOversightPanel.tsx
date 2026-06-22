@@ -18,7 +18,7 @@
 //     (Q6's "never a numeric probability" is the EMPLOYEE trust UI). We never
 //     imply the AI decides.
 //
-// Built on Batch 1 primitives + Cairn tokens. Reads via lib/overseer/reads (RLS);
+// Built on Batch 1 primitives + Core-Roborate tokens. Reads via lib/overseer/reads (RLS);
 // enable/pause POST to /api/overseer/rule (service-role + Q4 gate server-side).
 // ─────────────────────────────────────────────────────────────
 import React, { useCallback, useEffect, useState } from "react";
