@@ -2,7 +2,7 @@
 
 import React, { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Save, Users, Sparkles, Workflow, Receipt } from "lucide-react";
+import { ArrowLeft, Save, Users, Sparkles, Workflow, Receipt, KeyRound, Copy, RefreshCw } from "lucide-react";
 import { PageHeader, Card, Button, Badge, useToast } from "@/components/ui";
 import { BrandingCard } from "@/components/admin/BrandingCard";
 import { SubscriptionBadge } from "@/components/admin/SubscriptionBadge";
@@ -11,6 +11,7 @@ import {
   fetchCompany, updateCompany,
   type CompanyProfile, type CompanyPatch, type CompanyDetail,
 } from "@/lib/admin/companies";
+import { revealScimSecret, rotateScimSecret } from "@/lib/admin/scim";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -77,6 +78,85 @@ function ProfileEditor({ company, token, onSaved }: { company: CompanyProfile; t
         </div>
         <Button type="submit" leadingIcon={<Save size={15} />} loading={saving}>Save profile</Button>
       </form>
+    </Card>
+  );
+}
+
+function ReadonlyRow({ label, value, onCopy }: { label: string; value: string; onCopy: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg" style={{ background: "var(--surface-2)" }}>
+      <div className="min-w-0">
+        <div className="cairn-eyebrow mb-0.5">{label}</div>
+        <div className="font-mono text-[12px] truncate" style={{ color: "var(--ink)" }}>{value}</div>
+      </div>
+      <Button variant="ghost" size="sm" leadingIcon={<Copy size={14} />} onClick={onCopy}>Copy</Button>
+    </div>
+  );
+}
+
+function ScimCard({ orgId, token }: { orgId: string; token: string }) {
+  const toast = useToast();
+  const [secret, setSecret] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "reveal" | "rotate">(null);
+  const endpoint = (typeof window !== "undefined" ? window.location.origin : "") + "/api/provision/scim";
+
+  function copy(value: string, label: string) {
+    navigator.clipboard?.writeText(value);
+    toast.success(`${label} copied`);
+  }
+  async function reveal() {
+    setBusy("reveal");
+    try {
+      setSecret((await revealScimSecret(token, orgId)).secret);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not reveal secret");
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function rotate() {
+    if (!window.confirm("Rotate this org's SCIM token? The current token stops working immediately — you must update Okta with the new one.")) return;
+    setBusy("rotate");
+    try {
+      setSecret((await rotateScimSecret(token, orgId)).secret);
+      toast.success("SCIM token rotated — update Okta. Audit logged.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not rotate secret");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card padding="md">
+      <div className="flex items-center gap-2 mb-3">
+        <KeyRound size={18} style={{ color: "var(--accent)" }} />
+        <h3 className="font-semibold">SCIM provisioning (Okta)</h3>
+      </div>
+      <p className="text-[12px] mb-3" style={{ color: "var(--ink-3)" }}>
+        Point the Okta SCIM app at the endpoint below. Each tenant has its own secret, encrypted at rest — reveal or rotate it here. Both actions are audit-logged.
+      </p>
+      <div className="space-y-2 text-[13px]">
+        <ReadonlyRow label="SCIM endpoint URL" value={endpoint} onCopy={() => copy(endpoint, "Endpoint URL")} />
+        <ReadonlyRow label="Header" value={`x-org-id: ${orgId}`} onCopy={() => copy(orgId, "Org ID")} />
+        <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg" style={{ background: "var(--surface-2)" }}>
+          <div className="min-w-0">
+            <div className="cairn-eyebrow mb-0.5">Bearer token</div>
+            <div className="font-mono text-[12px] truncate" style={{ color: "var(--ink)" }}>
+              {secret ?? "•••••••••••••••••• (hidden)"}
+            </div>
+          </div>
+          {secret ? (
+            <Button variant="secondary" size="sm" leadingIcon={<Copy size={14} />} onClick={() => copy(secret, "Token")}>Copy</Button>
+          ) : (
+            <Button variant="secondary" size="sm" loading={busy === "reveal"} onClick={reveal}>Reveal</Button>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <Button variant="ghost" size="sm" leadingIcon={<RefreshCw size={14} />} loading={busy === "rotate"} onClick={rotate}>Rotate token</Button>
+        {secret && <span className="text-[11px]" style={{ color: "var(--warn-fg)" }}>Sensitive — hidden again when you leave this page.</span>}
+      </div>
     </Card>
   );
 }
@@ -234,6 +314,9 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ orgId:
               </div>
             )}
           </Card>
+
+          {/* SCIM provisioning */}
+          <ScimCard orgId={orgId} token={token!} />
 
           {/* Billing activity */}
           <Card padding="md">
