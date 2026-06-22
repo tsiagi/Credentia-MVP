@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { getSupabaseAdmin, getSupabaseAsUser } from "@/lib/supabase-admin";
+import { encryptField } from "@/lib/crypto";
 import type { CompanyPatch, CompanyProfile, NewCompanyInput } from "@/lib/admin/companies";
 
 export const runtime = "nodejs";
@@ -118,9 +120,11 @@ export async function POST(req: NextRequest) {
   if (!body.name?.trim()) return NextResponse.json({ error: "Company name required" }, { status: 400 });
 
   const admin = getSupabaseAdmin();
+  // Per-org SCIM secret, generated here and stored encrypted at rest (#10 + field encryption).
+  const scimSecret = encryptField(randomBytes(24).toString("hex"));
   const { data, error } = await admin
     .from("organizations")
-    .insert({ name: body.name.trim(), plan: body.plan ?? null, status: "provisioning" })
+    .insert({ name: body.name.trim(), plan: body.plan ?? null, status: "provisioning", scim_secret: scimSecret })
     .select("id")
     .single();
   if (error || !data) return NextResponse.json({ error: error?.message ?? "Insert failed" }, { status: 500 });
