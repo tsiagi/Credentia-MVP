@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "crypto";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { upsertFromIdp } from "@/lib/provisioning/server";
+import { isEncrypted, decryptField } from "@/lib/crypto";
 import type { ScimUserPayload } from "@/lib/provisioning";
 
 export const runtime = "nodejs";
@@ -42,7 +43,17 @@ export async function POST(req: NextRequest) {
     .select("scim_secret")
     .eq("id", orgId)
     .maybeSingle();
-  if (!org?.scim_secret || !secretsMatch(token, org.scim_secret)) {
+  // Stored encrypted at rest (AES-256-GCM, key in server env). Decrypt before
+  // comparing; tolerate legacy plaintext during rollout.
+  let expectedSecret = org?.scim_secret as string | null | undefined;
+  if (isEncrypted(expectedSecret)) {
+    try {
+      expectedSecret = decryptField(expectedSecret as string);
+    } catch {
+      return NextResponse.json({ error: "SCIM secret unreadable (encryption misconfigured)" }, { status: 503 });
+    }
+  }
+  if (!expectedSecret || !secretsMatch(token, expectedSecret)) {
     return NextResponse.json({ error: "Invalid SCIM token for this org" }, { status: 401 });
   }
 
